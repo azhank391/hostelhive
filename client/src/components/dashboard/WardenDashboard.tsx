@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { useAdminApiWithHostel, useCurrentHostelId } from '@/lib/context-aware-api'
+import { useCurrentHostelId } from '@/lib/context-aware-api'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { notification } from '@/lib/toast'
@@ -69,8 +69,7 @@ interface QuickAction {
  */
 export const WardenDashboard = React.memo(() => {
   const { user } = useAuth()
-  const { hostelId, hasHostel } = useCurrentHostelId()
-  const adminApi = useAdminApiWithHostel()
+  const { hasHostel, getHostelId } = useCurrentHostelId()
   
   // State management
   const [stats, setStats] = useState<WardenDashboardStats | null>(null)
@@ -176,34 +175,72 @@ export const WardenDashboard = React.memo(() => {
         students, 
         rooms
       ] = await Promise.all([
-        adminApi.getDashboardStats(),
-        adminApi.getComplaints({ limit: 50 }),
-        adminApi.getVisitorLogs({ limit: 20 }),
-        adminApi.getStudents({ limit: 10 }),
-        adminApi.getRooms({ limit: 10 })
+        fetch(`/api/hostels/${getHostelId()}/stats`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        }),
+        fetch(`/api/hostels/${getHostelId()}/complaints?limit=50`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        }),
+        fetch(`/api/hostels/${getHostelId()}/visitors?limit=20`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        }),
+        fetch(`/api/hostels/${getHostelId()}/students?limit=10`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        }),
+        fetch(`/api/hostels/${getHostelId()}/rooms?limit=10`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        })
+      ])
+      
+      // Check if all responses are successful
+      const responses = [dashboardStats, complaints, visitors, students, rooms]
+      for (const response of responses) {
+        if (!response.ok) {
+          throw new Error(`API call failed: ${response.status} ${response.statusText}`)
+        }
+      }
+      
+      const [dashboardStatsData, complaintsData, visitorsData, studentsData, roomsData] = await Promise.all([
+        dashboardStats.json(),
+        complaints.json(),
+        visitors.json(),
+        students.json(),
+        rooms.json()
       ])
       
       // Process and calculate comprehensive stats
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       
-      const pendingComplaints = Array.isArray(complaints?.data) 
-        ? complaints.data.filter((c: any) => c.status === 'pending' || c.status === 'in_progress').length
-        : 0
-      const totalComplaints = Array.isArray(complaints?.data) ? complaints.data.length : 0
+      // Extract stats from dashboard stats response
+      const statsData = dashboardStatsData.stats || {}
+      const pendingComplaints = statsData.pendingComplaints || 0
+      const totalComplaints = statsData.totalComplaints || 0
       const resolvedComplaints = totalComplaints - pendingComplaints
       
-      const currentVisitors = visitors && typeof visitors === 'object' && Array.isArray((visitors as any).data)
-        ? (visitors as any).data.filter((v: any) => !v.checkOut).length
+      // Process visitors data
+      const currentVisitors = Array.isArray(visitorsData) 
+        ? visitorsData.filter((v: any) => !v.checkOut).length
         : 0
-      const todayVisitors = visitors && typeof visitors === 'object' && Array.isArray((visitors as any).data)
-        ? (visitors as any).data.filter((v: any) => new Date(v.checkIn) >= today).length
+      const todayVisitors = Array.isArray(visitorsData)
+        ? visitorsData.filter((v: any) => new Date(v.checkIn) >= today).length
         : 0
       
-      const totalStudents = Array.isArray(students?.data) ? students.data.length : 0
-      const totalRooms = Array.isArray(rooms?.data) ? rooms.data.length : 0
-      const occupiedRooms = Array.isArray(rooms?.data)
-        ? rooms.data.filter((r: any) => r.occupied > 0).length
+      // Process students and rooms data
+      const totalStudents = Array.isArray(studentsData) ? studentsData.length : 0
+      const totalRooms = Array.isArray(roomsData) ? roomsData.length : 0
+      const occupiedRooms = Array.isArray(roomsData)
+        ? roomsData.filter((r: any) => r.occupied > 0).length
         : 0
       const availableRooms = totalRooms - occupiedRooms
       const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0
@@ -225,8 +262,8 @@ export const WardenDashboard = React.memo(() => {
       const activities: RecentActivity[] = []
       
       // Add recent complaints
-      if (Array.isArray(complaints?.data)) {
-        complaints.data.slice(0, 3).forEach((complaint: any) => {
+      if (Array.isArray(complaintsData)) {
+        complaintsData.slice(0, 3).forEach((complaint: any) => {
           activities.push({
             id: `complaint-${complaint.id}`,
             type: 'complaint',
@@ -240,8 +277,8 @@ export const WardenDashboard = React.memo(() => {
       }
       
       // Add recent visitors
-      if (visitors && typeof visitors === 'object' && 'data' in visitors && Array.isArray(visitors.data)) {
-        visitors.data.slice(0, 3).forEach((visitor: any) => {
+      if (Array.isArray(visitorsData)) {
+        visitorsData.slice(0, 3).forEach((visitor: any) => {
           activities.push({
             id: `visitor-${visitor.id}`,
             type: 'visitor',
@@ -263,7 +300,7 @@ export const WardenDashboard = React.memo(() => {
     } finally {
       setLoading(false)
     }
-  }, [hasHostel, adminApi])
+  }, [hasHostel, getHostelId])
 
   // 🎯 PERFORMANCE: Optimized refresh handler
   const handleRefresh = useCallback(async () => {

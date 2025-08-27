@@ -140,32 +140,52 @@ exports.createRoom = async (req, res) => {
 };
 
 exports.updateRoom = async (req, res) => {
+  console.log(`[updateRoom] Function called with params:`, req.params);
+  console.log(`[updateRoom] Request body:`, req.body);
+  console.log(`[updateRoom] User:`, req.user);
+  
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
-    const { id } = req.params;
+    // Extract hostelId and roomId from URL parameters
+    const { hostelId, roomId } = req.params;
     const { roomNumber, capacity, block } = req.body;
 
-    const room = await Room.findOne({ where: { id, hostelId } });
+    console.log(`[updateRoom] Updating room ${roomId} in hostel ${hostelId}`);
+    console.log(`[updateRoom] Request body:`, { roomNumber, capacity, block });
+
+    const room = await Room.findOne({ where: { id: roomId, hostelId } });
     if (!room) {
+      console.log(`[updateRoom] Room ${roomId} not found in hostel ${hostelId}`);
       return res.status(404).json({ message: "Room not found" });
     }
 
+    console.log(`[updateRoom] Found room:`, room.toJSON());
+
     await room.update({ roomNumber, capacity, block });
+    
+    console.log(`[updateRoom] Room updated successfully`);
     res.json(room);
   } catch (err) {
     console.error("Error updating room:", err);
-    res.status(500).json({ message: "Failed to update room" });
+    console.error("Error stack:", err.stack);
+    console.error("Error details:", {
+      message: err.message,
+      name: err.name,
+      code: err.code
+    });
+    res.status(500).json({ 
+      message: "Failed to update room",
+      error: err.message,
+      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 };
 
 exports.deleteRoom = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
-    const { id } = req.params;
+    // Extract hostelId and roomId from URL parameters
+    const { hostelId, roomId } = req.params;
 
-    const room = await Room.findOne({ where: { id, hostelId } });
+    const room = await Room.findOne({ where: { id: roomId, hostelId } });
     if (!room) {
       return res.status(404).json({ message: "Room not found" });
     }
@@ -246,6 +266,8 @@ exports.getAllStudents = async (req, res) => {
     // Extract hostelId from URL parameters
     const { hostelId } = req.params;
 
+    console.log(`[getAllStudents] Fetching students for hostel ${hostelId}`);
+
     const students = await User.findAll({
       where: {
         hostelId,
@@ -269,6 +291,8 @@ exports.getAllStudents = async (req, res) => {
       ]
     });
 
+    console.log(`[getAllStudents] Found ${students.length} students`);
+
     // Transform the data to include room information
     const studentsWithRooms = students.map(student => {
       const studentData = student.toJSON();
@@ -281,6 +305,8 @@ exports.getAllStudents = async (req, res) => {
       return studentData;
     });
 
+    console.log(`[getAllStudents] Returning ${studentsWithRooms.length} students with room data`);
+
     res.json(studentsWithRooms);
   } catch (err) {
     console.error("Error fetching students:", err);
@@ -292,8 +318,10 @@ exports.createStudent = async (req, res) => {
   try {
     // Extract hostelId from URL parameters
     const { hostelId } = req.params;
-
     const { name, email, phone } = req.body;
+
+    console.log(`[createStudent] Creating student in hostel ${hostelId}`);
+    console.log(`[createStudent] Request body:`, { name, email, phone });
 
     if (!name || !email) {
       return res
@@ -304,6 +332,7 @@ exports.createStudent = async (req, res) => {
     // Check if email already exists WITHIN THE SAME HOSTEL (not globally)
     const existingUser = await User.findOne({ where: { email, hostelId } });
     if (existingUser) {
+      console.log(`[createStudent] Email ${email} already exists in hostel ${hostelId}`);
       return res
         .status(400)
         .json({ message: "Email already exists in this hostel" });
@@ -328,6 +357,8 @@ exports.createStudent = async (req, res) => {
       requiresPasswordChange: true
     });
 
+    console.log(`[createStudent] Student created successfully:`, student.id);
+
     const { password: _, ...studentData } = student.toJSON();
     
     // Add a note about the default password in the response
@@ -347,7 +378,8 @@ exports.updateStudent = async (req, res) => {
     const { hostelId, studentId } = req.params;
     const { name, email, phone } = req.body;
 
-    console.log('🔍 Update student params:', { hostelId, studentId, name, email, phone });
+    console.log(`[updateStudent] Updating student ${studentId} in hostel ${hostelId}`);
+    console.log(`[updateStudent] Request body:`, { name, email, phone });
 
     if (!studentId) {
       return res.status(400).json({ message: "Student ID is required" });
@@ -362,8 +394,11 @@ exports.updateStudent = async (req, res) => {
     });
 
     if (!student) {
+      console.log(`[updateStudent] Student ${studentId} not found in hostel ${hostelId}`);
       return res.status(404).json({ message: "Student not found" });
     }
+
+    console.log(`[updateStudent] Found student:`, student.toJSON());
 
     // Update student with all provided fields
     const updateData = { name: name.trim(), email: email.trim() };
@@ -372,6 +407,8 @@ exports.updateStudent = async (req, res) => {
     }
 
     await student.update(updateData);
+
+    console.log(`[updateStudent] Student updated successfully`);
 
     const { password: _, ...studentData } = student.toJSON();
     res.json(studentData);
@@ -386,7 +423,7 @@ exports.deleteStudent = async (req, res) => {
     // Extract hostelId and studentId from URL parameters
     const { hostelId, studentId } = req.params;
 
-    console.log('🔍 Delete student params:', { hostelId, studentId });
+    console.log(`[deleteStudent] Deleting student ${studentId} from hostel ${hostelId}`);
 
     if (!studentId) {
       return res.status(400).json({ message: "Student ID is required" });
@@ -397,10 +434,16 @@ exports.deleteStudent = async (req, res) => {
     });
 
     if (!student) {
+      console.log(`[deleteStudent] Student ${studentId} not found in hostel ${hostelId}`);
       return res.status(404).json({ message: "Student not found" });
     }
 
+    console.log(`[deleteStudent] Found student:`, student.toJSON());
+
     await student.destroy();
+    
+    console.log(`[deleteStudent] Student deleted successfully`);
+    
     res.json({ message: "Student deleted successfully" });
   } catch (err) {
     console.error("Error deleting student:", err);
@@ -434,7 +477,7 @@ exports.createWarden = async (req, res) => {
     // Extract hostelId from URL parameters
     const { hostelId } = req.params;
 
-    const { name, email, password } = req.body;
+    const { name, email, password, phone } = req.body;
 
     if (!name || !email || !password) {
       return res
@@ -450,12 +493,18 @@ exports.createWarden = async (req, res) => {
         .json({ message: "Email already exists in this hostel" });
     }
 
+    // Hash the password
+    const bcrypt = require('bcrypt');
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const warden = await User.create({
       name,
       email,
-      password,
-      role: "warden",
+      password: hashedPassword,
+      phone,
+      role: "warden", // Always set to "warden"
       hostelId,
+      requiresPasswordChange: true, // Force password change on first login
     });
 
     const { password: _, ...wardenData } = warden.toJSON();
@@ -468,13 +517,13 @@ exports.createWarden = async (req, res) => {
 
 exports.updateWarden = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
+    // Extract hostelId and wardenId from URL parameters
     const { hostelId } = req.params;
-    const { id } = req.params;
-    const { name, email } = req.body;
+    const { wardenId } = req.params;
+    const { name, email, phone } = req.body;
 
     const warden = await User.findOne({
-      where: { id, hostelId, role: "warden" },
+      where: { id: wardenId, hostelId, role: "warden" },
     });
 
     if (!warden) {
@@ -494,6 +543,7 @@ exports.updateWarden = async (req, res) => {
     await warden.update({
       name: name || warden.name,
       email: email || warden.email,
+      phone: phone !== undefined ? phone : warden.phone,
     });
 
     const { password: _, ...wardenData } = warden.toJSON();
@@ -506,12 +556,12 @@ exports.updateWarden = async (req, res) => {
 
 exports.deleteWarden = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
+    // Extract hostelId and wardenId from URL parameters
     const { hostelId } = req.params;
-    const { id } = req.params;
+    const { wardenId } = req.params;
 
     const warden = await User.findOne({
-      where: { id, hostelId, role: "warden" },
+      where: { id: wardenId, hostelId, role: "warden" },
     });
 
     if (!warden) {
@@ -569,6 +619,8 @@ exports.allocateRoom = async (req, res) => {
     const { hostelId } = req.params;
     const { studentId, roomId } = req.body;
 
+    console.log(`[allocateRoom] Allocating room ${roomId} to student ${studentId} in hostel ${hostelId}`);
+
     if (!studentId || !roomId) {
       return res
         .status(400)
@@ -582,11 +634,16 @@ exports.allocateRoom = async (req, res) => {
     const room = await Room.findOne({ where: { id: roomId, hostelId } });
 
     if (!student) {
+      console.log(`[allocateRoom] Student ${studentId} not found in hostel ${hostelId}`);
       return res.status(404).json({ message: "Student not found" });
     }
     if (!room) {
+      console.log(`[allocateRoom] Room ${roomId} not found in hostel ${hostelId}`);
       return res.status(404).json({ message: "Room not found" });
     }
+
+    console.log(`[allocateRoom] Found student:`, student.toJSON());
+    console.log(`[allocateRoom] Found room:`, room.toJSON());
 
     // Check if student already has active allocation
     const existingAllocation = await RoomAllocation.findOne({
@@ -594,6 +651,7 @@ exports.allocateRoom = async (req, res) => {
     });
 
     if (existingAllocation) {
+      console.log(`[allocateRoom] Student ${studentId} already has active allocation`);
       return res
         .status(400)
         .json({ message: "Student already has an active room allocation" });
@@ -601,6 +659,7 @@ exports.allocateRoom = async (req, res) => {
 
     // Check if room has available capacity
     if (room.occupied >= room.capacity) {
+      console.log(`[allocateRoom] Room ${roomId} is at full capacity`);
       return res.status(400).json({ message: "Room is at full capacity" });
     }
 
@@ -615,6 +674,8 @@ exports.allocateRoom = async (req, res) => {
 
     // Update room occupancy
     await room.update({ occupied: room.occupied + 1 });
+
+    console.log(`[allocateRoom] Room allocated successfully`);
 
     res
       .status(201)

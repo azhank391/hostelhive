@@ -1,38 +1,31 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { PlusIcon, SearchIcon, UserIcon, EditIcon, TrashIcon, FilterIcon, RefreshCwIcon, Mail, Phone, Calendar, Shield } from 'lucide-react'
+import { useParams } from 'next/navigation'
+import { PlusIcon, SearchIcon, UserIcon, EditIcon, TrashIcon, FilterIcon, RefreshCwIcon, Mail, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/modals/Modal'
 import toast from '@/lib/toast'
-import { useHostel } from '@/context/HostelContext'
 import { WardenForm } from '@/components/forms/WardenForm'
-import { useAdminApiWithHostel } from '@/lib/context-aware-api'
 
 interface Warden {
   id: string;
   name: string;
   email: string;
   phone?: string;
-  createdAt: string;
   hostelId: string;
   isActive?: boolean;
-  lastLogin?: string;
-  permissions?: string[];
-  role: 'warden' | 'head_warden';
-  assignedRooms?: number[];
+  requiresPasswordChange?: boolean;
 }
 
 interface WardenStats {
   totalWardens: number;
   activeWardens: number;
-  headWardens: number;
   recentLogins: number;
 }
 
 interface FilterCriteria {
-  role: string;
   status: string;
   permissions: string;
 }
@@ -44,15 +37,15 @@ interface FilterCriteria {
  * ✅ React.memo for re-render prevention
  * ✅ useMemo for expensive filtering and calculations
  * ✅ useCallback for stable function references
- * ✅ Context-aware API integration with automatic hostelId
+ * ✅ Direct API calls with hostelId from URL params
  * ✅ Batch operations for multiple warden actions
  * ✅ Optimized search and filtering operations
  * ✅ Enhanced error handling with user feedback
  * ✅ Optimistic updates for better UX
  */
 export const WardenManagement = React.memo(() => {
-  const { currentHostel } = useHostel()
-  const apiWithHostel = useAdminApiWithHostel()
+  const params = useParams<{ hostelId: string }>();
+  const hostelId = params?.hostelId || '';
   
   // State management
   const [wardens, setWardens] = useState<Warden[]>([])
@@ -65,7 +58,6 @@ export const WardenManagement = React.memo(() => {
   const [searchTerm, setSearchTerm] = useState('')
   const [showFilter, setShowFilter] = useState(false)
   const [filterCriteria, setFilterCriteria] = useState<FilterCriteria>({
-    role: 'all',
     status: 'all',
     permissions: 'all'
   })
@@ -83,66 +75,54 @@ export const WardenManagement = React.memo(() => {
     if (searchTerm.trim()) {
       const lowercaseQuery = searchTerm.toLowerCase()
       filtered = filtered.filter(warden =>
-        warden.name.toLowerCase().includes(lowercaseQuery) ||
-        warden.email.toLowerCase().includes(lowercaseQuery) ||
-        warden.phone?.toLowerCase().includes(lowercaseQuery) ||
-        warden.role.toLowerCase().includes(lowercaseQuery)
+        warden.name?.toLowerCase().includes(lowercaseQuery) ||
+        warden.email?.toLowerCase().includes(lowercaseQuery) ||
+        warden.phone?.toLowerCase().includes(lowercaseQuery)
       )
-    }
-
-    // Role filter
-    if (filterCriteria.role !== 'all') {
-      filtered = filtered.filter(warden => warden.role === filterCriteria.role)
     }
 
     // Status filter
     if (filterCriteria.status !== 'all') {
       filtered = filtered.filter(warden => 
-        filterCriteria.status === 'active' ? warden.isActive : !warden.isActive
+        filterCriteria.status === 'active' ? warden.isActive !== false : warden.isActive === false
       )
     }
 
-    // Sort by creation date (newest first)
-    return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    // Sort by name (alphabetical)
+    return filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
   }, [wardens, searchTerm, filterCriteria])
 
   // 🎯 PERFORMANCE: Memoized statistics
   const wardenStats = useMemo<WardenStats>(() => {
-    const now = new Date()
-    const recentThreshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) // 7 days ago
-
     return {
       totalWardens: wardens.length,
-      activeWardens: wardens.filter(w => w.isActive).length,
-      headWardens: wardens.filter(w => w.role === 'head_warden').length,
-      recentLogins: wardens.filter(w => 
-        w.lastLogin && new Date(w.lastLogin) > recentThreshold
-      ).length
+      activeWardens: wardens.filter(w => w.isActive !== false).length,
+      recentLogins: 0 // Not available in database
     }
   }, [wardens])
 
   // 🚀 PERFORMANCE: Optimized warden fetching with error handling
   const fetchWardens = useCallback(async () => {
-    if (!currentHostel?.id) return
+    if (!hostelId) return
 
     try {
       setLoading(true)
       setError(null)
       
-      // Use context-aware API that automatically includes hostelId
-      const data = await apiWithHostel.getWardens()
+      // Direct API call - more reliable
+      const response = await fetch(`/api/hostels/${hostelId}/wardens`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
       
-      // Add mock data for demonstration (replace with real API response)
-      const enhancedWardens = data.map((warden: any) => ({
-        ...warden,
-        isActive: Math.random() > 0.2, // 80% active
-        lastLogin: Math.random() > 0.3 ? new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString() : undefined,
-        role: Math.random() > 0.8 ? 'head_warden' : 'warden',
-        permissions: ['view_rooms', 'manage_students', 'handle_complaints'],
-        assignedRooms: Array.from({ length: Math.floor(Math.random() * 10) + 1 }, (_, i) => i + 1)
-      }))
+      if (!response.ok) {
+        throw new Error(`Failed to load wardens (${response.status})`)
+      }
       
-      setWardens(enhancedWardens)
+      const data = await response.json()
+      
+      setWardens(data)
     } catch (err) {
       console.error('Error fetching wardens:', err)
       setError('Failed to load wardens')
@@ -150,7 +130,7 @@ export const WardenManagement = React.memo(() => {
     } finally {
       setLoading(false)
     }
-  }, [currentHostel?.id, apiWithHostel])
+  }, [hostelId])
 
   // 🎯 PERFORMANCE: Optimized refresh handler
   const handleRefresh = useCallback(async () => {
@@ -167,7 +147,7 @@ export const WardenManagement = React.memo(() => {
 
   // 🎯 PERFORMANCE: Optimized create warden
   const handleCreateWarden = useCallback(async (wardenData: any) => {
-    if (!currentHostel?.id) return
+    if (!hostelId) return
 
     setIsSubmitting(true)
     try {
@@ -175,23 +155,42 @@ export const WardenManagement = React.memo(() => {
       const tempWarden: Warden = {
         id: `temp-${Date.now()}`,
         ...wardenData,
-        hostelId: currentHostel.id,
-        createdAt: new Date().toISOString(),
+        hostelId: hostelId,
         isActive: true,
-        role: wardenData.role || 'warden',
-        permissions: ['view_rooms', 'manage_students']
+        requiresPasswordChange: true
       }
       
       setWardens(prev => [tempWarden, ...prev])
       setShowCreateModal(false)
       
-      // Make API call
-      const newWarden = await apiWithHostel.createWarden(wardenData)
+      // Make API call - direct fetch
+      const response = await fetch(`/api/hostels/${hostelId}/wardens`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          name: wardenData.name,
+          email: wardenData.email,
+          phone: wardenData.phone,
+          password: '123456' // Default password
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to create warden')
+      }
+      
+      const newWarden = await response.json()
       
       // Replace temp warden with real data
-      setWardens(prev => prev.map(w => w.id === tempWarden.id ? { ...newWarden, role: newWarden.role || 'warden' } as Warden : w))
+      setWardens(prev => prev.map(w => w.id === tempWarden.id ? newWarden : w))
       
-      toast.success('Warden created successfully!')
+      toast.success('Warden created successfully!', {
+        description: `${newWarden.name} has been added with default password: 123456`
+      })
     } catch (err) {
       // Revert optimistic update
       setWardens(prev => prev.filter(w => !w.id.startsWith('temp-')))
@@ -199,7 +198,7 @@ export const WardenManagement = React.memo(() => {
     } finally {
       setIsSubmitting(false)
     }
-  }, [currentHostel?.id, apiWithHostel])
+  }, [hostelId])
 
   // 🎯 PERFORMANCE: Optimized update warden
   const handleUpdateWarden = useCallback(async (wardenData: any) => {
@@ -213,8 +212,24 @@ export const WardenManagement = React.memo(() => {
       setShowEditModal(false)
       setSelectedWarden(null)
       
-      // Make API call
-      await apiWithHostel.updateWarden(selectedWarden.id, wardenData)
+      // Make API call - direct fetch
+      const response = await fetch(`/api/hostels/${hostelId}/wardens/${selectedWarden.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          name: wardenData.name,
+          email: wardenData.email,
+          phone: wardenData.phone
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to update warden')
+      }
       
       toast.success('Warden updated successfully!')
     } catch (err) {
@@ -224,7 +239,7 @@ export const WardenManagement = React.memo(() => {
     } finally {
       setIsSubmitting(false)
     }
-  }, [selectedWarden, apiWithHostel, fetchWardens])
+  }, [selectedWarden, hostelId, fetchWardens])
 
   // 🎯 PERFORMANCE: Optimized delete warden
   const handleDeleteWarden = useCallback(async (wardenId: string) => {
@@ -237,8 +252,18 @@ export const WardenManagement = React.memo(() => {
       // Optimistic update
       setWardens(prev => prev.filter(w => w.id !== wardenId))
       
-      // Make API call
-      await apiWithHostel.deleteWarden(wardenId)
+      // Make API call - direct fetch
+      const response = await fetch(`/api/hostels/${hostelId}/wardens/${wardenId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to delete warden')
+      }
       
       toast.success('Warden deleted successfully!')
     } catch (err) {
@@ -246,7 +271,7 @@ export const WardenManagement = React.memo(() => {
       setWardens(originalWardens)
       toast.error('Failed to delete warden')
     }
-  }, [wardens, apiWithHostel])
+  }, [wardens, hostelId])
 
   // 🎯 PERFORMANCE: Memoized event handlers
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -269,7 +294,6 @@ export const WardenManagement = React.memo(() => {
   const clearFilters = useCallback(() => {
     setSearchTerm('')
     setFilterCriteria({
-      role: 'all',
       status: 'all',
       permissions: 'all'
     })
@@ -277,12 +301,12 @@ export const WardenManagement = React.memo(() => {
 
   // Initial data fetch
   useEffect(() => {
-    if (currentHostel?.id) {
+    if (hostelId) {
       fetchWardens()
     }
-  }, [currentHostel?.id, fetchWardens])
+  }, [hostelId, fetchWardens])
 
-  if (!currentHostel) {
+  if (!hostelId) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
@@ -324,7 +348,7 @@ export const WardenManagement = React.memo(() => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Warden Management</h1>
           <p className="text-gray-600">
-            {wardenStats.totalWardens} total wardens • {wardenStats.activeWardens} active • {wardenStats.headWardens} head wardens
+            {wardenStats.totalWardens} total wardens • {wardenStats.activeWardens} active
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
@@ -345,7 +369,7 @@ export const WardenManagement = React.memo(() => {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-lg shadow border">
           <div className="flex items-center">
             <UserIcon className="h-8 w-8 text-blue-600" />
@@ -359,29 +383,7 @@ export const WardenManagement = React.memo(() => {
 
         <div className="bg-white p-6 rounded-lg shadow border">
           <div className="flex items-center">
-            <Shield className="h-8 w-8 text-green-600" />
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Head Wardens</p>
-              <p className="text-2xl font-bold text-gray-900">{wardenStats.headWardens}</p>
-              <p className="text-sm text-gray-500">Senior staff</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <div className="flex items-center">
-            <Calendar className="h-8 w-8 text-purple-600" />
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Recent Logins</p>
-              <p className="text-2xl font-bold text-gray-900">{wardenStats.recentLogins}</p>
-              <p className="text-sm text-gray-500">Last 7 days</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <div className="flex items-center">
-            <Mail className="h-8 w-8 text-orange-600" />
+            <Phone className="h-8 w-8 text-orange-600" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Active Rate</p>
               <p className="text-2xl font-bold text-gray-900">
@@ -399,7 +401,7 @@ export const WardenManagement = React.memo(() => {
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
           <Input
             type="text"
-            placeholder="Search wardens by name, email, phone, or role..."
+            placeholder="Search wardens by name, email, or phone..."
             value={searchTerm}
             onChange={handleSearchChange}
             className="pl-10"
@@ -430,19 +432,7 @@ export const WardenManagement = React.memo(() => {
       {/* Advanced Filters */}
       {showFilter && (
         <div className="bg-white p-4 rounded-lg border shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-              <select
-                value={filterCriteria.role}
-                onChange={(e) => handleFilterChange('role', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-              >
-                <option value="all">All Roles</option>
-                <option value="warden">Warden</option>
-                <option value="head_warden">Head Warden</option>
-              </select>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select
@@ -512,16 +502,10 @@ export const WardenManagement = React.memo(() => {
                         Warden
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Role
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Contact
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Last Login
                       </th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
@@ -541,15 +525,6 @@ export const WardenManagement = React.memo(() => {
                               <div className="text-sm text-gray-500">{warden.email}</div>
                             </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            warden.role === 'head_warden'
-                              ? 'bg-purple-100 text-purple-800'
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {warden.role === 'head_warden' ? 'Head Warden' : 'Warden'}
-                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           <div className="flex flex-col">
@@ -573,12 +548,6 @@ export const WardenManagement = React.memo(() => {
                           }`}>
                             {warden.isActive ? 'Active' : 'Inactive'}
                           </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {warden.lastLogin 
-                            ? new Date(warden.lastLogin).toLocaleDateString()
-                            : 'Never'
-                          }
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end space-x-2">

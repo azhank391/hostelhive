@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { useAdminApiWithHostel, useCurrentHostelId } from '@/lib/context-aware-api';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -49,10 +48,6 @@ export default function HostelStudentsPage() {
   const params = useParams<{ hostelId: string }>();
   const hostelId = params?.hostelId || '';
   
-  // Context-aware API hooks
-  const admin = useAdminApiWithHostel();
-  const { hasHostel, getHostelId, isReady } = useCurrentHostelId();
-  
   // State management
   const [students, setStudents] = useState<StudentData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,16 +76,28 @@ export default function HostelStudentsPage() {
   const [selectedRoomId, setSelectedRoomId] = useState<string>('');
   const [isAllocating, setIsAllocating] = useState(false);
   
-  // Simple load students function - STABLE VERSION
+  // Simple load students function - DIRECT API CALL
   const loadStudents = useCallback(async () => {
-    if (!hasHostel || !isReady) return;
+    if (!hostelId) return;
     
     try {
       setLoading(true);
       setError(null);
       
-      const result = await admin.getStudents();
-      setStudents(result.data || []);
+      // Direct API call - more reliable
+      const response = await fetch(`/api/hostels/${hostelId}/students`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to load students (${response.status})`);
+      }
+      
+      const result = await response.json();
+      const studentsData = result.students || result.data || result;
+      setStudents(studentsData);
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load students';
@@ -101,7 +108,7 @@ export default function HostelStudentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [hasHostel, isReady]); // Only stable dependencies
+  }, [hostelId]);
   
   // Manual refresh
   const handleManualRefresh = useCallback(async () => {
@@ -113,15 +120,15 @@ export default function HostelStudentsPage() {
   
   // Load students on mount - SIMPLIFIED to avoid infinite loops
   useEffect(() => {
-    if (hasHostel && isReady) {
+    if (hostelId) {
       // Call loadStudents directly without dependency
       loadStudents();
     }
-  }, [hasHostel, isReady]); // Removed loadStudents from dependencies
+  }, [hostelId]); // Removed loadStudents from dependencies
 
   // Enhanced CRUD operations with auto-refresh
   const handleCreateStudent = async () => {
-    if (!hasHostel) {
+    if (!hostelId) {
       notification.error('No hostel selected', {
         description: 'Please refresh the page and try again.'
       });
@@ -138,7 +145,22 @@ export default function HostelStudentsPage() {
     try {
       setIsCreating(true);
       
-      const newStudent = await admin.createStudent(createForm);
+      // Direct API call for creation
+      const response = await fetch(`/api/hostels/${hostelId}/students`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify(createForm)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create student');
+      }
+      
+      const newStudent = await response.json();
       
       setShowCreateModal(false);
       setCreateForm({ name: '', email: '', phone: '' });
@@ -163,7 +185,7 @@ export default function HostelStudentsPage() {
   const handleUpdateStudent = async (updates: Partial<User>) => {
     if (!editingStudent) return;
     
-    if (!hasHostel) {
+    if (!hostelId) {
       notification.error('No hostel selected', {
         description: 'Please refresh the page and try again.'
       });
@@ -180,7 +202,22 @@ export default function HostelStudentsPage() {
     try {
       setIsUpdating(true);
       
-      const updatedStudent = await admin.updateStudent(editingStudent.id, updates);
+      // Direct API call for update
+      const response = await fetch(`/api/hostels/${hostelId}/students/${editingStudent.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify(updates)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update student');
+      }
+      
+      const updatedStudent = await response.json();
       
       setShowEditModal(false);
       setEditingStudent(null);
@@ -203,7 +240,7 @@ export default function HostelStudentsPage() {
   };
 
   const handleDeleteStudent = async (studentId: string) => {
-    if (!hasHostel) {
+    if (!hostelId) {
       notification.error('No hostel selected', {
         description: 'Please refresh the page and try again.'
       });
@@ -227,7 +264,18 @@ export default function HostelStudentsPage() {
     try {
       setIsDeleting(studentId);
       
-      await admin.deleteStudent(studentId);
+      // Direct API call for deletion
+      const response = await fetch(`/api/hostels/${hostelId}/students/${studentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete student');
+      }
       
       notification.success('Student deleted successfully!', {
         description: `${studentToDelete.name} has been removed from the hostel.`
@@ -248,9 +296,28 @@ export default function HostelStudentsPage() {
 
   // Room allocation handler
   const handleRoomAllocation = useCallback(async (studentId: string, roomId: string) => {
+    if (!hostelId) {
+      notification.error('No hostel selected', {
+        description: 'Please refresh the page and try again.'
+      });
+      return;
+    }
     try {
       setIsAllocating(true);
-      await admin.allocateRoom({ studentId, roomId });
+      // Direct API call for room allocation - using correct endpoint
+      const response = await fetch(`/api/hostels/${hostelId}/room-allocations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({ studentId, roomId })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to allocate room');
+      }
       notification.success('Room allocated successfully!');
       
       // Close the modal first
@@ -268,13 +335,31 @@ export default function HostelStudentsPage() {
     } finally {
       setIsAllocating(false);
     }
-  }, []); // No dependencies to prevent infinite loops
+  }, [hostelId]); // No dependencies to prevent infinite loops
 
   // Room deallocation handler
   const handleRoomDeallocation = useCallback(async (studentId: string) => {
+    if (!hostelId) {
+      notification.error('No hostel selected', {
+        description: 'Please refresh the page and try again.'
+      });
+      return;
+    }
     try {
-      await admin.deallocateRoom(studentId);
+      // Direct API call for room deallocation - using correct endpoint
+      const response = await fetch(`/api/hostels/${hostelId}/room-allocations/${studentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to deallocate room');
+      }
       notification.success('Room deallocated successfully!');
+      
       // Refresh students to show updated room assignments
       await loadStudents();
     } catch (error) {
@@ -283,15 +368,25 @@ export default function HostelStudentsPage() {
         description: errorMessage
       });
     }
-  }, []); // No dependencies to prevent infinite loops
+  }, [hostelId]); // No dependencies to prevent infinite loops
 
   // Open room allocation modal
   const openRoomAllocationModal = useCallback(async (student: StudentWithRoom) => {
     setSelectedStudent(student);
     try {
       // Load available rooms
-      const roomsResult = await admin.getRooms();
-      const availableRoomsList = roomsResult.data?.filter(room => 
+      const response = await fetch(`/api/hostels/${hostelId}/rooms`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to load available rooms');
+      }
+      const roomsResult = await response.json();
+      const availableRoomsList = roomsResult.data?.filter((room: any) => 
         room.capacity > (room.occupied || 0)
       ) || [];
       setAvailableRooms(availableRoomsList);
@@ -300,7 +395,7 @@ export default function HostelStudentsPage() {
     } catch (error) {
       notification.error('Failed to load available rooms');
     }
-  }, []); // No dependencies to prevent infinite loops
+  }, [hostelId]); // No dependencies to prevent infinite loops
 
   // Handle room allocation submission
   const handleAllocateRoom = async () => {
@@ -394,15 +489,12 @@ export default function HostelStudentsPage() {
   }
 
   // Check if context is ready and hostel is selected
-  if (!isReady || !hasHostel || !hostelId) {
+  if (!hostelId) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Hostel Not Selected</h1>
-          <p className="text-gray-600 mb-4">
-            Please select a hostel or refresh the page to continue.
-          </p>
-          <Button onClick={() => window.location.reload()}>Refresh Page</Button>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading hostel context...</p>
         </div>
       </div>
     );

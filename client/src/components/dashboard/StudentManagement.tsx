@@ -41,7 +41,7 @@ import { Room as ApiRoom } from '@/lib/types';
  */
 export const StudentManagement = React.memo(() => {
   const { hostels } = useHostel();
-  const { hostelId, hasHostel } = useCurrentHostelId();
+  const { hasHostel, getHostelId } = useCurrentHostelId();
   const adminApi = useAdminApiWithHostel();
   
   // State management
@@ -85,20 +85,24 @@ export const StudentManagement = React.memo(() => {
 
   // 🚀 PERFORMANCE: Optimized fetch functions with useCallback
   const fetchStudents = useCallback(async () => {
-    if (!hasHostel) return;
+    
+    if (!hasHostel) {
+      return;
+    }
     
     try {
       const response = await adminApi.getStudents();
+      
       const data = Array.isArray(response) ? response : response?.data || [];
+      
       setStudents(data);
       setError('');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch students';
       setError(errorMessage);
-      console.error('Failed to fetch students:', err);
       notification.error('Failed to fetch students', { description: errorMessage });
     }
-  }, [hasHostel, adminApi]);
+  }, [hasHostel, adminApi]); // ✅ Now adminApi is stable due to useMemo in the hook
 
   const fetchRooms = useCallback(async () => {
     if (!hasHostel) return;
@@ -111,7 +115,7 @@ export const StudentManagement = React.memo(() => {
       console.error('Failed to fetch rooms:', err);
       // Non-critical error, don't block the UI
     }
-  }, [hasHostel, adminApi]);
+  }, [hasHostel, adminApi]); // ✅ Now adminApi is stable due to useMemo in the hook
 
   // 🚀 PERFORMANCE: Batch data fetching with Promise.all
   const fetchAllData = useCallback(async () => {
@@ -215,8 +219,10 @@ export const StudentManagement = React.memo(() => {
 
   // Initial data fetch when hostel changes
   useEffect(() => {
-    fetchAllData();
-  }, [fetchAllData]);
+    if (hasHostel) {
+      fetchAllData();
+    }
+  }, [hasHostel]); // Simplified dependency - only depend on hasHostel
 
   // Loading state
   if (!hasHostel) {

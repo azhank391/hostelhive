@@ -91,7 +91,7 @@ const checkUserHostelAccess = async (userId, hostelId, userRole) => {
       case 'student':
         // Warden/Student can only access their assigned hostel
         const user = await User.findByPk(userId);
-        if (!user || user.hostelId !== parseInt(hostelId)) {
+        if (!user || user.hostelId !== hostelId) {
           return { 
             allowed: false, 
             message: 'You can only access your assigned hostel' 

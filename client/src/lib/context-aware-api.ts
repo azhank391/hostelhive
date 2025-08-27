@@ -7,6 +7,7 @@
 
 import { useHostel } from '../context/HostelContext';
 import { adminApi, studentApi, hostelApi } from './api';
+import { useMemo } from 'react';
 
 // ==========================================
 // SIMPLE HOSTEL ID HOOK
@@ -64,7 +65,9 @@ export const useCurrentHostelId = () => {
 export const useAdminApiWithHostel = () => {
   const { getHostelId, getHostelIdSafe } = useCurrentHostelId();
 
-  return {
+  // 🚀 CRITICAL FIX: Use useMemo to stabilize the API object reference
+  // This prevents infinite loops when components depend on this hook
+  return useMemo(() => ({
     // Dashboard
     getDashboardStats: () => {
       const hostelId = getHostelIdSafe();
@@ -168,7 +171,7 @@ export const useAdminApiWithHostel = () => {
 
     // Utility
     getCurrentHostelId: getHostelId,
-  };
+  }), [getHostelId, getHostelIdSafe]); // Only depend on stable functions, not objects
 };
 
 /**
@@ -179,30 +182,28 @@ export const useAdminApiWithHostel = () => {
 export const useStudentApiWithHostel = () => {
   const { getHostelId } = useCurrentHostelId();
 
-  return {
+  // 🚀 CRITICAL FIX: Use useMemo to stabilize the API object reference
+  return useMemo(() => ({
     // Dashboard
     getDashboard: () => studentApi.getDashboard(),
-    
-    // Profile
     getProfile: () => studentApi.getProfile(),
     updateProfile: (updates: any) => studentApi.updateProfile(updates),
-    
+
     // Room
     getRoom: () => studentApi.getRoom(),
-    
+
     // Complaints
     getComplaints: () => studentApi.getComplaints(),
     lodgeComplaint: (complaintData: any) => studentApi.lodgeComplaint(complaintData),
     updateComplaint: (complaintId: string, updates: any) => studentApi.updateComplaint(complaintId, updates),
-    deleteComplaint: (complaintId: string) => studentApi.deleteComplaint(complaintId),
-    
+
     // Visitor Logs
     getVisitorLogs: () => studentApi.getVisitorLogs(),
     createVisitorLog: (visitorData: any) => studentApi.createVisitorLog(visitorData),
-    
+
     // Utility
     getCurrentHostelId: getHostelId,
-  };
+  }), [getHostelId]); // Only depend on stable function, not objects
 };
 
 /**
@@ -211,7 +212,8 @@ export const useStudentApiWithHostel = () => {
 export const useHostelApiWithContext = () => {
   const { getHostelId } = useCurrentHostelId();
 
-  return {
+  // 🚀 CRITICAL FIX: Use useMemo to stabilize the API object reference
+  return useMemo(() => ({
     // Operations that don't need hostelId (user-specific)
     getUserHostels: hostelApi.getUserHostels,
     createHostel: hostelApi.createHostel,
@@ -222,7 +224,7 @@ export const useHostelApiWithContext = () => {
 
     // Utility
     getCurrentHostelId: getHostelId,
-  };
+  }), [getHostelId]); // Only depend on stable function, not objects
 };
 
 // ==========================================

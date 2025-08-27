@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { useAdminApiWithHostel, useCurrentHostelId } from '@/lib/context-aware-api';
 
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
@@ -24,11 +23,6 @@ import {
 export default function HostelRoomsPage() {
   const params = useParams<{ hostelId: string }>();
   const hostelId = params?.hostelId || '';
-  
-  // Context-aware API hooks
-  const admin = useAdminApiWithHostel();
-  const { hasHostel, getHostelId, isReady } = useCurrentHostelId();
-
   
   // State management
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -63,7 +57,7 @@ export default function HostelRoomsPage() {
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [deallocatingStudent, setDeallocatingStudent] = useState<string | null>(null);
   
-    // Ref to track if component is mounted
+  // Ref to track if component is mounted
   const isMountedRef = useRef(true);
 
   // Load all rooms once when component mounts
@@ -74,18 +68,37 @@ export default function HostelRoomsPage() {
       setLoading(true);
       setError(null);
       
-      // Load ALL rooms without pagination or search
-      const result = await admin.getRooms({
-        page: 1,
-        limit: 1000, // Large limit to get all rooms
-        search: undefined
+      // Direct API call - more reliable
+      const response = await fetch(`/api/hostels/${hostelId}/rooms`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
       });
       
-      setRooms(result.data || []);
+      if (!response.ok) {
+        throw new Error(`Failed to load rooms (${response.status})`);
+      }
+      
+      const result = await response.json();
+      
+      const roomsData = result.rooms || result.data || [];
+      
+      // Normalize the room data to match our frontend expectations
+      const normalizedRooms = roomsData.map((room: any) => ({
+        id: room.id,
+        roomNumber: room.roomNumber || room.number, // Handle both field names
+        capacity: room.capacity || 1,
+        block: room.block,
+        occupied: room.occupied || 0,
+        status: room.status || 'available',
+        hostelId: room.hostelId
+      }));
+      
+      setRooms(normalizedRooms);
       setPagination({
         page: 1,
-        limit: result.data?.length || 0,
-        total: result.data?.length || 0,
+        limit: normalizedRooms.length || 0,
+        total: normalizedRooms.length || 0,
         pages: 1
       });
       
@@ -98,13 +111,13 @@ export default function HostelRoomsPage() {
     } finally {
       setLoading(false);
     }
-  }, [hostelId, admin]);
+  }, [hostelId]);
 
   useEffect(() => {
     if (hostelId) {
       loadRooms();
     }
-  }, [hostelId]); // Only depend on hostelId from URL
+  }, [hostelId, loadRooms]);
 
 
 
@@ -126,19 +139,9 @@ export default function HostelRoomsPage() {
     setSearchQuery('');
   }, []);
 
-  // Get hostel ID directly from localStorage as fallback
-  const getActiveHostelId = (): string => {
-    if (typeof window !== 'undefined') {
-      const activeHostel = localStorage.getItem('activeHostel');
-      if (activeHostel) return activeHostel;
-    }
-    return hostelId;
-  };
-
   // CRUD Operations
   const handleCreateRoom = async () => {
-    const activeHostelId = getActiveHostelId();
-    if (!activeHostelId) {
+    if (!hostelId) {
       notification.error('No hostel selected', {
         description: 'Please refresh the page and try again.'
       });
@@ -155,8 +158,8 @@ export default function HostelRoomsPage() {
     try {
       setIsCreating(true);
       
-             // Call API directly with hostelId to bypass context issues
-      const response = await fetch(`/api/hostels/${activeHostelId}/rooms`, {
+      // Direct API call - more reliable
+      const response = await fetch(`/api/hostels/${hostelId}/rooms`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -186,6 +189,10 @@ export default function HostelRoomsPage() {
       await loadRooms();
     } catch (error) {
       console.error('Failed to create room:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create room';
+      notification.error('Failed to create room', {
+        description: errorMessage
+      });
     } finally {
       setIsCreating(false);
     }
@@ -194,8 +201,14 @@ export default function HostelRoomsPage() {
   const handleUpdateRoom = async (updates: Partial<Room>) => {
     if (!editingRoom) return;
     
-    const activeHostelId = getActiveHostelId();
-    if (!activeHostelId) {
+    if (!editingRoom.id) {
+      notification.error('Invalid room data', {
+        description: 'Room ID is missing. Please refresh and try again.'
+      });
+      return;
+    }
+    
+    if (!hostelId) {
       notification.error('No hostel selected', {
         description: 'Please refresh the page and try again.'
       });
@@ -212,8 +225,8 @@ export default function HostelRoomsPage() {
     try {
       setIsUpdating(true);
       
-      // Call API directly with hostelId to bypass context issues
-      const response = await fetch(`/api/hostels/${activeHostelId}/rooms/${editingRoom.id}`, {
+      // Direct API call - more reliable
+      const response = await fetch(`/api/hostels/${hostelId}/rooms/${editingRoom.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -250,8 +263,7 @@ export default function HostelRoomsPage() {
   };
 
   const handleDeleteRoom = async (roomId: string) => {
-    const activeHostelId = getActiveHostelId();
-    if (!activeHostelId) {
+    if (!hostelId) {
       notification.error('No hostel selected', {
         description: 'Please refresh the page and try again.'
       });
@@ -275,8 +287,8 @@ export default function HostelRoomsPage() {
     try {
       setIsDeleting(roomId);
       
-      // Call API directly with hostelId to bypass context issues
-      const response = await fetch(`/api/hostels/${activeHostelId}/rooms/${roomId}`, {
+      // Direct API call - more reliable
+      const response = await fetch(`/api/hostels/${hostelId}/rooms/${roomId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`
@@ -306,6 +318,13 @@ export default function HostelRoomsPage() {
   };
 
   const openEditModal = (room: Room) => {
+    if (!room.id) {
+      notification.error('Invalid room data', {
+        description: 'Room ID is missing. Cannot edit this room.'
+      });
+      return;
+    }
+    
     setEditingRoom(room);
     setEditForm({
       roomNumber: room.roomNumber || '',
@@ -464,8 +483,7 @@ export default function HostelRoomsPage() {
     );
   }
 
-  // Check if context is ready and hostel is selected
-  if (!isReady || !hasHostel || !hostelId) {
+  if (!hostelId) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

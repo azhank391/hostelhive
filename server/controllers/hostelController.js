@@ -597,7 +597,8 @@ exports.getRooms = async (req, res) => {
       where: whereClause,
       limit: parseInt(limit),
       offset: (parseInt(page) - 1) * parseInt(limit),
-      order: [["number", "ASC"]],
+      order: [["roomNumber", "ASC"]],
+      attributes: ["id", "roomNumber", "capacity", "block", "occupied", "hostelId", "createdAt", "updatedAt"],
       include: [{ model: User, as: "student", attributes: ["id", "name"] }],
     });
 

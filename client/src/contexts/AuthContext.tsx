@@ -295,53 +295,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         return data;
       } catch (userLoginError) {
-        // If standard user login fails, try superadmin login
-        console.log('Standard login failed, attempting superadmin login...');
+        // Log the error for debugging
+        console.error('❌ AuthContext: User login failed:', userLoginError);
+        console.error('❌ AuthContext: Error details:', {
+          message: userLoginError instanceof Error ? userLoginError.message : 'Unknown error',
+          stack: userLoginError instanceof Error ? userLoginError.stack : undefined,
+          error: userLoginError
+        });
         
-        try {
-          const { superadminApi } = await import('@/lib/api');
-          const superadminData = await superadminApi.login({ email, password }) as {
-            token: string;
-            superadmin: {
-              name: string;
-              email: string;
-            }
-          };
-          
-          // Show success notification for superadmin
-          notification.success('Welcome Back, Superadmin!', {
-            description: `Successfully signed in as ${superadminData.superadmin.name}`
-          });
-          
-          localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, superadminData.token)
-          
-          setToken(superadminData.token)
-          
-          // Decode JWT token to get superadmin ID and data
-          const payload = JSON.parse(atob(superadminData.token.split('.')[1]))
-          console.log('🔍 DEBUG: Superadmin Login - Token payload:', payload);
-          
-          // Create superadmin user data
-          const userData: AuthUser = {
-            id: payload.id,
-            name: superadminData.superadmin.name,
-            email: email,
-            role: 'superadmin', // Explicitly set role to superadmin
-            isActive: true,
-            token: superadminData.token
-          }
-          console.log('🔍 DEBUG: Superadmin Login - Created user data:', userData);
-          
-          setUser(userData)
-          
-          // Store superadmin data in localStorage
-          localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData))
-          
-          return superadminData;
-        } catch (superadminLoginError) {
-          console.error('❌ AuthContext: All login attempts failed:', superadminLoginError);
-          throw superadminLoginError;
-        }
+        // For now, just throw the original error without superadmin fallback
+        // This will help us debug what's actually failing in regular user login
+        throw userLoginError;
       }
     } catch (error) {
       console.error('❌ AuthContext: Login error:', error);

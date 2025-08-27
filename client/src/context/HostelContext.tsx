@@ -65,17 +65,57 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Fetch student/warden hostel using optimized API
   const fetchStudentWardenHostel = useCallback(async () => {
-    if (!user || (user.role !== 'student' && user.role !== 'warden') || !user.hostelId) return null;
+    if (!user || (user.role !== 'student' && user.role !== 'warden') || !user.hostelId) {
+      console.log('🔍 DEBUG: fetchStudentWardenHostel - User validation failed:', {
+        user: user ? { id: user.id, role: user.role, hostelId: user.hostelId } : null,
+        hasUser: !!user,
+        isCorrectRole: user ? (user.role === 'student' || user.role === 'warden') : false,
+        hasHostelId: user ? !!user.hostelId : false
+      });
+      return null;
+    }
     
     try {
-      // For students/wardens, we can get hostel details using their hostelId
-      const response = await api.get<Hostel>(`/hostels/${user.hostelId}`);
-      return response.data;
+      console.log('🔍 DEBUG: fetchStudentWardenHostel - Attempting to fetch hostel for:', {
+        userId: user.id,
+        userRole: user.role,
+        hostelId: user.hostelId,
+        authToken: localStorage.getItem('authToken') ? 'Present' : 'Missing'
+      });
+      
+      // For students/wardens, use the getUserHostels endpoint which returns their assigned hostel
+      const response = await api.get<{ hostels: Hostel[], userRole: string }>('/hostels');
+      console.log('🔍 DEBUG: fetchStudentWardenHostel - API response:', response.data);
+      
+      // The response contains an array of hostels, but wardens/students only have one
+      return response.data.hostels[0] || null;
     } catch (error) {
-      console.error('Failed to fetch student/warden hostel:', error);
-      throw error;
+      console.error('❌ DEBUG: fetchStudentWardenHostel - Error details:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        status: (error as any)?.response?.status,
+        data: (error as any)?.response?.data,
+        userHostelId: user.hostelId,
+        requestUrl: '/hostels'
+      });
+      
+      // Fallback: Create a minimal hostel object from user data to prevent dashboard from breaking
+      console.log('🔍 DEBUG: fetchStudentWardenHostel - Creating fallback hostel object');
+      const fallbackHostel: Hostel = {
+        id: user.hostelId,
+        name: 'Your Hostel', // Generic name since we don't have the actual data
+        subdomain: '',
+        plan: 'basic',
+        isActive: true,
+        ownerId: '', // We don't know the owner ID
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      console.log('🔍 DEBUG: fetchStudentWardenHostel - Fallback hostel created:', fallbackHostel);
+      return fallbackHostel;
     }
-  }, [user]);
+  }, [user?.id, user?.role, user?.hostelId]); // Only depend on specific user properties, not the entire user object
 
   // Fetch hostels once when authenticated
   useEffect(() => {
@@ -154,7 +194,7 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setLoadingState(LoadingState.ERROR);
       }
     })();
-  }, [isAuthenticated, user, fetchOwnerHostels, fetchStudentWardenHostel, router]);
+  }, [isAuthenticated, user?.role, user?.hostelId, fetchOwnerHostels, router]); // Removed fetchStudentWardenHostel from dependencies
 
   // Implementation of HostelContextValue methods
   const setActiveHostel = useCallback(async (hostelId: string, syncToServer: boolean = true) => {

@@ -193,7 +193,7 @@ export const Sidebar = memo(({
                 Students
               </NavItem>
               {isOwner && (
-                <NavItem to="/dashboard/owner/wardens" icon={<UsersIcon size={24} className="sm:w-5 sm:h-5" />}>
+                <NavItem to={`/dashboard/hostels/${currentHostelId}/wardens`} icon={<UsersIcon size={24} className="sm:w-5 sm:h-5" />}>
                   Wardens
                 </NavItem>
               )}

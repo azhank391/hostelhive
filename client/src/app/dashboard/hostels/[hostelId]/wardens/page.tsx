@@ -2,6 +2,6 @@
 
 import { WardenManagement } from '@/components/dashboard/WardenManagement'
 
-export default function OwnerWardensPage() {
+export default function HostelWardensPage() {
   return <WardenManagement />
 }
