@@ -1,0 +1,40 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="200" height="200" fill="#F8FAFC"/>
+  
+  <!-- Building Base -->
+  <rect x="40" y="120" width="120" height="60" fill="#3B82F6" rx="4"/>
+  
+  <!-- Building Body -->
+  <rect x="50" y="80" width="100" height="40" fill="#60A5FA" rx="2"/>
+  
+  <!-- Building Top -->
+  <rect x="60" y="60" width="80" height="20" fill="#93C5FD" rx="2"/>
+  
+  <!-- Windows - Ground Floor -->
+  <rect x="55" y="135" width="15" height="20" fill="#FFFFFF" rx="2"/>
+  <rect x="80" y="135" width="15" height="20" fill="#FFFFFF" rx="2"/>
+  <rect x="105" y="135" width="15" height="20" fill="#FFFFFF" rx="2"/>
+  <rect x="130" y="135" width="15" height="20" fill="#FFFFFF" rx="2"/>
+  
+  <!-- Windows - First Floor -->
+  <rect x="60" y="90" width="12" height="15" fill="#FFFFFF" rx="2"/>
+  <rect x="80" y="90" width="12" height="15" fill="#FFFFFF" rx="2"/>
+  <rect x="100" y="90" width="12" height="15" fill="#FFFFFF" rx="2"/>
+  <rect x="120" y="90" width="12" height="15" fill="#FFFFFF" rx="2"/>
+  
+  <!-- Windows - Top Floor -->
+  <rect x="70" y="65" width="10" height="10" fill="#FFFFFF" rx="2"/>
+  <rect x="90" y="65" width="10" height="10" fill="#FFFFFF" rx="2"/>
+  <rect x="110" y="65" width="10" height="10" fill="#FFFFFF" rx="2"/>
+  
+  <!-- Door -->
+  <rect x="85" y="140" width="20" height="40" fill="#1E40AF" rx="2"/>
+  <rect x="90" y="150" width="10" height="10" fill="#FFFFFF" rx="1"/>
+  
+  <!-- Roof Details -->
+  <path d="M 50 60 L 100 40 L 150 60" stroke="#1E40AF" stroke-width="2" fill="none"/>
+  
+  <!-- Ground -->
+  <rect x="0" y="180" width="200" height="20" fill="#10B981"/>
+</svg>
