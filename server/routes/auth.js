@@ -6,7 +6,9 @@ const {
   loginUser, 
   getCurrentUser,
   getUserHostels, 
-  setActiveHostel 
+  setActiveHostel,
+  updateProfile,
+  changePassword
 } = require('../controllers/authController');
 const { verifyToken, requireAuth } = require('../middleware/authMiddleware');
 const User = require('../models/user');
@@ -20,42 +22,10 @@ router.post('/login', loginUser);
 router.get('/hostels', verifyToken, getUserHostels);
 router.post('/set-active-hostel', verifyToken, setActiveHostel);
 
-router.post('/change-password', requireAuth, async (req, res) => {
-  try {
-    const { newPassword } = req.body;
-    const userId = req.user.id;
+// Profile update endpoint
+router.put('/profile', verifyToken, requireAuth, updateProfile);
 
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({ 
-        message: 'Password must be at least 6 characters long' 
-      });
-    }
-
-    // Prevent using the default password
-    if (newPassword === '123456') {
-      return res.status(400).json({ 
-        message: 'Cannot use the default password (123456)' 
-      });
-    }
-
-    // Hash the new password
-    const bcrypt = require('bcrypt');
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    // Update user's password and set requiresPasswordChange to false
-    await User.update(
-      { 
-        password: hashedPassword, 
-        requiresPasswordChange: false 
-      },
-      { where: { id: userId } }
-    );
-
-    res.json({ message: 'Password changed successfully' });
-  } catch (error) {
-    console.error('Error changing password:', error);
-    res.status(500).json({ message: 'Failed to change password' });
-  }
-});
+// Password change endpoint
+router.put('/change-password', verifyToken, requireAuth, changePassword);
 
 module.exports = router;

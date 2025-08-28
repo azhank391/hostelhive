@@ -1,45 +1,116 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams } from 'next/navigation';
-import { useAdminApiWithHostel, useCurrentHostelId } from '@/lib/context-aware-api';
+import { useCurrentHostelId } from '@/lib/context-aware-api';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Modal } from '@/components/modals/Modal';
+import { Input } from '@/components/ui/Input';
+import { notification } from '@/lib/toast';
 import { 
   UsersIcon, 
   PlusIcon, 
   SearchIcon,
   EyeIcon,
-  EditIcon
+  EditIcon,
+  TrashIcon,
+  LogOutIcon,
+  CalendarIcon,
+  UserIcon
 } from 'lucide-react';
+
+interface VisitorLog {
+  id: string;
+  visitorName: string;
+  relation: string;
+  checkIn: string;
+  checkOut?: string;
+  studentId: string;
+  hostelId: string;
+  student?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  room?: {
+    id: string;
+    number: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Helper function to get status from checkOut field
+const getVisitorStatus = (visitor: VisitorLog): 'checked_in' | 'checked_out' | 'pending' => {
+  if (visitor.checkOut) {
+    return 'checked_out';
+  }
+  return 'checked_in';
+};
+
+interface Student {
+  id: string;
+  name: string;
+  email: string;
+  roomNumber?: string; // From the backend response
+  roomId?: string;     // From the backend response
+  allocations?: Array<{
+    id: string;
+    room: {
+      id: string;
+      roomNumber: string;
+    };
+  }>;
+}
 
 export default function VisitorsPage() {
   const params = useParams<{ hostelId: string }>();
   const hostelId = params?.hostelId || '';
+  const { hasHostel, getHostelId } = useCurrentHostelId();
+  
+  // Utility function for debouncing
+  const debounce = (func: Function, delay: number) => {
+    let timeoutId: NodeJS.Timeout;
+    return (...args: any[]) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => func(...args), delay);
+    };
+  };
+  
+  // State management
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [visitors, setVisitors] = useState<any[]>([]);
+  const [visitors, setVisitors] = useState<VisitorLog[]>([]);
+  const [allVisitors, setAllVisitors] = useState<VisitorLog[]>([]); // Store all visitors for local filtering
+  const [students, setStudents] = useState<Student[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Context-aware API hooks
-  const admin = useAdminApiWithHostel();
-  const { hasHostel, getHostelId, isReady } = useCurrentHostelId();
+  // Modal states
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedVisitor, setSelectedVisitor] = useState<VisitorLog | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // Form states
+  const [formData, setFormData] = useState({
+    studentId: '',
+    visitorName: '',
+    relation: '',
+    checkIn: new Date().toISOString().slice(0, 16)
+  });
+
   // Fetch visitor data
-  React.useEffect(() => {
+  useEffect(() => {
+    console.log('useEffect triggered:', { hasHostel, hostelId });
+    
     async function fetchVisitors() {
-      // Wait for hostel context to be properly synced and ready
-      if (!hasHostel || !hostelId || !isReady) {
-        return;
-      }
-      
-      // Double-check that context hostelId matches URL hostelId
-      const contextHostelId = getHostelId();
-      if (contextHostelId !== hostelId) {
+      if (!hasHostel || !hostelId) {
         return;
       }
       
@@ -47,36 +118,32 @@ export default function VisitorsPage() {
         setLoading(true);
         setError(null);
         
-        // Context-aware API call - hostelId automatically injected
-        const result = await admin.getVisitorLogs({
-          page,
-          limit: 10,
-          status: statusFilter || undefined,
-          search: searchQuery || undefined
+        // Fetch all visitors without pagination for local filtering
+        const response = await fetch(`/api/hostels/${hostelId}/visitors?limit=1000`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
         });
         
-        // Handle both array and paginated response formats
-        if (Array.isArray(result)) {
-          setVisitors(result);
-          setPagination({ page: 1, limit: 10, total: result.length, pages: 1 });
-        } else {
-          const paginatedResult = result as {
-            data?: any[];
-            pagination?: {
-              page?: number;
-              limit?: number;
-              total?: number;
-              totalPages?: number;
-            };
-          };
-          setVisitors(paginatedResult.data || []);
-          setPagination({
-            page: paginatedResult.pagination?.page || 1,
-            limit: paginatedResult.pagination?.limit || 10,
-            total: paginatedResult.pagination?.total || 0,
-            pages: paginatedResult.pagination?.totalPages || 1
-          });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch visitors: ${response.status}`);
         }
+        
+        const data = await response.json();
+        
+        let visitorData: VisitorLog[] = [];
+        if (Array.isArray(data)) {
+          visitorData = data;
+        } else {
+          visitorData = data.data || [];
+        }
+        
+        // Store all visitors for local filtering
+        setAllVisitors(visitorData);
+        
+        // Apply initial filtering
+        applyLocalFilters(visitorData, '', '');
+        
       } catch (err) {
         console.error('Error fetching visitors:', err);
         setError(err instanceof Error ? err.message : 'Failed to load visitors');
@@ -86,17 +153,366 @@ export default function VisitorsPage() {
     }
     
     fetchVisitors();
-  }, [hasHostel, hostelId, getHostelId, admin, page, statusFilter, searchQuery, isReady]);
-  
-  const handleStatusFilterChange = (status: string) => {
-    setStatusFilter(status === statusFilter ? '' : status);
-    setPage(1);
-  };
+  }, [hasHostel, hostelId]);
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
+  // Local filtering and search function
+  const applyLocalFilters = useCallback((visitorsData: VisitorLog[], search: string, status: string) => {
+    let filteredVisitors = [...visitorsData];
+    
+    // Apply status filter
+    if (status) {
+      filteredVisitors = filteredVisitors.filter(visitor => {
+        const visitorStatus = getVisitorStatus(visitor);
+        return visitorStatus === status;
+      });
+    }
+    
+    // Apply search filter
+    if (search.trim()) {
+      const searchLower = search.toLowerCase();
+      filteredVisitors = filteredVisitors.filter(visitor => 
+        visitor.visitorName?.toLowerCase().includes(searchLower) ||
+        visitor.relation?.toLowerCase().includes(searchLower) ||
+        visitor.student?.name?.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Update visitors state with filtered results
+    setVisitors(filteredVisitors);
+    
+    // Update pagination
+    const total = filteredVisitors.length;
+    const pages = Math.ceil(total / 10);
+    setPagination({ page: 1, limit: 10, total, pages });
     setPage(1);
-  };
+  }, []);
+
+  // Get paginated visitors for display
+  const getPaginatedVisitors = useCallback(() => {
+    const startIndex = (page - 1) * 10;
+    const endIndex = startIndex + 10;
+    return visitors.slice(startIndex, endIndex);
+  }, [visitors, page]);
+
+  // Manual refresh function that doesn't trigger useEffect
+  const refreshVisitors = useCallback(async () => {
+    if (!hasHostel || !hostelId) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch(`/api/hostels/${hostelId}/visitors?limit=1000`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch visitors: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      let visitorData: VisitorLog[] = [];
+      if (Array.isArray(data)) {
+        visitorData = data;
+      } else {
+        visitorData = data.data || [];
+      }
+      
+      // Store all visitors for local filtering
+      setAllVisitors(visitorData);
+      
+             // Apply current filters and update pagination
+       applyLocalFilters(visitorData, searchQuery, statusFilter);
+       setPage(1); // Reset to first page after refresh
+      
+    } catch (err) {
+      console.error('Error refreshing visitors:', err);
+      setError(err instanceof Error ? err.message : 'Failed to refresh visitors');
+    } finally {
+      setLoading(false);
+    }
+  }, [hasHostel, hostelId, searchQuery, statusFilter, applyLocalFilters]);
+
+  // Fetch students for visitor creation
+  useEffect(() => {
+    async function fetchStudents() {
+      if (!hasHostel || !hostelId) return;
+      try {
+        const response = await fetch(`/api/hostels/${hostelId}/students`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch students: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Filter students to only include those with active room allocations
+        const studentsWithRooms = data.filter((student: any) => {
+          // Check if student has roomNumber (from the transformed backend response)
+          if (student.roomNumber) {
+            return true;
+          }
+          
+          // Check if student has active allocations with room information
+          if (student.allocations && Array.isArray(student.allocations)) {
+            return student.allocations.some((allocation: any) => 
+              allocation.status === 'active' && allocation.room
+            );
+          }
+          
+          return false;
+        });
+        
+        setStudents(studentsWithRooms);
+      } catch (err) {
+        console.error('Error fetching students:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load students');
+      }
+    }
+    fetchStudents();
+  }, [hasHostel, hostelId]);
+
+  // Debounced search handler
+  const debouncedSearch = useCallback(
+    debounce((query: string) => {
+      setSearchQuery(query);
+      applyLocalFilters(allVisitors, query, statusFilter);
+    }, 300),
+    [allVisitors, statusFilter, applyLocalFilters]
+  );
+
+  const handleStatusFilterChange = useCallback((status: string) => {
+    const newStatus = status === statusFilter ? '' : status;
+    setStatusFilter(newStatus);
+    applyLocalFilters(allVisitors, searchQuery, newStatus);
+  }, [statusFilter, allVisitors, searchQuery, applyLocalFilters]);
+
+  const handleSearch = useCallback((query: string) => {
+    debouncedSearch(query);
+  }, [debouncedSearch]);
+
+  const handleCreateVisitor = useCallback(async () => {
+    if (!hasHostel || !hostelId) return;
+    
+    if (!formData.studentId || !formData.visitorName || !formData.relation) {
+      notification.error('Please fill in all required fields');
+      return;
+    }
+    
+    // Validate that the selected student has a room allocation
+    const selectedStudent = students.find(s => s.id === formData.studentId);
+    if (!selectedStudent || !selectedStudent.roomNumber) {
+      notification.error('Selected student must have an active room allocation to host visitors');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/hostels/${hostelId}/visitors`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          ...formData,
+          hostelId: hostelId,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create visitor');
+      }
+      
+      notification.success('Visitor created successfully!');
+      setIsCreateModalOpen(false);
+      setFormData({
+        studentId: '',
+        visitorName: '',
+        relation: '',
+        checkIn: new Date().toISOString().slice(0, 16)
+      });
+      await refreshVisitors();
+    } catch (err) {
+      console.error('Error creating visitor:', err);
+      notification.error(err instanceof Error ? err.message : 'Failed to create visitor');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [hasHostel, hostelId, formData, refreshVisitors, students]);
+
+  const handleEditVisitor = useCallback(async () => {
+    if (!selectedVisitor || !hasHostel || !hostelId) return;
+    
+    if (!formData.studentId || !formData.visitorName || !formData.relation) {
+      notification.error('Please fill in all required fields');
+      return;
+    }
+    
+    // Validate that the selected student has a room allocation
+    const selectedStudent = students.find(s => s.id === formData.studentId);
+    if (!selectedStudent || !selectedStudent.roomNumber) {
+      notification.error('Selected student must have an active room allocation to host visitors');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/hostels/${hostelId}/visitors/${selectedVisitor.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          ...formData,
+          hostelId: hostelId,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update visitor');
+      }
+      
+      notification.success('Visitor updated successfully!');
+      setIsEditModalOpen(false);
+      setSelectedVisitor(null);
+      setFormData({
+        studentId: '',
+        visitorName: '',
+        relation: '',
+        checkIn: new Date().toISOString().slice(0, 16)
+      });
+      await refreshVisitors();
+    } catch (err) {
+      console.error('Error updating visitor:', err);
+      notification.error(err instanceof Error ? err.message : 'Failed to update visitor');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [selectedVisitor, hasHostel, hostelId, formData, refreshVisitors, students]);
+
+  const handleCheckOutVisitor = useCallback(async (visitor: VisitorLog) => {
+    if (!visitor || !hasHostel || !hostelId) return;
+    
+    // Add confirmation dialog
+    if (!confirm(`Are you sure you want to check out ${visitor.visitorName}?`)) {
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    // Optimistically update the UI
+    const updatedVisitor = { ...visitor, checkOut: new Date().toISOString() };
+    setAllVisitors(prev => prev.map(v => v.id === visitor.id ? updatedVisitor : v));
+    setVisitors(prev => prev.map(v => v.id === visitor.id ? updatedVisitor : v));
+    
+    try {
+                    const response = await fetch(`/api/hostels/${hostelId}/visitors/${visitor.id}/checkout`, {
+         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+                 body: JSON.stringify({}),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to check out visitor');
+      }
+      
+             notification.success('Visitor checked out successfully!');
+       setIsViewModalOpen(false);
+       setSelectedVisitor(null);
+       // Refresh the data to show updated status
+       await refreshVisitors();
+    } catch (err) {
+      console.error('Error checking out visitor:', err);
+      notification.error(err instanceof Error ? err.message : 'Failed to check out visitor');
+      
+      // Revert optimistic update on error
+      setAllVisitors(prev => prev.map(v => v.id === visitor.id ? visitor : v));
+      setVisitors(prev => prev.map(v => v.id === visitor.id ? visitor : v));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [hasHostel, hostelId, refreshVisitors]);
+
+  const handleDeleteVisitor = useCallback(async () => {
+    if (!selectedVisitor || !hasHostel || !hostelId) return;
+    
+    // Add confirmation dialog
+    if (!confirm(`Are you sure you want to delete visitor ${selectedVisitor.visitorName}? This action cannot be undone.`)) {
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/hostels/${hostelId}/visitors/${selectedVisitor.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete visitor');
+      }
+      
+      notification.success('Visitor deleted successfully!');
+      setIsViewModalOpen(false);
+      setSelectedVisitor(null);
+      await refreshVisitors();
+    } catch (err) {
+      console.error('Error deleting visitor:', err);
+      notification.error(err instanceof Error ? err.message : 'Failed to delete visitor');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [selectedVisitor, hasHostel, hostelId, refreshVisitors]);
+
+  const handleViewVisitor = useCallback((visitor: VisitorLog) => {
+    setSelectedVisitor(visitor);
+    setFormData({
+      studentId: visitor.studentId || '',
+      visitorName: visitor.visitorName || '',
+      relation: visitor.relation || '',
+      checkIn: visitor.checkIn ? new Date(visitor.checkIn).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16)
+    });
+    setIsViewModalOpen(true);
+  }, []);
+
+  const openEditModal = useCallback((visitor: VisitorLog) => {
+    setSelectedVisitor(visitor);
+    setFormData({
+      studentId: visitor.studentId || '',
+      visitorName: visitor.visitorName || '',
+      relation: visitor.relation || '',
+      checkIn: visitor.checkIn ? new Date(visitor.checkIn).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16)
+    });
+    setIsEditModalOpen(true);
+  }, []);
+
+  const handleEditFormChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  }, []);
+
+  const handleCreateFormChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  }, []);
 
   if (loading) {
     return (
@@ -129,7 +545,7 @@ export default function VisitorsPage() {
           </p>
         </div>
         
-        <Button variant="primary" className="flex items-center">
+        <Button variant="primary" className="flex items-center" onClick={() => setIsCreateModalOpen(true)}>
           <PlusIcon size={16} className="mr-2" />
           Add New Visitor
         </Button>
@@ -143,7 +559,9 @@ export default function VisitorsPage() {
               <UsersIcon size={24} />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Visitors</p>
+              <p className="text-sm font-medium text-gray-600">
+                {statusFilter || searchQuery ? 'Filtered Results' : 'Total Visitors'}
+              </p>
               <p className="text-2xl font-semibold text-gray-900">
                 {pagination?.total || 0}
               </p>
@@ -159,7 +577,7 @@ export default function VisitorsPage() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Currently Inside</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {visitors.filter((v: any) => v.status === 'checked_in').length}
+                {allVisitors.filter((v: VisitorLog) => getVisitorStatus(v) === 'checked_in').length}
               </p>
             </div>
           </div>
@@ -173,7 +591,7 @@ export default function VisitorsPage() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Today's Visitors</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {visitors.filter((v: any) => {
+                {allVisitors.filter((v: VisitorLog) => {
                   const today = new Date().toDateString();
                   return new Date(v.createdAt).toDateString() === today;
                 }).length}
@@ -190,7 +608,7 @@ export default function VisitorsPage() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">This Week</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {visitors.filter((v: any) => {
+                {allVisitors.filter((v: VisitorLog) => {
                   const weekAgo = new Date();
                   weekAgo.setDate(weekAgo.getDate() - 7);
                   return new Date(v.createdAt) > weekAgo;
@@ -228,6 +646,21 @@ export default function VisitorsPage() {
                 {status.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
               </Button>
             ))}
+            {(statusFilter || searchQuery) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setStatusFilter('');
+                  setSearchQuery('');
+                  setPage(1);
+                  applyLocalFilters(allVisitors, '', '');
+                }}
+                className="text-gray-600 hover:text-gray-800"
+              >
+                Clear Filters
+              </Button>
+            )}
           </div>
         </div>
       </Card>
@@ -259,56 +692,79 @@ export default function VisitorsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {visitors.map((visitor: any) => (
+              {getPaginatedVisitors().map((visitor: VisitorLog) => (
                 <tr key={visitor.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
                         <span className="text-sm font-medium text-blue-600">
-                          {visitor.visitor?.name?.charAt(0).toUpperCase() || 'V'}
+                          {visitor.visitorName?.charAt(0).toUpperCase() || 'V'}
                         </span>
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
-                          {visitor.visitor?.name || 'Unknown'}
+                          {visitor.visitorName || 'Unknown'}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {visitor.visitor?.email || 'No email'}
+                          {visitor.relation || 'No relation'}
                         </div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      {visitor.host?.name || 'Unknown'}
+                      {visitor.student?.name || 'Unknown'}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {visitor.room?.number || 'N/A'}
-                    </div>
-                  </td>
+                                     <td className="px-6 py-4 whitespace-nowrap">
+                     <div className="text-sm text-gray-900">
+                       {(() => {
+                         const student = students.find(s => s.id === visitor.studentId);
+                         return student?.roomNumber || 'No room allocated';
+                       })()}
+                     </div>
+                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      visitor.status === 'checked_in' 
+                      getVisitorStatus(visitor) === 'checked_in' 
                         ? 'bg-green-100 text-green-800'
-                        : visitor.status === 'checked_out'
+                        : getVisitorStatus(visitor) === 'checked_out'
                         ? 'bg-gray-100 text-gray-800'
                         : 'bg-yellow-100 text-yellow-800'
                     }`}>
-                      {visitor.status?.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                      {getVisitorStatus(visitor) === 'checked_in' ? 'Checked In' :
+                       getVisitorStatus(visitor) === 'checked_out' ? 'Checked Out' :
+                       getVisitorStatus(visitor) === 'pending' ? 'Pending' : 'Unknown'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(visitor.createdAt).toLocaleDateString()}
+                    {visitor.checkIn ? new Date(visitor.checkIn).toLocaleDateString() : 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => handleViewVisitor(visitor)}>
                         <EyeIcon size={14} />
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => openEditModal(visitor)}>
                         <EditIcon size={14} />
+                      </Button>
+                      {getVisitorStatus(visitor) === 'checked_in' && (
+                        <Button 
+                          variant="primary" 
+                          size="sm" 
+                          onClick={() => handleCheckOutVisitor(visitor)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          <LogOutIcon size={14} />
+                        </Button>
+                      )}
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleViewVisitor(visitor)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <TrashIcon size={14} />
                       </Button>
                     </div>
                   </td>
@@ -325,16 +781,341 @@ export default function VisitorsPage() {
               Showing page {pagination.page} of {pagination.pages}
             </div>
             <div className="flex space-x-2">
-              <Button variant="outline" onClick={() => setPage(page - 1)} disabled={page === 1}>
+              <Button variant="outline" onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1}>
                 Previous
               </Button>
-              <Button variant="outline" onClick={() => setPage(page + 1)} disabled={page >= (pagination?.pages || 1)}>
+              <Button variant="outline" onClick={() => setPage(Math.min(pagination.pages, page + 1))} disabled={page >= pagination.pages}>
                 Next
               </Button>
             </div>
           </div>
         )}
       </Card>
+
+      {/* Create Visitor Modal */}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Create New Visitor"
+      >
+        <form onSubmit={(e) => { e.preventDefault(); handleCreateVisitor(); }}>
+          <div className="grid gap-4">
+            <div>
+              <label htmlFor="studentId" className="block text-sm font-medium text-gray-700">
+                Host Student *
+              </label>
+              <select
+                id="studentId"
+                name="studentId"
+                value={formData.studentId}
+                onChange={handleCreateFormChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">
+                  {students.length === 0 ? 'No students with room allocations found' : 'Select a Host Student'}
+                </option>
+                {students.map((student) => (
+                  <option key={student.id} value={student.id}>
+                    {student.name} - Room {student.roomNumber || 'Unknown'}
+                  </option>
+                ))}
+              </select>
+              {students.length === 0 && (
+                <p className="mt-1 text-sm text-amber-600">
+                  Note: Only students with active room allocations can host visitors.
+                </p>
+              )}
+            </div>
+            <div>
+              <label htmlFor="visitorName" className="block text-sm font-medium text-gray-700">
+                Visitor Name *
+              </label>
+              <Input
+                id="visitorName"
+                name="visitorName"
+                value={formData.visitorName}
+                onChange={handleCreateFormChange}
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="relation" className="block text-sm font-medium text-gray-700">
+                Relation *
+              </label>
+              <Input
+                id="relation"
+                name="relation"
+                value={formData.relation}
+                onChange={handleCreateFormChange}
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="checkIn" className="block text-sm font-medium text-gray-700">
+                Check In Date *
+              </label>
+              <Input
+                id="checkIn"
+                name="checkIn"
+                type="datetime-local"
+                value={formData.checkIn}
+                onChange={handleCreateFormChange}
+                required
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Creating...' : 'Create Visitor'}
+              </Button>
+            </div>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Visitor Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Visitor"
+      >
+        <form onSubmit={(e) => { e.preventDefault(); handleEditVisitor(); }}>
+          <div className="grid gap-4">
+            <div>
+              <label htmlFor="studentId" className="block text-sm font-medium text-gray-700">
+                Host Student *
+              </label>
+              <select
+                id="studentId"
+                name="studentId"
+                value={formData.studentId}
+                onChange={handleEditFormChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">
+                  {students.length === 0 ? 'No students with room allocations found' : 'Select a Host Student'}
+                </option>
+                {students.map((student) => (
+                  <option key={student.id} value={student.id}>
+                    {student.name} - Room {student.roomNumber || 'Unknown'}
+                  </option>
+                ))}
+              </select>
+              {students.length === 0 && (
+                <p className="mt-1 text-sm text-amber-600">
+                  Note: Only students with active room allocations can host visitors.
+                </p>
+              )}
+            </div>
+            <div>
+              <label htmlFor="visitorName" className="block text-sm font-medium text-gray-700">
+                Visitor Name *
+              </label>
+              <Input
+                id="visitorName"
+                name="visitorName"
+                value={formData.visitorName}
+                onChange={handleEditFormChange}
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="relation" className="block text-sm font-medium text-gray-700">
+                Relation *
+              </label>
+              <Input
+                id="relation"
+                name="relation"
+                value={formData.relation}
+                onChange={handleEditFormChange}
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="checkIn" className="block text-sm font-medium text-gray-700">
+                Check In Date *
+              </label>
+              <Input
+                id="checkIn"
+                name="checkIn"
+                type="datetime-local"
+                value={formData.checkIn}
+                onChange={handleEditFormChange}
+                required
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Updating...' : 'Update Visitor'}
+              </Button>
+            </div>
+          </div>
+        </form>
+      </Modal>
+
+      {/* View Visitor Modal */}
+      <Modal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        title={`Visitor Details - ${selectedVisitor?.visitorName || 'Unknown'}`}
+      >
+        <div className="grid gap-6">
+          {/* Visitor Information */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">Visitor Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center space-x-3">
+                <UserIcon size={20} className="text-blue-600" />
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Visitor Name</p>
+                  <p className="text-base font-semibold text-gray-900">{selectedVisitor?.visitorName || 'N/A'}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <UsersIcon size={20} className="text-green-600" />
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Relation</p>
+                  <p className="text-base font-semibold text-gray-900">{selectedVisitor?.relation || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Visit Details */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">Visit Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div className="flex items-center space-x-3">
+                 <CalendarIcon size={20} className="text-purple-600" />
+                 <div>
+                   <p className="text-sm font-medium text-gray-500">Check In</p>
+                   <p className="text-base font-semibold text-gray-900">
+                     {selectedVisitor?.checkIn ? 
+                       new Date(selectedVisitor.checkIn).toLocaleString('en-US', {
+                         year: 'numeric',
+                         month: 'long',
+                         day: 'numeric',
+                         hour: '2-digit',
+                         minute: '2-digit',
+                         hour12: true
+                       }) : 'N/A'}
+                   </p>
+                 </div>
+               </div>
+                             <div className="flex items-center space-x-3">
+                 <CalendarIcon size={20} className="text-orange-600" />
+                 <div>
+                   <p className="text-sm font-medium text-gray-500">Check Out</p>
+                   <p className="text-base font-semibold text-gray-900">
+                     {selectedVisitor?.checkOut ? 
+                       new Date(selectedVisitor.checkOut).toLocaleString('en-US', {
+                         year: 'numeric',
+                         month: 'long',
+                         day: 'numeric',
+                         hour: '2-digit',
+                         minute: '2-digit',
+                         hour12: true
+                       }) : 'Not checked out yet'}
+                   </p>
+                 </div>
+               </div>
+              <div className="flex items-center space-x-3">
+                <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center">
+                  <div className={`w-3 h-3 rounded-full ${
+                    selectedVisitor && getVisitorStatus(selectedVisitor) === 'checked_in' ? 'bg-green-500' :
+                    selectedVisitor && getVisitorStatus(selectedVisitor) === 'checked_out' ? 'bg-gray-500' : 'bg-yellow-500'
+                  }`}></div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Status</p>
+                  <p className="text-base font-semibold text-gray-900">
+                    {selectedVisitor ? getVisitorStatus(selectedVisitor) === 'checked_in' ? 'Checked In' :
+                     getVisitorStatus(selectedVisitor) === 'checked_out' ? 'Checked Out' :
+                     getVisitorStatus(selectedVisitor) === 'pending' ? 'Pending' : 'Unknown' : 'N/A'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Host Student Information */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">Host Student Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center space-x-3">
+                <UserIcon size={20} className="text-indigo-600" />
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Student Name</p>
+                  <p className="text-base font-semibold text-gray-900">{selectedVisitor?.student?.name || 'N/A'}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-xs font-medium text-blue-600">S</span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Student ID</p>
+                  <p className="text-base font-semibold text-gray-900">{selectedVisitor?.studentId || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+                     {/* Room Information */}
+           <div>
+             <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">Room Information</h3>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <div className="flex items-center space-x-3">
+                 <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center">
+                   <span className="text-xs font-medium text-green-600">R</span>
+                 </div>
+                 <div>
+                   <p className="text-sm font-medium text-gray-500">Room Number</p>
+                   <p className="text-base font-semibold text-gray-900">
+                     {(() => {
+                       const student = students.find(s => s.id === selectedVisitor?.studentId);
+                       return student?.roomNumber || 'No room allocated';
+                     })()}
+                   </p>
+                 </div>
+               </div>
+               <div className="flex items-center space-x-3">
+                 <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
+                   <span className="text-xs font-medium text-blue-600">H</span>
+                 </div>
+                 <div>
+                   <p className="text-sm font-medium text-gray-500">Host Student</p>
+                   <p className="text-base font-semibold text-gray-900">
+                     {selectedVisitor?.student?.name || 'Unknown'}
+                   </p>
+                 </div>
+               </div>
+             </div>
+           </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={() => setIsViewModalOpen(false)}>
+              Close
+            </Button>
+            {selectedVisitor && getVisitorStatus(selectedVisitor) === 'checked_in' && (
+              <Button variant="primary" onClick={() => handleCheckOutVisitor(selectedVisitor)} disabled={isSubmitting}>
+                {isSubmitting ? 'Checking Out...' : 'Check Out Visitor'}
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => handleDeleteVisitor()} disabled={isSubmitting} className="text-red-600 hover:text-red-700">
+              {isSubmitting ? 'Deleting...' : 'Delete Visitor'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -19,36 +19,48 @@ import { useMemo } from 'react';
 export const useCurrentHostelId = () => {
   const { getCurrentHostelId, getCurrentHostelIdWithUrlFallback, isReady, currentHostel } = useHostel();
 
-  const getHostelId = (): string => {
-    // First try to get from currentHostel directly
-    if (currentHostel?.id) {
-      return currentHostel.id;
-    }
-    
-    // Then try context methods
-    const hostelId = getCurrentHostelId() || getCurrentHostelIdWithUrlFallback();
-    if (!hostelId) {
-      throw new Error('No active hostel selected. Please select a hostel first.');
-    }
-    
-    return hostelId;
-  };
+  // 🚀 CRITICAL FIX: Memoize the functions to prevent infinite loops
+  const getHostelId = useMemo((): (() => string) => {
+    return (): string => {
+      // First try to get from currentHostel directly
+      if (currentHostel?.id) {
+        return currentHostel.id;
+      }
+      
+      // Then try context methods
+      const hostelId = getCurrentHostelId() || getCurrentHostelIdWithUrlFallback();
+      if (!hostelId) {
+        throw new Error('No active hostel selected. Please select a hostel first.');
+      }
+      
+      return hostelId;
+    };
+  }, [currentHostel?.id, getCurrentHostelId, getCurrentHostelIdWithUrlFallback]);
 
-  const getHostelIdSafe = (): string | null => {
+  const getHostelIdSafe = useMemo((): (() => string | null) => {
+    return (): string | null => {
+      try {
+        const id = getHostelId();
+        return id;
+      } catch (error) {
+        return null;
+      }
+    };
+  }, [getHostelId]);
+
+  const hasHostel = useMemo(() => {
     try {
-      const id = getHostelId();
-      return id;
+      const hostelId = getHostelIdSafe();
+      return !!hostelId;
     } catch (error) {
-      return null;
+      return false;
     }
-  };
-
-  const hasHostel = !!getHostelIdSafe();
+  }, [getHostelIdSafe]);
 
   return {
     hasHostel,
-    getHostelId,
-    getHostelIdSafe,
+    getHostelId: getHostelId as () => string,
+    getHostelIdSafe: getHostelIdSafe as () => string | null,
     isReady
   };
 };
@@ -101,9 +113,27 @@ export const useAdminApiWithHostel = () => {
       }
       return adminApi.getRooms(hostelId, params);
     },
-    createRoom: (roomData: any) => adminApi.createRoom(getHostelId(), roomData),
-    updateRoom: (roomId: string, updates: any) => adminApi.updateRoom(getHostelId(), roomId, updates),
-    deleteRoom: (roomId: string) => adminApi.deleteRoom(getHostelId(), roomId),
+    createRoom: (roomData: any) => {
+      const hostelId = getHostelIdSafe();
+      if (!hostelId) {
+        return Promise.reject(new Error('No hostel selected for creating room'));
+      }
+      return adminApi.createRoom(hostelId, roomData);
+    },
+    updateRoom: (roomId: string, updates: any) => {
+      const hostelId = getHostelIdSafe();
+      if (!hostelId) {
+        return Promise.reject(new Error('No hostel selected for updating room'));
+      }
+      return adminApi.updateRoom(hostelId, roomId, updates);
+    },
+    deleteRoom: (roomId: string) => {
+      const hostelId = getHostelIdSafe();
+      if (!hostelId) {
+        return Promise.reject(new Error('No hostel selected for deleting room'));
+      }
+      return adminApi.deleteRoom(hostelId, roomId);
+    },
 
     // Student Management
     getStudents: (params?: any) => {
@@ -136,15 +166,43 @@ export const useAdminApiWithHostel = () => {
     },
 
     // Warden Management
-    getWardens: () => adminApi.getWardens(getHostelId()),
-    createWarden: (wardenData: any) => adminApi.createWarden(getHostelId(), wardenData),
-    updateWarden: (wardenId: string, updates: any) => adminApi.updateWarden(getHostelId(), wardenId, updates),
-    deleteWarden: (wardenId: string) => adminApi.deleteWarden(getHostelId(), wardenId),
+    getWardens: () => {
+      const hostelId = getHostelIdSafe();
+      if (!hostelId) {
+        return Promise.reject(new Error('No hostel selected for getting wardens'));
+      }
+      return adminApi.getWardens(hostelId);
+    },
+    createWarden: (wardenData: any) => {
+      const hostelId = getHostelIdSafe();
+      if (!hostelId) {
+        return Promise.reject(new Error('No hostel selected for creating warden'));
+      }
+      return adminApi.createWarden(hostelId, wardenData);
+    },
+    updateWarden: (wardenId: string, updates: any) => {
+      const hostelId = getHostelIdSafe();
+      if (!hostelId) {
+        return Promise.reject(new Error('No hostel selected for updating warden'));
+      }
+      return adminApi.updateWarden(hostelId, wardenId, updates);
+    },
+    deleteWarden: (wardenId: string) => {
+      const hostelId = getHostelIdSafe();
+      if (!hostelId) {
+        return Promise.reject(new Error('No hostel selected for deleting warden'));
+      }
+      return adminApi.deleteWarden(hostelId, wardenId);
+    },
 
     // Room Allocation (if available)
     getRoomAllocations: (params?: any) => {
+      const hostelId = getHostelIdSafe();
+      if (!hostelId) {
+        return Promise.reject(new Error('No hostel selected for room allocations'));
+      }
       if ('getRoomAllocations' in adminApi) {
-        return (adminApi as any).getRoomAllocations(getHostelId(), params);
+        return (adminApi as any).getRoomAllocations(hostelId, params);
       }
       throw new Error('getRoomAllocations method not available');
     },
@@ -157,7 +215,13 @@ export const useAdminApiWithHostel = () => {
       }
       return adminApi.getComplaints(hostelId, params);
     },
-    updateComplaint: (complaintId: string, updates: any) => adminApi.updateComplaint(getHostelId(), complaintId, updates),
+    updateComplaint: (complaintId: string, updates: any) => {
+      const hostelId = getHostelIdSafe();
+      if (!hostelId) {
+        return Promise.reject(new Error('No hostel selected for updating complaint'));
+      }
+      return adminApi.updateComplaint(hostelId, complaintId, updates);
+    },
 
     // Visitor Management
     getVisitorLogs: (params?: any) => {
@@ -167,7 +231,13 @@ export const useAdminApiWithHostel = () => {
       }
       return adminApi.getVisitorLogs(hostelId, params);
     },
-    checkoutVisitor: (visitorId: string) => adminApi.checkoutVisitor(getHostelId(), visitorId),
+    checkoutVisitor: (visitorId: string) => {
+      const hostelId = getHostelIdSafe();
+      if (!hostelId) {
+        return Promise.reject(new Error('No hostel selected for checking out visitor'));
+      }
+      return adminApi.checkoutVisitor(hostelId, visitorId);
+    },
 
     // Utility
     getCurrentHostelId: getHostelId,
@@ -210,7 +280,7 @@ export const useStudentApiWithHostel = () => {
  * Hostel API hook with automatic hostelId injection for current hostel operations
  */
 export const useHostelApiWithContext = () => {
-  const { getHostelId } = useCurrentHostelId();
+  const { getHostelIdSafe } = useCurrentHostelId();
 
   // 🚀 CRITICAL FIX: Use useMemo to stabilize the API object reference
   return useMemo(() => ({
@@ -219,12 +289,24 @@ export const useHostelApiWithContext = () => {
     createHostel: hostelApi.createHostel,
 
     // Operations that use current hostel context
-    getCurrentHostelDetails: () => hostelApi.getHostelDetails(getHostelId()),
-    updateCurrentHostel: (updates: any) => hostelApi.updateHostel(getHostelId(), updates),
+    getCurrentHostelDetails: () => {
+      const hostelId = getHostelIdSafe();
+      if (!hostelId) {
+        return Promise.reject(new Error('No hostel selected for getting hostel details'));
+      }
+      return hostelApi.getHostelDetails(hostelId);
+    },
+    updateCurrentHostel: (updates: any) => {
+      const hostelId = getHostelIdSafe();
+      if (!hostelId) {
+        return Promise.reject(new Error('No hostel selected for updating hostel'));
+      }
+      return hostelApi.updateHostel(hostelId, updates);
+    },
 
     // Utility
-    getCurrentHostelId: getHostelId,
-  }), [getHostelId]); // Only depend on stable function, not objects
+    getCurrentHostelId: getHostelIdSafe,
+  }), [getHostelIdSafe]); // Only depend on stable function, not objects
 };
 
 // ==========================================

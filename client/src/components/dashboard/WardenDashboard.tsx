@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { useCurrentHostelId } from '@/lib/context-aware-api'
+import { useCurrentHostelId, useAdminApiWithHostel } from '@/lib/context-aware-api'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { notification } from '@/lib/toast'
@@ -69,7 +69,8 @@ interface QuickAction {
  */
 export const WardenDashboard = React.memo(() => {
   const { user } = useAuth()
-  const { hasHostel, getHostelId } = useCurrentHostelId()
+  const { hasHostel, getHostelIdSafe } = useCurrentHostelId()
+  const adminApi = useAdminApiWithHostel()
   
   // State management
   const [stats, setStats] = useState<WardenDashboardStats | null>(null)
@@ -157,7 +158,7 @@ export const WardenDashboard = React.memo(() => {
       .slice(0, 5)
   }, [recentActivity])
 
-  // 🚀 PERFORMANCE: Optimized batch data fetching
+  // 🚀 PERFORMANCE: Optimized batch data fetching using context-aware API
   const fetchDashboardData = useCallback(async () => {
     if (!hasHostel) {
       setLoading(false)
@@ -167,81 +168,51 @@ export const WardenDashboard = React.memo(() => {
     try {
       setError(null)
       
-      // Batch fetch all dashboard data
-      const [
-        dashboardStats, 
-        complaints, 
-        visitors, 
-        students, 
-        rooms
-      ] = await Promise.all([
-        fetch(`/api/hostels/${getHostelId()}/stats`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-          }
-        }),
-        fetch(`/api/hostels/${getHostelId()}/complaints?limit=50`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-          }
-        }),
-        fetch(`/api/hostels/${getHostelId()}/visitors?limit=20`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-          }
-        }),
-        fetch(`/api/hostels/${getHostelId()}/students?limit=10`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-          }
-        }),
-        fetch(`/api/hostels/${getHostelId()}/rooms?limit=10`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-          }
-        })
-      ])
-      
-      // Check if all responses are successful
-      const responses = [dashboardStats, complaints, visitors, students, rooms]
-      for (const response of responses) {
-        if (!response.ok) {
-          throw new Error(`API call failed: ${response.status} ${response.statusText}`)
-        }
+      const currentHostelId = getHostelIdSafe();
+      if (!currentHostelId) {
+        setError('No hostel selected');
+        setLoading(false);
+        return;
       }
       
-      const [dashboardStatsData, complaintsData, visitorsData, studentsData, roomsData] = await Promise.all([
-        dashboardStats.json(),
-        complaints.json(),
-        visitors.json(),
-        students.json(),
-        rooms.json()
+      console.log('Fetching warden dashboard data for hostel:', currentHostelId);
+      
+      // Use context-aware API for all data fetching
+      const [complaints, visitors, students, rooms] = await Promise.all([
+        adminApi.getComplaints({ limit: 50 }),
+        adminApi.getVisitorLogs({ limit: 20 }),
+        adminApi.getStudents({ limit: 10 }),
+        adminApi.getRooms({ limit: 10 })
       ])
+      
+      console.log('API Responses:', { complaints, visitors, students, rooms });
       
       // Process and calculate comprehensive stats
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       
-      // Extract stats from dashboard stats response
-      const statsData = dashboardStatsData.stats || {}
-      const pendingComplaints = statsData.pendingComplaints || 0
-      const totalComplaints = statsData.totalComplaints || 0
+      // Process complaints data
+      const complaintsData = Array.isArray(complaints) ? complaints : 
+                            ((complaints as any)?.data || []);
+      const pendingComplaints = complaintsData.filter((c: any) => c.status === 'pending').length
+      const totalComplaints = complaintsData.length
       const resolvedComplaints = totalComplaints - pendingComplaints
       
       // Process visitors data
-      const currentVisitors = Array.isArray(visitorsData) 
-        ? visitorsData.filter((v: any) => !v.checkOut).length
-        : 0
-      const todayVisitors = Array.isArray(visitorsData)
-        ? visitorsData.filter((v: any) => new Date(v.checkIn) >= today).length
-        : 0
+      const visitorsData = Array.isArray(visitors) ? visitors : 
+                          ((visitors as any)?.data || []);
+      const currentVisitors = visitorsData.filter((v: any) => !v.checkOut).length
+      const todayVisitors = visitorsData.filter((v: any) => new Date(v.checkIn) >= today).length
       
       // Process students and rooms data
-      const totalStudents = Array.isArray(studentsData) ? studentsData.length : 0
-      const totalRooms = Array.isArray(roomsData) ? roomsData.length : 0
-      const occupiedRooms = Array.isArray(roomsData)
-        ? roomsData.filter((r: any) => r.occupied > 0).length
-        : 0
+      const studentsData = Array.isArray(students) ? students : 
+                          ((students as any)?.data || []);
+      const roomsData = Array.isArray(rooms) ? rooms : 
+                       ((rooms as any)?.data || []);
+      
+      const totalStudents = studentsData.length
+      const totalRooms = roomsData.length
+      const occupiedRooms = roomsData.filter((r: any) => r.occupied > 0).length
       const availableRooms = totalRooms - occupiedRooms
       const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0
       
@@ -300,7 +271,7 @@ export const WardenDashboard = React.memo(() => {
     } finally {
       setLoading(false)
     }
-  }, [hasHostel, getHostelId])
+  }, [hasHostel, adminApi])
 
   // 🎯 PERFORMANCE: Optimized refresh handler
   const handleRefresh = useCallback(async () => {

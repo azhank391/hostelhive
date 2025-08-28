@@ -17,9 +17,11 @@ export interface Hostel {
   email?: string;
   isPaid?: boolean;
   ownerId: string;
-  country?: string;
-  city?: string;
-  address?: string;
+  location?: {
+    country?: string;
+    city?: string;
+    address?: string;
+  };
   createdAt?: string;
   updatedAt?: string;
 }
@@ -53,13 +55,13 @@ export interface Complaint {
   id: string;
   title: string;
   description: string;
-  status: 'pending' | 'in-progress' | 'resolved';
-  priority?: 'low' | 'medium' | 'high';
-  studentId: string;
+  status: 'pending' | 'in_progress' | 'resolved' | 'rejected';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  userId: string;
   hostelId: string;
-  student?: User;
+  user?: User;
+  resolutionNotes?: string;
   resolvedAt?: string;
-  resolution?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -190,7 +192,9 @@ export interface AuthUser {
   role: 'owner' | 'admin' | 'warden' | 'student' | 'superadmin';
   token?: string;
   hostelId?: string;
+  phone?: string;
   isActive?: boolean;
+  requiresPasswordChange?: boolean;
   createdAt?: string;
   updatedAt?: string;
   activeHostelId?: string;

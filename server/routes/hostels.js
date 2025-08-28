@@ -160,6 +160,13 @@ router.post('/:hostelId/complaints', adminController.createComplaint);
  */
 router.post('/:hostelId/complaints/:complaintId/resolve', requireHostelRole('owner', 'warden'), adminController.resolveComplaint);
 
+/**
+ * @route PUT /api/hostels/:hostelId/complaints/:complaintId/status
+ * @desc Update complaint status and priority
+ * @access Private (Owner, Warden)
+ */
+router.put('/:hostelId/complaints/:complaintId/status', requireHostelRole('owner', 'warden'), adminController.updateComplaintStatus);
+
 // ========================================
 // ROOM MANAGEMENT ROUTES
 // ========================================

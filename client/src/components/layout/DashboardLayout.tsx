@@ -26,6 +26,21 @@ const LayoutWrapper = React.memo(({
   currentHostel?: any;
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(() => {
+    // Get sidebar state from localStorage, default to open
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sidebarOpen');
+      return saved !== null ? JSON.parse(saved) : true;
+    }
+    return true;
+  });
+  
+  // Save sidebar state to localStorage when it changes
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sidebarOpen', JSON.stringify(desktopSidebarOpen));
+    }
+  }, [desktopSidebarOpen]);
 
   return (
     <ProtectedRoute>
@@ -43,21 +58,23 @@ const LayoutWrapper = React.memo(({
           </div>
           
           {/* Desktop sidebar */}
-          <div className="hidden md:flex md:flex-shrink-0">
-            <div className="w-64 flex flex-col">
+          <div className={`hidden md:flex md:flex-shrink-0 transition-all duration-300 ease-in-out ${desktopSidebarOpen ? 'w-64' : 'w-0'}`}>
+            <div className={`${desktopSidebarOpen ? 'w-64' : 'w-0'} flex flex-col transition-all duration-300 ease-in-out overflow-hidden`}>
               <Sidebar />
             </div>
           </div>
           
           {/* Main content */}
-          <div className="flex flex-col flex-1 overflow-hidden">
+          <div className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 ease-in-out ${desktopSidebarOpen ? 'ml-0' : 'ml-0'}`}>
             <DashboardHeader 
               onMenuClick={() => setSidebarOpen(true)} 
-              hostel={currentHostel} 
+              hostel={currentHostel}
+              onSidebarToggle={() => setDesktopSidebarOpen(!desktopSidebarOpen)}
+              isSidebarOpen={desktopSidebarOpen}
             />
             
             <div className="flex-1 overflow-auto">
-              <main className="py-6 px-4 sm:px-6 md:px-8">
+              <main className={`py-6 transition-all duration-300 ease-in-out ${desktopSidebarOpen ? 'px-4 sm:px-6 md:px-8' : 'px-4 sm:px-6 md:px-8'}`}>
                 {showCreateForm ? (
                   <CreateHostelForm />
                 ) : currentHostel || showHostelSelector ? (
@@ -73,6 +90,19 @@ const LayoutWrapper = React.memo(({
               </main>
             </div>
           </div>
+          
+          {/* Floating sidebar toggle button when sidebar is hidden */}
+          {!desktopSidebarOpen && (
+            <button
+              onClick={() => setDesktopSidebarOpen(true)}
+              className="fixed left-4 top-1/2 transform -translate-y-1/2 z-30 bg-gray-900 hover:bg-gray-800 text-white p-3 rounded-r-lg shadow-lg transition-all duration-300 ease-in-out border-r border-gray-700 border-t border-gray-700 border-b border-gray-700"
+              aria-label="Show sidebar"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
     </ProtectedRoute>

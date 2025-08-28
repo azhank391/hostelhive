@@ -1,16 +1,15 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { PlusIcon, SearchIcon, FilterIcon } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { useHostel } from '@/context/HostelContext';
-import { useAdminApiWithHostel, useCurrentHostelId, useStudentApiWithHostel } from '@/lib/context-aware-api';
-import { api } from '@/lib/api';
-import toast from '@/lib/toast';
+import { useCurrentHostelId } from '@/lib/context-aware-api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Complaint } from '@/lib/types';
+import toast from '@/lib/toast';
 
 /**
  * 🚀 OPTIMIZED ComplaintManagement Component
@@ -26,9 +25,14 @@ import { Complaint } from '@/lib/types';
 export const ComplaintManagement = React.memo(() => {
   const { user } = useAuth();
   const { hostels } = useHostel();
-  const { hostelId, hasHostel } = useCurrentHostelId();
-  const adminApi = useAdminApiWithHostel();
-  const studentApi = useStudentApiWithHostel();
+  const { hasHostel, getHostelId } = useCurrentHostelId();
+  
+  // Use ref to store stable hostel ID and prevent infinite loops
+  const hostelIdRef = useRef<string | null>(null);
+  const [currentHostelId, setCurrentHostelId] = useState<string | null>(null);
+  
+  // Debug counter to track effect runs
+  const effectRunCount = useRef(0);
   
   // State management
   const [complaints, setComplaints] = useState<Complaint[]>([]);
@@ -64,7 +68,7 @@ export const ComplaintManagement = React.memo(() => {
       filtered = filtered.filter(complaint =>
         complaint.title.toLowerCase().includes(lowercaseQuery) ||
         complaint.description.toLowerCase().includes(lowercaseQuery) ||
-        (complaint.student?.name || '').toLowerCase().includes(lowercaseQuery)
+        (complaint.user?.name || '').toLowerCase().includes(lowercaseQuery)
       );
     }
 
@@ -79,25 +83,49 @@ export const ComplaintManagement = React.memo(() => {
     }, {} as Record<string, number>);
   }, [complaints]);
 
-  // 🚀 PERFORMANCE: Optimized data fetching
+  // 🚀 PERFORMANCE: Optimized data fetching with direct API calls
   const fetchComplaints = useCallback(async () => {
     if (!hasHostel) {
       setLoading(false);
       return;
     }
 
+    // Use ref to get stable hostel ID
+    const currentHostelId = hostelIdRef.current;
+    if (!currentHostelId) {
+      setLoading(false);
+      return;
+    }
+
+    // Prevent multiple simultaneous fetches
+    if (loading) {
+      console.log('⚠️ Already loading, skipping fetch');
+      return;
+    }
+
+    console.log('📡 fetchComplaints called for hostel:', currentHostelId);
+
     try {
       setError(null);
       
-      // Use appropriate API based on user role
-      let response;
-      if (user?.role === 'student') {
-        response = await studentApi.getComplaints();
-      } else {
-        response = await adminApi.getComplaints();
+      // Direct API call to avoid context hook instability
+      const endpoint = user?.role === 'student' 
+        ? `/api/hostels/${currentHostelId}/complaints/student`
+        : `/api/hostels/${currentHostelId}/complaints`;
+        
+      const response = await fetch(endpoint, {
+        headers: { 
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch complaints: ${response.status}`);
       }
       
-      const data = Array.isArray(response) ? response : response?.data || [];
+      const result = await response.json();
+      const data = Array.isArray(result) ? result : result?.data || [];
       setComplaints(data);
       
     } catch (error) {
@@ -108,7 +136,7 @@ export const ComplaintManagement = React.memo(() => {
     } finally {
       setLoading(false);
     }
-  }, [hasHostel, user?.role, adminApi, studentApi]);
+  }, [hasHostel, user?.role]); // Removed getHostelId from dependencies
 
   // 🎯 PERFORMANCE: Optimized refresh handler
   const handleRefresh = useCallback(async () => {
@@ -125,7 +153,7 @@ export const ComplaintManagement = React.memo(() => {
     }
   }, [hasHostel, fetchComplaints]);
 
-  // 🚀 PERFORMANCE: Optimized complaint operations
+  // 🚀 PERFORMANCE: Optimized complaint operations with direct API calls
   const handleCreateComplaint = useCallback(async (complaintData: {
     title: string;
     description: string;
@@ -134,13 +162,37 @@ export const ComplaintManagement = React.memo(() => {
   }) => {
     if (!hasHostel) return;
 
+    const currentHostelId = hostelIdRef.current;
+    if (!currentHostelId) return;
+
     try {
       if (user?.role === 'student') {
-        await studentApi.lodgeComplaint(complaintData);
+        // Direct API call for student complaints
+        const response = await fetch(`/api/hostels/${currentHostelId}/complaints`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(complaintData)
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to create complaint');
+        }
       } else {
-        // For admin, we need to use the direct API since adminApi doesn't have createComplaint
-        if (hostelId) {
-          await api.admin.createComplaint(hostelId, complaintData);
+        // Direct API call for admin complaints
+        const response = await fetch(`/api/hostels/${currentHostelId}/complaints`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(complaintData)
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to create complaint');
         }
       }
       
@@ -151,16 +203,31 @@ export const ComplaintManagement = React.memo(() => {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create complaint';
       toast.error(errorMessage);
     }
-  }, [hasHostel, user?.role, hostelId, studentApi, fetchComplaints]);
+  }, [hasHostel, user?.role, fetchComplaints]);
 
   const handleResolveComplaint = useCallback(async (complaintId: string, resolution: string) => {
     if (!hasHostel) return;
 
+    const currentHostelId = hostelIdRef.current;
+    if (!currentHostelId) return;
+
     try {
-      await adminApi.updateComplaint(complaintId, { 
-        status: 'resolved',
-        resolution: resolution 
+      // Direct API call to update complaint
+      const response = await fetch(`/api/hostels/${currentHostelId}/complaints/${complaintId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          status: 'resolved',
+          resolution: resolution
+        })
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to resolve complaint');
+      }
       
       // Optimistic update
       setComplaints(prev => 
@@ -194,10 +261,40 @@ export const ComplaintManagement = React.memo(() => {
     setFilterPriority(priority);
   }, []);
 
-  // Initial data fetch
+  // Single effect to handle hostel ID updates and initial fetch
   useEffect(() => {
-    fetchComplaints();
-  }, [fetchComplaints]);
+    effectRunCount.current += 1;
+    const newHostelId = getHostelId();
+    console.log(`🔄 Hostel ID effect triggered (run #${effectRunCount.current}):`, { 
+      newHostelId, 
+      currentRef: hostelIdRef.current, 
+      hasHostel,
+      willUpdate: newHostelId && newHostelId !== hostelIdRef.current
+    });
+    
+    if (newHostelId && newHostelId !== hostelIdRef.current) {
+      hostelIdRef.current = newHostelId;
+      setCurrentHostelId(newHostelId);
+      console.log('✅ Hostel ID updated:', newHostelId);
+      
+      // Fetch complaints immediately when hostel ID changes
+      if (hasHostel && newHostelId) {
+        console.log('🚀 Fetching complaints for hostel:', newHostelId);
+        fetchComplaints();
+      }
+    }
+  }, [hasHostel]); // Only depend on hasHostel, not getHostelId or fetchComplaints
+
+  // Debug: Monitor what's changing to identify infinite loop causes
+  useEffect(() => {
+    console.log('🔍 Debug - Dependencies changed:', { 
+      hasHostel,
+      userRole: user?.role,
+      getHostelIdType: typeof getHostelId,
+      hostelIdRefValue: hostelIdRef.current,
+      currentHostelIdState: currentHostelId
+    });
+  }, [hasHostel, user?.role, getHostelId, currentHostelId]);
 
   // Loading and error states
   if (!hasHostel) {
@@ -260,7 +357,7 @@ export const ComplaintManagement = React.memo(() => {
       <div className="flex flex-wrap gap-3">
         <Badge variant="primary">Total: {complaints.length}</Badge>
         <Badge variant="error">Pending: {statusCounts['pending'] || 0}</Badge>
-        <Badge variant="warning">In Progress: {statusCounts['in-progress'] || 0}</Badge>
+                 <Badge variant="warning">In Progress: {statusCounts['in_progress'] || 0}</Badge>
         <Badge variant="success">Resolved: {statusCounts['resolved'] || 0}</Badge>
       </div>
 
@@ -284,7 +381,7 @@ export const ComplaintManagement = React.memo(() => {
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
-            <option value="in-progress">In Progress</option>
+                         <option value="in_progress">In Progress</option>
             <option value="resolved">Resolved</option>
           </select>
           <select
@@ -323,13 +420,13 @@ export const ComplaintManagement = React.memo(() => {
                   <h3 className="text-lg font-semibold text-gray-900">{complaint.title}</h3>
                   <p className="text-gray-600 mt-1">{complaint.description}</p>
                   <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                    <span>By: {complaint.student?.name || 'Unknown Student'}</span>
+                    <span>By: {complaint.user?.name || 'Unknown Student'}</span>
                     <span>•</span>
                     <span>{complaint.createdAt ? new Date(complaint.createdAt).toLocaleDateString() : 'No date'}</span>
-                    {complaint.studentId && (
+                    {complaint.userId && (
                       <>
                         <span>•</span>
-                        <span>Student ID: {complaint.studentId}</span>
+                        <span>User ID: {complaint.userId}</span>
                       </>
                     )}
                   </div>
@@ -347,7 +444,7 @@ export const ComplaintManagement = React.memo(() => {
                   <Badge 
                     variant={
                       complaint.status === 'resolved' ? 'success' :
-                      complaint.status === 'in-progress' ? 'warning' :
+                      complaint.status === 'in_progress' ? 'warning' :
                       complaint.status === 'pending' ? 'error' : 'neutral'
                     }
                   >

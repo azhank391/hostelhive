@@ -56,7 +56,7 @@ interface WardenVisitorStats {
 export const WardenVisitorManagement = React.memo(() => {
   const { user } = useAuth();
   const { hostels } = useHostel();
-  const { hostelId, hasHostel } = useCurrentHostelId();
+  const { getHostelIdSafe, hasHostel } = useCurrentHostelId();
   const adminApi = useAdminApiWithHostel();
   
   // State management
@@ -149,7 +149,14 @@ export const WardenVisitorManagement = React.memo(() => {
     try {
       setError(null);
       
-      console.log('Fetching visitor logs for hostel:', hostelId);
+      const currentHostelId = getHostelIdSafe();
+      if (!currentHostelId) {
+        setError('No hostel selected');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('Fetching visitor logs for hostel:', currentHostelId);
       
       // Use context-aware API for visitor logs
       const response = await adminApi.getVisitorLogs();
@@ -182,7 +189,7 @@ export const WardenVisitorManagement = React.memo(() => {
     } finally {
       setLoading(false);
     }
-  }, [hasHostel, adminApi]);
+  }, [hasHostel]); // 🚀 FIX: Remove adminApi dependency to prevent infinite loop
 
   // 🎯 PERFORMANCE: Optimized refresh handler
   const handleRefresh = useCallback(async () => {
@@ -225,7 +232,7 @@ export const WardenVisitorManagement = React.memo(() => {
       // Revert optimistic update on error
       await fetchVisitorLogs();
     }
-  }, [hasHostel, adminApi, fetchVisitorLogs]);
+  }, [hasHostel, fetchVisitorLogs]);
 
   // 🎯 PERFORMANCE: Optimized event handlers
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {

@@ -8,15 +8,15 @@ interface AuthLayoutProps {
 export function AuthLayout({ children }: AuthLayoutProps) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col">
-      <header className="py-4 px-6 shadow-sm bg-white">
+      <header className="py-4 px-6 shadow-sm bg-gray-900 border-b border-gray-700">
         <div className="max-w-7xl mx-auto w-full flex justify-between items-center">
           <Link href="/" className="flex items-center">
-            <span className="text-[#3B82F6] font-bold text-2xl">
-              Hostel<span className="text-[#10B981]">Hive</span>
+            <span className="text-white font-bold text-2xl">
+              Hostel<span className="text-green-400">Hive</span>
             </span>
           </Link>
           <div className="flex items-center space-x-4">
-            <Link href="/" className="text-gray-600 hover:text-[#3B82F6]">
+            <Link href="/" className="text-gray-300 hover:text-white transition-colors">
               Back to Home
             </Link>
           </div>

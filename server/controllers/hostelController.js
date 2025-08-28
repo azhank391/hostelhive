@@ -5,6 +5,7 @@ const {
   Room,
   Complaint,
   VisitorLog,
+  RoomAllocation,
 } = require("../models");
 const { Op } = require("sequelize");
 
@@ -475,10 +476,18 @@ exports.getDashboardMetrics = async (req, res) => {
 exports.getVisitors = async (req, res) => {
   try {
     const { hostelId } = req.params;
-    const { page = 1, limit = 10, status } = req.query;
+    const { page = 1, limit = 10, status, search } = req.query;
 
     const whereClause = { hostelId };
     if (status) whereClause.status = status;
+
+    // Add search functionality
+    if (search) {
+      whereClause[Op.or] = [
+        { visitorName: { [Op.iLike]: `%${search}%` } },
+        { relation: { [Op.iLike]: `%${search}%` } }
+      ];
+    }
 
     const visitors = await VisitorLog.findAll({
       where: whereClause,
@@ -486,21 +495,39 @@ exports.getVisitors = async (req, res) => {
       offset: (parseInt(page) - 1) * parseInt(limit),
       order: [["createdAt", "DESC"]],
       include: [
-        { model: User, as: "visitor", attributes: ["id", "name", "email"] },
-        { model: User, as: "host", attributes: ["id", "name"] },
-        { model: Room, as: "room", attributes: ["id", "number"] },
+        { 
+          model: User, 
+          as: "student", 
+          attributes: ["id", "name", "email"],
+          where: { hostelId, role: "student" },
+          include: [
+            {
+              model: RoomAllocation,
+              as: "roomAllocations",
+              where: { status: "active" },
+              required: false,
+              include: [
+                {
+                  model: Room,
+                  as: "room",
+                  attributes: ["id", "roomNumber"]
+                }
+              ]
+            }
+          ]
+        }
       ],
     });
 
     const total = await VisitorLog.count({ where: whereClause });
 
     res.json({
-      visitors,
+      data: visitors,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
         total,
-        pages: Math.ceil(total / limit),
+        totalPages: Math.ceil(total / limit),
       },
     });
   } catch (error) {

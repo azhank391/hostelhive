@@ -783,9 +783,27 @@ exports.getAllComplaints = async (req, res) => {
   try {
     // Extract hostelId from URL parameters
     const { hostelId } = req.params;
+    const { page = 1, limit = 10, status, priority, search } = req.query;
 
+    // Build where clause
+    const whereClause = { hostelId };
+    if (status) whereClause.status = status;
+    if (priority) whereClause.priority = priority;
+
+    // Add search functionality
+    if (search) {
+      whereClause[Op.or] = [
+        { title: { [Op.iLike]: `%${search}%` } },
+        { description: { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+
+    // Get total count for pagination
+    const total = await Complaint.count({ where: whereClause });
+
+    // Get complaints with pagination
     const complaints = await Complaint.findAll({
-      where: { hostelId },
+      where: whereClause,
       include: [
         {
           model: User,
@@ -794,9 +812,22 @@ exports.getAllComplaints = async (req, res) => {
         },
       ],
       order: [["createdAt", "DESC"]],
+      limit: parseInt(limit),
+      offset: (parseInt(page) - 1) * parseInt(limit),
     });
 
-    res.json(complaints);
+    // Calculate pagination info
+    const totalPages = Math.ceil(total / parseInt(limit));
+
+    res.json({
+      data: complaints,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: totalPages
+      }
+    });
   } catch (err) {
     console.error("Error fetching complaints:", err);
     res.status(500).json({ message: "Failed to fetch complaints" });
@@ -808,7 +839,7 @@ exports.updateComplaintStatus = async (req, res) => {
     // Extract hostelId from URL parameters
     const { hostelId } = req.params;
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, priority } = req.body;
 
     const complaint = await Complaint.findOne({
       where: { id, hostelId },
@@ -818,7 +849,11 @@ exports.updateComplaintStatus = async (req, res) => {
       return res.status(404).json({ message: "Complaint not found" });
     }
 
-    await complaint.update({ status });
+    const updateData = {};
+    if (status) updateData.status = status;
+    if (priority) updateData.priority = priority;
+
+    await complaint.update(updateData);
     res.json(complaint);
   } catch (err) {
     console.error("Error updating complaint:", err);
@@ -966,8 +1001,7 @@ exports.createVisitorLog = async (req, res) => {
     // Extract hostelId from URL parameters
     const { hostelId } = req.params;
 
-    const { visitorName, visitorPhone, studentId, purpose, entryTime } =
-      req.body;
+    const { visitorName, relation, studentId, checkIn } = req.body;
 
     // Verify student belongs to this hostel
     const student = await User.findOne({
@@ -982,11 +1016,10 @@ exports.createVisitorLog = async (req, res) => {
 
     const visitorLog = await VisitorLog.create({
       visitorName,
-      visitorPhone,
+      relation,
       studentId,
-      purpose,
-      entryTime,
-      hostelId,
+      checkIn: checkIn || new Date(),
+      hostelId
     });
 
     res.status(201).json(visitorLog);
@@ -1000,23 +1033,27 @@ exports.checkoutVisitor = async (req, res) => {
   try {
     // Extract hostelId from URL parameters
     const { hostelId } = req.params;
-    const { id } = req.params;
+    const { visitorId } = req.params;
 
     const visitor = await VisitorLog.findOne({
-      where: { id, hostelId },
+      where: { id: visitorId, hostelId },
     });
 
     if (!visitor) {
       return res.status(404).json({ message: "Visitor log not found" });
     }
 
-    if (visitor.exitTime) {
+    if (visitor.checkOut) {
       return res
         .status(400)
         .json({ message: "Visitor has already checked out" });
     }
 
-    await visitor.update({ exitTime: new Date() });
+    // Update checkOut time
+    await visitor.update({ 
+      checkOut: new Date()
+    });
+    
     res.json({ message: "Visitor checked out successfully", visitor });
   } catch (err) {
     console.error("Error checking out visitor:", err);

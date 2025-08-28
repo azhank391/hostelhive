@@ -9,7 +9,7 @@ import { notification } from '@/lib/toast';
 interface PasswordChangeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (newPassword: string) => Promise<void>;
+  onSubmit: (currentPassword: string, newPassword: string) => Promise<void>;
   isLoading?: boolean;
   userRole?: string; // Add user role to check if modal should be shown
 }
@@ -22,9 +22,11 @@ export function PasswordChangeModal({
   userRole 
 }: PasswordChangeModalProps) {
   const [formData, setFormData] = useState({
+    currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -36,6 +38,10 @@ export function PasswordChangeModal({
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
+
+    if (!formData.currentPassword) {
+      newErrors.currentPassword = 'Current password is required';
+    }
 
     if (!formData.newPassword) {
       newErrors.newPassword = 'New password is required';
@@ -61,11 +67,11 @@ export function PasswordChangeModal({
     if (!validateForm()) return;
 
     try {
-      await onSubmit(formData.newPassword);
-      setFormData({ newPassword: '', confirmPassword: '' });
+      await onSubmit(formData.currentPassword, formData.newPassword);
+      setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setErrors({});
       notification.success('Password changed successfully!', {
-        description: 'You can now use your new password to login.'
+        description: 'You can now access the dashboard with your new password.'
       });
     } catch (error) {
       notification.error('Failed to change password', {
@@ -76,7 +82,7 @@ export function PasswordChangeModal({
 
   const handleClose = () => {
     if (!isLoading) {
-      setFormData({ newPassword: '', confirmPassword: '' });
+      setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setErrors({});
       onClose();
     }
@@ -92,11 +98,41 @@ export function PasswordChangeModal({
           </div>
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Change Your Password</h3>
-            <p className="text-sm text-gray-600">You're using a default password. Please change it now.</p>
+            <p className="text-sm text-gray-600">You're using a default password. We recommend changing it for security.</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Current Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Current Password
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <LockIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <Input
+                type={showCurrentPassword ? 'text' : 'password'}
+                value={formData.currentPassword}
+                onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
+                className="pl-10 pr-10"
+                placeholder="Enter current password"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+              >
+                {showCurrentPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+              </button>
+            </div>
+            {errors.currentPassword && (
+              <p className="mt-1 text-sm text-red-600">{errors.currentPassword}</p>
+            )}
+          </div>
+
           {/* New Password */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -176,13 +212,13 @@ export function PasswordChangeModal({
               className="flex-1"
               disabled={isLoading}
             >
-              Cancel
+              Skip for Now
             </Button>
             <Button
               type="submit"
               variant="primary"
               className="flex-1"
-              disabled={isLoading || !formData.newPassword || !formData.confirmPassword}
+              disabled={isLoading || !formData.currentPassword || !formData.newPassword || !formData.confirmPassword}
             >
               {isLoading ? 'Changing Password...' : 'Change Password'}
             </Button>

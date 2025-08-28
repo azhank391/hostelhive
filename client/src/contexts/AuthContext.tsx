@@ -5,6 +5,7 @@ import { authApi } from '@/lib/api';
 import { notification, apiNotification } from '@/lib/toast';
 import { useRouter } from 'next/navigation';
 import { STORAGE_KEYS } from '@/lib/config';
+import { setOnUnauthorized } from '@/lib/http';
 // Removed hostel-storage import - using direct localStorage access
 import type { 
   AuthUser, 
@@ -129,21 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           userData.activeHostelId = payload.hostelId
         } catch {
           console.log('🔍 DEBUG: verifyToken - failed to parse stored user, creating new user data');
-          // If parsing fails, create new user data
-          userData = {
-            id: payload.id,
-            name: payload.name,
-            email: 'user@example.com', // Fallback email
-            role: payload.role,
-            hostelId: payload.hostelId,
-            isActive: true,
-            token,
-            activeHostelId: payload.hostelId
-          }
-        }
-      } else {
-        console.log('🔍 DEBUG: verifyToken - no stored user data, creating new user data from payload');
-        // Create new user data from payload
+                  // If parsing fails, create new user data
         userData = {
           id: payload.id,
           name: payload.name,
@@ -151,9 +138,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: payload.role,
           hostelId: payload.hostelId,
           isActive: true,
+          requiresPasswordChange: payload.requiresPasswordChange || false,
           token,
           activeHostelId: payload.hostelId
         }
+        }
+      } else {
+        console.log('🔍 DEBUG: verifyToken - no stored user data, creating new user data from payload');
+                  // Create new user data from payload
+          userData = {
+            id: payload.id,
+            name: payload.name,
+            email: 'user@example.com', // Fallback email
+            role: payload.role,
+            hostelId: payload.hostelId,
+            isActive: true,
+            requiresPasswordChange: payload.requiresPasswordChange || false,
+            token,
+            activeHostelId: payload.hostelId
+          }
       }
       
       console.log('🔍 DEBUG: verifyToken - Created user data from payload:', userData);
@@ -174,6 +177,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [router]) // Only depend on router
 
   useEffect(() => {
+    // Set up the unauthorized callback for the HTTP client
+    setOnUnauthorized(() => {
+      console.log('🔍 DEBUG: AuthContext - Unauthorized callback triggered');
+      logout();
+    });
+
     // Don't run if we already have a user
     if (user) {
       console.log('🔍 DEBUG: AuthContext useEffect - user already authenticated, skipping token check');
@@ -265,6 +274,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: data.role as 'owner' | 'admin' | 'warden' | 'student' | 'superadmin', // Allow any role value
           hostelId: data.hostelId,
           isActive: true,
+          requiresPasswordChange: payload.requiresPasswordChange || false,
           token: data.token,
           activeHostelId: data.hostelId
         }

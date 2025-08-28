@@ -1,6 +1,7 @@
 const { User } = require("../models");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const { Op } = require("sequelize");
 
 // ✅ Register New Owner (Public endpoint)
 exports.registerOwner = async (req, res) => {
@@ -145,6 +146,11 @@ exports.loginUser = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
+    // Note: We allow login with default password but will prompt for change later
+    if (user.requiresPasswordChange && password === '123456') {
+      console.log("User logged in with default password, will prompt for change");
+    }
+
     console.log("Login successful for user:", user.id);
 
     if (user.role === "owner") {
@@ -174,6 +180,7 @@ exports.loginUser = async (req, res) => {
           name: h.name,
           subdomain: h.subdomain,
         })),
+        requiresPasswordChange: user.requiresPasswordChange,
       };
 
       console.log("🔍 DEBUG: Creating JWT token with payload:", tokenPayload);
@@ -190,6 +197,7 @@ exports.loginUser = async (req, res) => {
         hostelId: selectedHostelId, // Include hostelId in response
         ownedHostels, // Frontend will show hostel selection if needed
         needsHostelSelection,
+        requiresPasswordChange: user.requiresPasswordChange,
       });
     } else {
       // Warden/Student - they have a specific hostelId
@@ -199,6 +207,7 @@ exports.loginUser = async (req, res) => {
           name: user.name,
           role: user.role,
           hostelId: user.hostelId,
+          requiresPasswordChange: user.requiresPasswordChange,
         },
         process.env.JWT_SECRET,
         { expiresIn: "1d" }
@@ -211,6 +220,7 @@ exports.loginUser = async (req, res) => {
         name: user.name,
         hostelId: user.hostelId,
         needsHostelSelection: false,
+        requiresPasswordChange: user.requiresPasswordChange,
       });
     }
   } catch (err) {
@@ -249,7 +259,7 @@ exports.getUserHostels = async (req, res) => {
 
     if (userRole === "owner") {
       // Owner gets all hostels they own
-      const { Hostel } = require("../models");
+      const { Hostel, TenantLocation } = require("../models");
       hostels = await Hostel.findAll({
         where: { ownerId: userId, isActive: true },
         attributes: [
@@ -258,13 +268,21 @@ exports.getUserHostels = async (req, res) => {
           "subdomain",
           "plan",
           "isActive",
+          "email",
           "createdAt",
+        ],
+        include: [
+          {
+            model: TenantLocation,
+            as: "location",
+            attributes: ["country", "city", "address"],
+          },
         ],
         order: [["createdAt", "DESC"]],
       });
     } else if (userRole === "warden") {
       // Warden gets their assigned hostel
-      const { User, Hostel } = require("../models");
+      const { User, Hostel, TenantLocation } = require("../models");
       const user = await User.findByPk(userId, {
         include: [
           {
@@ -276,7 +294,15 @@ exports.getUserHostels = async (req, res) => {
               "subdomain",
               "plan",
               "isActive",
+              "email",
               "createdAt",
+            ],
+            include: [
+              {
+                model: TenantLocation,
+                as: "location",
+                attributes: ["country", "city", "address"],
+              },
             ],
           },
         ],
@@ -340,5 +366,128 @@ exports.setActiveHostel = async (req, res) => {
   } catch (error) {
     console.error("Error setting active hostel:", error);
     res.status(500).json({ message: "Failed to set active hostel" });
+  }
+};
+
+// ✅ Update User Profile
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, email, phone } = req.body;
+    const userId = req.user.id;
+
+    // Validate required fields
+    if (!name || !email) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Name and email are required' 
+      });
+    }
+
+    // Check if email is already taken by another user
+    // For owners, we don't check hostelId since they can manage multiple hostels
+    const whereClause = req.user.role === 'owner' 
+      ? { email, id: { [Op.ne]: userId } }
+      : { email, hostelId: req.user.hostelId, id: { [Op.ne]: userId } };
+    
+    const existingUser = await User.findOne({ where: whereClause });
+
+    if (existingUser) {
+      return res.status(400).json({ 
+        success: false,
+        message: req.user.role === 'owner' 
+          ? 'Email is already taken by another user' 
+          : 'Email is already taken by another user in this hostel' 
+      });
+    }
+
+    // Update user profile
+    await User.update(
+      { name, email, phone },
+      { where: { id: userId } }
+    );
+
+    res.json({ 
+      success: true,
+      message: 'Profile updated successfully' 
+    });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to update profile' 
+    });
+  }
+};
+
+// ✅ Change User Password
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Current password and new password are required' 
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Password must be at least 6 characters long' 
+      });
+    }
+
+    // Prevent using the default password
+    if (newPassword === '123456') {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Cannot use the default password (123456)' 
+      });
+    }
+
+    // Get current user to verify current password
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
+
+    // Verify current password
+    const bcrypt = require('bcrypt');
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    
+    if (!isPasswordValid) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Current password is incorrect' 
+      });
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update user's password and set requiresPasswordChange to false
+    await User.update(
+      { 
+        password: hashedPassword, 
+        requiresPasswordChange: false 
+      },
+      { where: { id: userId } }
+    );
+
+    res.json({ 
+      success: true,
+      message: 'Password changed successfully' 
+    });
+  } catch (error) {
+    console.error('Error changing password:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to change password' 
+    });
   }
 };

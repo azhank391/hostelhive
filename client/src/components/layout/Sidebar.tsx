@@ -36,12 +36,12 @@ const NavItem = memo(({
   
   const linkClassName = useMemo(() => `
     flex items-center px-4 sm:px-6 py-3 sm:py-2 text-base sm:text-sm font-medium rounded-lg sm:rounded-md transition-all duration-200
-    ${isActive ? 'bg-[#3B82F6] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 active:bg-gray-200'}
+    ${isActive ? 'bg-white text-gray-900 shadow-md' : 'text-gray-300 hover:bg-gray-800 hover:text-white active:bg-gray-700'}
   `, [isActive]);
 
   const countClassName = useMemo(() => `
     ml-auto px-2 py-1 text-xs font-medium rounded-full
-    ${isActive ? 'bg-white text-[#3B82F6]' : 'bg-blue-100 text-blue-800'}
+    ${isActive ? 'bg-gray-900 text-white' : 'bg-gray-700 text-gray-300'}
   `, [isActive]);
   
   return (
@@ -129,7 +129,7 @@ export const Sidebar = memo(({
   );
 
   return (
-    <div className="h-full flex flex-col border-r border-gray-200 bg-white">
+    <div className="h-full flex flex-col border-r border-gray-700 bg-gray-900">
       <div className="flex items-center justify-between h-16 flex-shrink-0 px-4 sm:px-6">
         <div className="flex items-center">
           {/* Only show logo on mobile, hide on larger screens to avoid duplication with header */}
@@ -140,7 +140,7 @@ export const Sidebar = memo(({
         {mobile && onClose && (
           <button 
             onClick={onClose} 
-            className="text-gray-500 hover:text-gray-900 focus:outline-none p-2 rounded-full hover:bg-gray-100 transition-colors touch-manipulation"
+            className="text-gray-400 hover:text-white focus:outline-none p-2 rounded-full hover:bg-gray-800 transition-colors touch-manipulation"
             aria-label="Close sidebar"
           >
             <XIcon size={24} />
@@ -150,7 +150,7 @@ export const Sidebar = memo(({
       
       <div className="flex-1 flex flex-col overflow-y-auto pt-5 lg:pt-2 pb-4">
         <div className="px-3 sm:px-4 mt-2 lg:mt-0">
-          <p className="px-2 sm:px-4 text-sm sm:text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 sm:mb-2">
+          <p className="px-2 sm:px-4 text-sm sm:text-xs font-semibold text-gray-300 uppercase tracking-wider mb-3 sm:mb-2">
             General
           </p>
           <nav className="mt-2 lg:mt-1 space-y-2 sm:space-y-1">
@@ -182,7 +182,7 @@ export const Sidebar = memo(({
         
         {(isOwner || isWarden) && currentHostelId && (
           <div className="px-3 sm:px-4 mt-6 lg:mt-4">
-            <p className="px-2 sm:px-4 text-sm sm:text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 sm:mb-2">
+            <p className="px-2 sm:px-4 text-sm sm:text-xs font-semibold text-gray-300 uppercase tracking-wider mb-3 sm:mb-2">
               People
             </p>
             <nav className="mt-2 lg:mt-1 space-y-2 sm:space-y-1">
@@ -209,7 +209,7 @@ export const Sidebar = memo(({
         )}
         
         <div className="px-3 sm:px-4 mt-6 lg:mt-4">
-            <p className="px-2 sm:px-4 text-sm sm:text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 sm:mb-2">
+            <p className="px-2 sm:px-4 text-sm sm:text-xs font-semibold text-gray-300 uppercase tracking-wider mb-3 sm:mb-2">
               Operations
             </p>
             <nav className="mt-2 lg:mt-1 space-y-2 sm:space-y-1">
@@ -229,7 +229,10 @@ export const Sidebar = memo(({
                 My Complaints
               </NavItem>
             )}
-            <NavItem to={`/dashboard/${user?.role}/settings`} icon={<SettingsIcon size={24} className="sm:w-5 sm:h-5" />}>
+            <NavItem 
+              to={isOwner && currentHostelId ? `/dashboard/hostels/${currentHostelId}/settings` : `/dashboard/${user?.role}/settings`} 
+              icon={<SettingsIcon size={24} className="sm:w-5 sm:h-5" />}
+            >
               Settings
             </NavItem>
             <NavItem to={`/dashboard/${user?.role}/help`} icon={<HelpCircleIcon size={24} className="sm:w-5 sm:h-5" />}>
@@ -239,14 +242,14 @@ export const Sidebar = memo(({
         </div>
       </div>
       
-      <div className="flex-shrink-0 flex border-t border-gray-200 p-4 sm:p-6">
+      <div className="flex-shrink-0 flex border-t border-gray-700 p-4 sm:p-6">
         <div className="flex items-center w-full">
           <div className="h-12 w-12 sm:h-10 sm:w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium text-lg sm:text-lg flex-shrink-0">
             {userInitial}
           </div>
           <div className="ml-3 sm:ml-3 flex-1 min-w-0">
-            <p className="text-base sm:text-sm font-semibold text-gray-700 truncate">{user?.name || 'Loading...'}</p>
-            <p className="text-sm sm:text-xs text-gray-500 capitalize truncate">{user?.role || '...'}</p>
+            <p className="text-base sm:text-sm font-semibold text-white truncate">{user?.name || 'Loading...'}</p>
+            <p className="text-sm sm:text-xs text-gray-300 capitalize truncate">{user?.role || '...'}</p>
           </div>
         </div>
       </div>

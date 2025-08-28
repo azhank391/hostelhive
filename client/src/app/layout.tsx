@@ -7,6 +7,7 @@ import { ToastProvider } from '@/providers/ToastProvider'
 import { SubdomainProvider } from '@/context/SubdomainContext'
 import { HostelProvider } from '@/context/HostelContext'
 import { ConditionalHostelModal } from '@/components/ConditionalHostelModal'
+import { PasswordChangeRequirement } from '@/components/auth/PasswordChangeRequirement'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -30,6 +31,7 @@ export default function RootLayout({
                 {children}
               </main>
               <ConditionalHostelModal />
+              <PasswordChangeRequirement />
               <ToastProvider />
             </HostelProvider>
           </AuthProvider>

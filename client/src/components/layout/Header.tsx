@@ -12,72 +12,72 @@ export function Header() {
   };
   
   return (
-    <header className="sticky top-0 z-50 w-full bg-white shadow-sm">
+    <header className="sticky top-0 z-50 w-full bg-gray-900 shadow-sm border-b border-gray-700">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center">
           <Link href="/" className="flex items-center">
-            <span className="text-[#3B82F6] font-bold text-2xl">
-              Hostel<span className="text-[#10B981]">Hive</span>
+            <span className="text-white font-bold text-2xl">
+              Hostel<span className="text-green-400">Hive</span>
             </span>
           </Link>
         </div>
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8">
-          <Link href="/" className="text-[#6B7280] hover:text-[#3B82F6] font-medium">
+          <Link href="/" className="text-gray-300 hover:text-white font-medium transition-colors">
             Home
           </Link>
-          <a href="#features" className="text-[#6B7280] hover:text-[#3B82F6] font-medium">
+          <a href="#features" className="text-gray-300 hover:text-white font-medium transition-colors">
             Features
           </a>
-          <a href="#pricing" className="text-[#6B7280] hover:text-[#3B82F6] font-medium">
+          <a href="#pricing" className="text-gray-300 hover:text-white font-medium transition-colors">
             Pricing
           </a>
-          <a href="#" className="text-[#6B7280] hover:text-[#3B82F6] font-medium">
+          <a href="#" className="text-gray-300 hover:text-white font-medium transition-colors">
             About
           </a>
-          <a href="#" className="text-[#6B7280] hover:text-[#3B82F6] font-medium">
+          <a href="#" className="text-gray-300 hover:text-white font-medium transition-colors">
             Contact
           </a>
-          <a href="#" className="text-[#6B7280] hover:text-[#3B82F6] font-medium">
+          <a href="#" className="text-gray-300 hover:text-white font-medium transition-colors">
             Blog
           </a>
         </nav>
         <div className="hidden md:flex items-center space-x-4">
           <Link href="/auth/login">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="text-white border-gray-600 hover:bg-gray-800 hover:border-gray-500">
               Login
             </Button>
           </Link>
           <Link href="/auth/register-owner">
-            <Button size="sm">Get Started</Button>
+            <Button size="sm" className="bg-green-600 hover:bg-green-700">Get Started</Button>
           </Link>
         </div>
         {/* Mobile menu button */}
-        <button className="md:hidden text-[#6B7280] hover:text-[#3B82F6]" onClick={toggleMenu} aria-label="Toggle menu">
+        <button className="md:hidden text-gray-300 hover:text-white transition-colors" onClick={toggleMenu} aria-label="Toggle menu">
           {isMenuOpen ? <XIcon size={24} /> : <MenuIcon size={24} />}
         </button>
       </div>
       {/* Mobile Navigation */}
       {isMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-100">
+        <div className="md:hidden bg-gray-800 border-t border-gray-700">
           <div className="container mx-auto px-4 py-4">
             <nav className="flex flex-col space-y-4">
-              <Link href="/" className="text-[#6B7280] hover:text-[#3B82F6] font-medium py-2">
+              <Link href="/" className="text-gray-300 hover:text-white font-medium py-2 transition-colors">
                 Home
               </Link>
-              <a href="#features" className="text-[#6B7280] hover:text-[#3B82F6] font-medium py-2">
+              <a href="#features" className="text-gray-300 hover:text-white font-medium py-2 transition-colors">
                 Features
               </a>
-              <a href="#pricing" className="text-[#6B7280] hover:text-[#3B82F6] font-medium py-2">
+              <a href="#pricing" className="text-gray-300 hover:text-white font-medium py-2 transition-colors">
                 Pricing
               </a>
-              <a href="#" className="text-[#6B7280] hover:text-[#3B82F6] font-medium py-2">
+              <a href="#" className="text-gray-300 hover:text-white font-medium py-2 transition-colors">
                 About
               </a>
-              <a href="#" className="text-[#6B7280] hover:text-[#3B82F6] font-medium py-2">
+              <a href="#" className="text-gray-300 hover:text-white font-medium py-2 transition-colors">
                 Contact
               </a>
-              <a href="#" className="text-[#6B7280] hover:text-[#3B82F6] font-medium py-2">
+              <a href="#" className="text-gray-300 hover:text-white font-medium py-2 transition-colors">
                 Blog
               </a>
               <div className="flex flex-col space-y-3 pt-4">
