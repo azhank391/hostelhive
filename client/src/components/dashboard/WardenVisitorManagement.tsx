@@ -16,7 +16,16 @@ import {
   RefreshCwIcon,
   LogOutIcon,
   DownloadIcon,
-  FilterIcon
+  FilterIcon,
+  PlusIcon,
+  EditIcon,
+  TrashIcon,
+  XIcon,
+  CheckIcon,
+  UserIcon,
+  MailIcon,
+  PhoneIcon,
+  CalendarIcon
 } from 'lucide-react';
 
 interface VisitorLog {
@@ -26,12 +35,19 @@ interface VisitorLog {
   checkIn: string;
   checkOut?: string;
   studentId: string;
-  student: {
+  student?: {
+    id: string;
     name: string;
     email: string;
   };
   createdAt: string;
   status?: 'active' | 'checked_out';
+}
+
+interface VisitorFormData {
+  visitorName: string;
+  relation: string;
+  studentId: string;
 }
 
 interface WardenVisitorStats {
@@ -41,8 +57,325 @@ interface WardenVisitorStats {
   pendingCheckouts: number;
 }
 
+// Modal Components
+interface CreateVisitorModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: VisitorFormData) => Promise<void>;
+  students: Array<{ id: string; name: string; email: string }>;
+  loading?: boolean;
+}
+
+const CreateVisitorModal: React.FC<CreateVisitorModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSubmit, 
+  students,
+  loading = false 
+}) => {
+  const [formData, setFormData] = useState<VisitorFormData>({
+    visitorName: '',
+    relation: '',
+    studentId: ''
+  });
+  const [errors, setErrors] = useState<Partial<VisitorFormData>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validation
+    const newErrors: Partial<VisitorFormData> = {};
+    if (!formData.visitorName.trim()) newErrors.visitorName = 'Visitor name is required';
+    if (!formData.relation.trim()) newErrors.relation = 'Relation is required';
+    if (!formData.studentId) newErrors.studentId = 'Student is required';
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await onSubmit(formData);
+      setFormData({ visitorName: '', relation: '', studentId: '' });
+      setErrors({});
+    } catch (error) {
+      // Error handled by parent component
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleInputChange = (field: keyof VisitorFormData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={onClose} />
+        
+        <div className="relative w-full max-w-md bg-white rounded-lg shadow-xl">
+          <div className="flex items-center justify-between p-6 border-b">
+            <h3 className="text-lg font-medium text-gray-900">Check In New Visitor</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <XIcon className="h-5 w-5" />
+            </button>
+          </div>
+          
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Visitor Name <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                <Input
+                  type="text"
+                  value={formData.visitorName}
+                  onChange={(e) => handleInputChange('visitorName', e.target.value)}
+                  placeholder="Enter visitor's full name"
+                  className={`pl-10 ${errors.visitorName ? 'border-red-500' : ''}`}
+                  disabled={isSubmitting}
+                />
+              </div>
+              {errors.visitorName && <p className="mt-1 text-sm text-red-600">{errors.visitorName}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Relation to Student <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <UsersIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                <Input
+                  type="text"
+                  value={formData.relation}
+                  onChange={(e) => handleInputChange('relation', e.target.value)}
+                  placeholder="e.g., Parent, Sibling, Friend"
+                  className={`pl-10 ${errors.relation ? 'border-red-500' : ''}`}
+                  disabled={isSubmitting}
+                />
+              </div>
+              {errors.relation && <p className="mt-1 text-sm text-red-600">{errors.relation}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Student <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.studentId}
+                onChange={(e) => handleInputChange('studentId', e.target.value)}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors.studentId ? 'border-red-500' : ''
+                }`}
+                disabled={isSubmitting || loading}
+              >
+                <option value="">Select a student</option>
+                {students.map(student => (
+                  <option key={student.id} value={student.id}>
+                    {student.name} ({student.email})
+                  </option>
+                ))}
+              </select>
+              {errors.studentId && <p className="mt-1 text-sm text-red-600">{errors.studentId}</p>}
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button type="button" onClick={onClose} variant="outline" disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting} className="flex items-center">
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Checking In...
+                  </>
+                ) : (
+                  <>
+                    <CheckIcon size={16} className="mr-2" />
+                    Check In Visitor
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface EditVisitorModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  visitor: VisitorLog | null;
+  onSubmit: (data: Partial<VisitorFormData>) => Promise<void>;
+  students: Array<{ id: string; name: string; email: string }>;
+}
+
+const EditVisitorModal: React.FC<EditVisitorModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  visitor, 
+  onSubmit, 
+  students 
+}) => {
+  const [formData, setFormData] = useState<Partial<VisitorFormData>>({});
+  const [errors, setErrors] = useState<Partial<VisitorFormData>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Update form data when visitor changes
+  useEffect(() => {
+    if (visitor) {
+      setFormData({
+        visitorName: visitor.visitorName,
+        relation: visitor.relation,
+        studentId: visitor.studentId
+      });
+      setErrors({});
+    }
+  }, [visitor]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validation
+    const newErrors: Partial<VisitorFormData> = {};
+    if (!formData.visitorName?.trim()) newErrors.visitorName = 'Visitor name is required';
+    if (!formData.relation?.trim()) newErrors.relation = 'Relation is required';
+    if (!formData.studentId) newErrors.studentId = 'Student is required';
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await onSubmit(formData);
+    } catch (error) {
+      // Error handled by parent component
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleInputChange = (field: keyof VisitorFormData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  if (!isOpen || !visitor) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={onClose} />
+        
+        <div className="relative w-full max-w-md bg-white rounded-lg shadow-xl">
+          <div className="flex items-center justify-between p-6 border-b">
+            <h3 className="text-lg font-medium text-gray-900">Edit Visitor</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <XIcon className="h-5 w-5" />
+            </button>
+          </div>
+          
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Visitor Name <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                <Input
+                  type="text"
+                  value={formData.visitorName || ''}
+                  onChange={(e) => handleInputChange('visitorName', e.target.value)}
+                  placeholder="Enter visitor's full name"
+                  className={`pl-10 ${errors.visitorName ? 'border-red-500' : ''}`}
+                  disabled={isSubmitting}
+                />
+              </div>
+              {errors.visitorName && <p className="mt-1 text-sm text-red-600">{errors.visitorName}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Relation to Student <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <UsersIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                <Input
+                  type="text"
+                  value={formData.relation || ''}
+                  onChange={(e) => handleInputChange('relation', e.target.value)}
+                  placeholder="e.g., Parent, Sibling, Friend"
+                  className={`pl-10 ${errors.relation ? 'border-red-500' : ''}`}
+                  disabled={isSubmitting}
+                />
+              </div>
+              {errors.relation && <p className="mt-1 text-sm text-red-600">{errors.relation}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Student <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.studentId || ''}
+                onChange={(e) => handleInputChange('studentId', e.target.value)}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors.studentId ? 'border-red-500' : ''
+                }`}
+                disabled={isSubmitting}
+              >
+                <option value="">Select a student</option>
+                {students.map(student => (
+                  <option key={student.id} value={student.id}>
+                    {student.name} ({student.email})
+                  </option>
+                ))}
+              </select>
+              {errors.studentId && <p className="mt-1 text-sm text-red-600">{errors.studentId}</p>}
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button type="button" onClick={onClose} variant="outline" disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting} className="flex items-center">
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <CheckIcon size={16} className="mr-2" />
+                    Update Visitor
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /**
- * 🚀 OPTIMIZED WardenVisitorManagement Component
+ * 🚀 OPTIMIZED WardenVisitorManagement Component with OPTIMISTIC UPDATES
  * 
  * Performance Improvements:
  * ✅ React.memo for re-render prevention
@@ -52,6 +385,12 @@ interface WardenVisitorStats {
  * ✅ Batch operations for better performance
  * ✅ Optimized search and filtering
  * ✅ Real-time statistics calculation
+ * 
+ * 🎯 OPTIMISTIC UPDATES:
+ * ✅ CREATE: Shows new visitor immediately
+ * ✅ UPDATE: Updates UI instantly, rolls back on error
+ * ✅ DELETE: Removes visitor immediately, restores on error
+ * ✅ CHECKOUT: Shows checkout immediately, rolls back on error
  */
 export const WardenVisitorManagement = React.memo(() => {
   const { user } = useAuth();
@@ -61,6 +400,7 @@ export const WardenVisitorManagement = React.memo(() => {
   
   // State management
   const [visitorLogs, setVisitorLogs] = useState<VisitorLog[]>([]);
+  const [students, setStudents] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -69,6 +409,11 @@ export const WardenVisitorManagement = React.memo(() => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'checked_out'>('all');
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all');
+  
+  // Modal states
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedVisitor, setSelectedVisitor] = useState<VisitorLog | null>(null);
 
   // 🎯 PERFORMANCE: Memoized visitor filtering and search
   const filteredVisitors = useMemo(() => {
@@ -109,7 +454,7 @@ export const WardenVisitorManagement = React.memo(() => {
       const lowercaseQuery = searchQuery.toLowerCase();
       filtered = filtered.filter(visitor =>
         visitor.visitorName.toLowerCase().includes(lowercaseQuery) ||
-        visitor.student.name.toLowerCase().includes(lowercaseQuery) ||
+        (visitor.student?.name || 'Unknown Student').toLowerCase().includes(lowercaseQuery) ||
         visitor.relation.toLowerCase().includes(lowercaseQuery)
       );
     }
@@ -156,30 +501,37 @@ export const WardenVisitorManagement = React.memo(() => {
         return;
       }
       
-      console.log('Fetching visitor logs for hostel:', currentHostelId);
+      // Fetch visitor logs and students in parallel
+      const [visitorResponse, studentsResponse] = await Promise.all([
+        adminApi.getVisitorLogs(),
+        adminApi.getStudents()
+      ]);
       
-      // Use context-aware API for visitor logs
-      const response = await adminApi.getVisitorLogs();
-      
-      console.log('API Response:', response);
-      
-      // Handle both direct array and paginated response
-      const data = Array.isArray(response) ? response : 
-                   (typeof response === 'object' && response !== null && 'data' in response ? 
-                     ((response as { data: VisitorLog[] }).data) : 
+      // Process visitor logs
+      const visitorData = Array.isArray(visitorResponse) ? visitorResponse : 
+                   (typeof visitorResponse === 'object' && visitorResponse !== null && 'data' in visitorResponse ? 
+                     ((visitorResponse as { data: VisitorLog[] }).data) : 
                      []);
       
-      console.log('Processed data:', data);
+      // Process students
+      const studentsData = Array.isArray(studentsResponse) ? studentsResponse : 
+                          (typeof studentsResponse === 'object' && studentsResponse !== null && 'data' in studentsResponse ? 
+                            ((studentsResponse as { data: any[] }).data) : 
+                            []);
       
-      // Process and enrich visitor data
-      const processedLogs = data.map(log => ({
+      // Process and enrich visitor data with student information
+      const processedLogs = visitorData.map(log => ({
         ...log,
-        status: log.checkOut ? 'checked_out' as const : 'active' as const
+        status: log.checkOut ? 'checked_out' as const : 'active' as const,
+        student: studentsData.find(s => s.id === log.studentId) || {
+          id: log.studentId,
+          name: 'Unknown Student',
+          email: 'N/A'
+        }
       }));
       
-      console.log('Final processed logs:', processedLogs);
-      
       setVisitorLogs(processedLogs);
+      setStudents(studentsData);
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch visitor logs';
@@ -189,7 +541,7 @@ export const WardenVisitorManagement = React.memo(() => {
     } finally {
       setLoading(false);
     }
-  }, [hasHostel]); // 🚀 FIX: Remove adminApi dependency to prevent infinite loop
+  }, [hasHostel, adminApi, getHostelIdSafe]);
 
   // 🎯 PERFORMANCE: Optimized refresh handler
   const handleRefresh = useCallback(async () => {
@@ -199,79 +551,215 @@ export const WardenVisitorManagement = React.memo(() => {
     try {
       await fetchVisitorLogs();
       toast.success('Visitor data refreshed successfully!');
-    } catch (err) {
+    } catch (error) {
       toast.error('Failed to refresh visitor data');
     } finally {
       setRefreshing(false);
     }
   }, [hasHostel, fetchVisitorLogs]);
 
-  // 🚀 PERFORMANCE: Optimized checkout operation
-  const handleCheckoutVisitor = useCallback(async (visitorId: string) => {
-    if (!hasHostel || !confirm('Are you sure you want to check out this visitor?')) {
+  // 🚀 PERFORMANCE: Optimized CRUD handlers with useCallback
+  const handleCreateVisitor = useCallback(async (data: VisitorFormData) => {
+    if (!hasHostel) return;
+    
+    // Generate temporary ID for optimistic update
+    const tempId = `temp-visitor-${Date.now()}`;
+    const student = students.find(s => s.id === data.studentId);
+    
+    if (!student) {
+      toast.error('Selected student not found');
+      return;
+    }
+    
+    const optimisticVisitor: VisitorLog = {
+      id: tempId,
+      visitorName: data.visitorName,
+      relation: data.relation,
+      checkIn: new Date().toISOString(),
+      studentId: data.studentId,
+      student: student,
+      createdAt: new Date().toISOString(),
+      status: 'active'
+    };
+    
+    // 1. Update UI immediately (optimistic)
+    setVisitorLogs(prev => [...prev, optimisticVisitor]);
+    setShowCreateModal(false);
+    toast.success('Visitor checked in successfully!');
+    
+    try {
+      // 2. Send request to server
+      await adminApi.createVisitorLog(data);
+      
+      // 3. Refresh data to get real visitor data
+      await fetchVisitorLogs();
+    } catch (err) {
+      // 4. Rollback on error
+      setVisitorLogs(prev => prev.filter(v => v.id !== tempId));
+      const errorMessage = err instanceof Error ? err.message : 'Failed to check in visitor';
+      toast.error(errorMessage);
+      throw err;
+    }
+  }, [hasHostel, adminApi, students, fetchVisitorLogs]);
+
+  const handleUpdateVisitor = useCallback(async (data: Partial<VisitorFormData>) => {
+    if (!selectedVisitor || !hasHostel) return;
+    
+    // 1. Store original data for rollback
+    const originalVisitor = visitorLogs.find(v => v.id === selectedVisitor.id);
+    if (!originalVisitor) return;
+    
+    // 2. Update UI immediately (optimistic)
+    const updatedVisitor = { ...originalVisitor, ...data };
+    if (data.studentId && data.studentId !== originalVisitor.studentId) {
+      const student = students.find(s => s.id === data.studentId);
+      if (student) {
+        updatedVisitor.student = student;
+      }
+    }
+    
+    setVisitorLogs(prev => 
+      prev.map(v => v.id === selectedVisitor.id ? updatedVisitor : v)
+    );
+    setShowEditModal(false);
+    setSelectedVisitor(null);
+    toast.success('Visitor updated successfully!');
+    
+    try {
+      // 3. Send request to server
+      await adminApi.updateVisitorLog(selectedVisitor.id, data);
+      
+      // 4. Refresh data to get real visitor data
+      await fetchVisitorLogs();
+    } catch (err) {
+      // 5. Rollback on error
+      setVisitorLogs(prev => 
+        prev.map(v => v.id === selectedVisitor.id ? originalVisitor : v)
+      );
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update visitor';
+      toast.error(errorMessage);
+      throw err;
+    }
+  }, [selectedVisitor, hasHostel, adminApi, visitorLogs, students, fetchVisitorLogs]);
+
+  const handleDeleteVisitor = useCallback(async (visitorId: string) => {
+    if (!hasHostel || !confirm('Are you sure you want to delete this visitor log? This action cannot be undone.')) {
       return;
     }
 
+    // 1. Store original data for rollback
+    const originalVisitor = visitorLogs.find(v => v.id === visitorId);
+    if (!originalVisitor) return;
+    
+    // 2. Remove from UI immediately (optimistic)
+    setVisitorLogs(prev => prev.filter(v => v.id !== visitorId));
+    toast.success('Visitor log deleted successfully!');
+    
     try {
+      // 3. Send request to server
+      await adminApi.deleteVisitorLog(visitorId);
+    } catch (err) {
+      // 4. Rollback on error - restore the visitor
+      setVisitorLogs(prev => {
+        const exists = prev.find(v => v.id === visitorId);
+        if (!exists) {
+          // Insert back in original position
+          const originalIndex = visitorLogs.findIndex(v => v.id === visitorId);
+          const newArray = [...prev];
+          newArray.splice(originalIndex, 0, originalVisitor);
+          return newArray;
+        }
+        return prev;
+      });
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete visitor log';
+      toast.error(errorMessage);
+    }
+  }, [hasHostel, adminApi, visitorLogs]);
+
+  const handleCheckoutVisitor = useCallback(async (visitorId: string) => {
+    if (!hasHostel) return;
+    
+    // 1. Update UI immediately (optimistic)
+    const now = new Date().toISOString();
+    setVisitorLogs(prev => 
+      prev.map(v => 
+        v.id === visitorId 
+          ? { ...v, checkOut: now, status: 'checked_out' as const }
+          : v
+      )
+    );
+    toast.success('Visitor checked out successfully!');
+    
+    try {
+      // 2. Send request to server
       await adminApi.checkoutVisitor(visitorId);
       
-      // Optimistic update
+      // 3. Refresh data to get real visitor data
+      await fetchVisitorLogs();
+    } catch (err) {
+      // 4. Rollback on error
       setVisitorLogs(prev => 
-        prev.map(visitor => 
-          visitor.id === visitorId 
-            ? { ...visitor, checkOut: new Date().toISOString(), status: 'checked_out' as const }
-            : visitor
+        prev.map(v => 
+          v.id === visitorId 
+            ? { ...v, checkOut: undefined, status: 'active' as const }
+            : v
         )
       );
-      
-      toast.success('Visitor checked out successfully!');
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to check out visitor';
-      toast.error(`Failed to check out visitor: ${errorMessage}`);
-      
-      // Revert optimistic update on error
-      await fetchVisitorLogs();
+      const errorMessage = err instanceof Error ? err.message : 'Failed to check out visitor';
+      toast.error(errorMessage);
+      throw err;
     }
-  }, [hasHostel, fetchVisitorLogs]);
+  }, [hasHostel, adminApi, fetchVisitorLogs]);
 
-  // 🎯 PERFORMANCE: Optimized event handlers
+  // 🎯 PERFORMANCE: Optimized event handlers with useCallback
+  const handleEditClick = useCallback((visitor: VisitorLog) => {
+    setSelectedVisitor(visitor);
+    setShowEditModal(true);
+  }, []);
+
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   }, []);
 
-  const handleStatusFilterChange = useCallback((status: 'all' | 'active' | 'checked_out') => {
-    setStatusFilter(status);
+  const handleStatusFilterChange = useCallback((filter: 'all' | 'active' | 'checked_out') => {
+    setStatusFilter(filter);
   }, []);
 
-  const handleDateFilterChange = useCallback((date: 'today' | 'week' | 'month' | 'all') => {
-    setDateFilter(date);
+  const handleDateFilterChange = useCallback((filter: 'today' | 'week' | 'month' | 'all') => {
+    setDateFilter(filter);
   }, []);
 
-  const formatDateTime = useCallback((dateString: string) => {
-    return new Date(dateString).toLocaleString();
-  }, []);
-
-  const getVisitorDuration = useCallback((checkIn: string, checkOut?: string) => {
-    const start = new Date(checkIn);
-    const end = checkOut ? new Date(checkOut) : new Date();
-    const diffInMinutes = Math.floor((end.getTime() - start.getTime()) / (1000 * 60));
-    
-    if (diffInMinutes < 60) return `${diffInMinutes}m`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ${diffInMinutes % 60}m`;
-    return `${Math.floor(diffInMinutes / 1440)}d ${Math.floor((diffInMinutes % 1440) / 60)}h`;
-  }, []);
-
-  // Initial data fetch
+  // Initial data fetch when hostel changes
   useEffect(() => {
-    fetchVisitorLogs();
-  }, [fetchVisitorLogs]);
+    if (hasHostel) {
+      fetchVisitorLogs();
+    }
+  }, [hasHostel, fetchVisitorLogs]);
 
-  // Loading and error states
+  // Utility functions
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString();
+  };
+
+  const getVisitorDuration = (checkIn: string, checkOut?: string) => {
+    const checkInTime = new Date(checkIn);
+    const checkOutTime = checkOut ? new Date(checkOut) : new Date();
+    const durationMs = checkOutTime.getTime() - checkInTime.getTime();
+    
+    const hours = Math.floor(durationMs / (1000 * 60 * 60));
+    const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+  };
+
+  // Loading state
   if (!hasHostel) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <UsersIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Hostel Selected</h3>
           <p className="text-gray-600">Please select a hostel to manage visitors.</p>
         </div>
@@ -290,12 +778,16 @@ export const WardenVisitorManagement = React.memo(() => {
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-md p-4">
-        <h3 className="text-sm font-medium text-red-800">Error loading visitor data</h3>
-        <div className="mt-2 text-sm text-red-700">{error}</div>
-        <div className="mt-4">
-          <Button onClick={handleRefresh} variant="outline" size="sm">
-            Try Again
-          </Button>
+        <div className="flex">
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-red-800">Error loading visitors</h3>
+            <div className="mt-2 text-sm text-red-700">{error}</div>
+            <div className="mt-4">
+              <Button onClick={handleRefresh} variant="outline" size="sm">
+                Try Again
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -303,17 +795,12 @@ export const WardenVisitorManagement = React.memo(() => {
 
   return (
     <div className="space-y-6">
-      {/* Header with stats */}
+      {/* Header with optimized stats */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Visitor Management</h1>
           <p className="mt-1 text-gray-600">
-            {stats.currentVisitors} active visitors • {stats.todayVisitors} today
-            {stats.pendingCheckouts > 0 && (
-              <span className="ml-2 text-orange-600 font-medium">
-                • {stats.pendingCheckouts} pending checkout
-              </span>
-            )}
+            {stats.totalVisitors} total visitors • {stats.currentVisitors} currently active • {stats.todayVisitors} today
           </p>
         </div>
         <div className="mt-4 md:mt-0 flex gap-3">
@@ -323,20 +810,26 @@ export const WardenVisitorManagement = React.memo(() => {
             disabled={refreshing}
             className="flex items-center"
           >
-            <RefreshCwIcon size={16} className={`mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             {refreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
+          <Button 
+            onClick={() => setShowCreateModal(true)} 
+            className="flex items-center"
+          >
+            <PlusIcon size={16} className="mr-2" />
+            Check In Visitor
           </Button>
         </div>
       </div>
 
-      {/* Stats grid */}
+      {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-lg shadow border">
           <div className="flex items-center">
             <UsersIcon className="h-8 w-8 text-blue-600" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">Total Visitors</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalVisitors}</p>
+              <p className="text-sm font-medium text-gray-600">Total Visitors</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.totalVisitors}</p>
             </div>
           </div>
         </div>
@@ -345,69 +838,69 @@ export const WardenVisitorManagement = React.memo(() => {
           <div className="flex items-center">
             <CheckCircleIcon className="h-8 w-8 text-green-600" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">Currently Inside</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.currentVisitors}</p>
+              <p className="text-sm font-medium text-gray-600">Currently Active</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.currentVisitors}</p>
             </div>
           </div>
         </div>
         
         <div className="bg-white p-4 rounded-lg shadow border">
           <div className="flex items-center">
-            <ClockIcon className="h-8 w-8 text-purple-600" />
+            <ClockIcon className="h-8 w-8 text-yellow-600" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">Today's Visitors</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.todayVisitors}</p>
+              <p className="text-sm font-medium text-gray-600">Today's Visitors</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.todayVisitors}</p>
             </div>
           </div>
         </div>
         
         <div className="bg-white p-4 rounded-lg shadow border">
           <div className="flex items-center">
-            <AlertCircleIcon className={`h-8 w-8 ${stats.pendingCheckouts > 0 ? 'text-orange-600' : 'text-gray-400'}`} />
+            <AlertCircleIcon className="h-8 w-8 text-red-600" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">Pending Checkout</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.pendingCheckouts}</p>
+              <p className="text-sm font-medium text-gray-600">Pending Checkouts</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.pendingCheckouts}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filters and search */}
-      <div className="flex flex-col sm:flex-row gap-3 items-center">
-        <div className="w-full sm:w-auto flex-grow relative">
+      {/* Search and Filters */}
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex-1 relative">
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
           <Input
             type="text"
-            placeholder="Search by visitor name, student, or room..."
+            placeholder="Search visitors by name, student, or relation..."
             value={searchQuery}
             onChange={handleSearchChange}
             className="pl-10"
           />
         </div>
-        <div className="flex gap-2">
-          <select
-            value={statusFilter}
-            onChange={(e) => handleStatusFilterChange(e.target.value as any)}
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="checked_out">Checked Out</option>
-          </select>
-          <select
-            value={dateFilter}
-            onChange={(e) => handleDateFilterChange(e.target.value as any)}
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-          >
-            <option value="all">All Time</option>
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-          </select>
-        </div>
+        
+        <select
+          value={statusFilter}
+          onChange={(e) => handleStatusFilterChange(e.target.value as 'all' | 'active' | 'checked_out')}
+          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="all">All Status</option>
+          <option value="active">Active Only</option>
+          <option value="checked_out">Checked Out</option>
+        </select>
+        
+        <select
+          value={dateFilter}
+          onChange={(e) => handleDateFilterChange(e.target.value as 'today' | 'week' | 'month' | 'all')}
+          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="all">All Time</option>
+          <option value="today">Today</option>
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
+        </select>
       </div>
 
-      {/* Visitor list */}
+      {/* Optimized visitor list rendering */}
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {filteredVisitors.length === 0 ? (
           <div className="text-center py-12">
@@ -422,6 +915,14 @@ export const WardenVisitorManagement = React.memo(() => {
                 ? 'Try adjusting your search or filters'
                 : 'Visitor logs will appear here when visitors check in'}
             </p>
+            {!searchQuery && statusFilter === 'all' && dateFilter === 'all' && (
+              <div className="mt-6">
+                <Button onClick={() => setShowCreateModal(true)}>
+                  <PlusIcon size={16} className="mr-2" />
+                  Check In First Visitor
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -458,7 +959,12 @@ export const WardenVisitorManagement = React.memo(() => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{visitor.student.name}</div>
+                      <div className="text-sm text-gray-900">
+                        {visitor.student?.name || 'Unknown Student'}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {visitor.student?.email || 'N/A'}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
@@ -484,7 +990,7 @@ export const WardenVisitorManagement = React.memo(() => {
                         {visitor.checkOut ? 'Checked Out' : 'Active'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                       {!visitor.checkOut && (
                         <Button
                           onClick={() => handleCheckoutVisitor(visitor.id)}
@@ -496,6 +1002,24 @@ export const WardenVisitorManagement = React.memo(() => {
                           Check Out
                         </Button>
                       )}
+                      <Button
+                        onClick={() => handleEditClick(visitor)}
+                        variant="outline"
+                        size="sm"
+                        className="inline-flex items-center text-gray-600 hover:text-gray-700"
+                      >
+                        <EditIcon size={14} className="mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        onClick={() => handleDeleteVisitor(visitor.id)}
+                        variant="outline"
+                        size="sm"
+                        className="inline-flex items-center text-red-600 hover:text-red-700"
+                      >
+                        <TrashIcon size={14} className="mr-1" />
+                        Delete
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -511,6 +1035,23 @@ export const WardenVisitorManagement = React.memo(() => {
           Showing {filteredVisitors.length} of {visitorLogs.length} visitors
         </div>
       )}
+
+      {/* Modals */}
+      <CreateVisitorModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSubmit={handleCreateVisitor}
+        students={students}
+        loading={loading}
+      />
+
+      <EditVisitorModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        visitor={selectedVisitor}
+        onSubmit={handleUpdateVisitor}
+        students={students}
+      />
     </div>
   );
 });

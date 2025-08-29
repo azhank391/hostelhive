@@ -18,6 +18,7 @@ const {
   deallocateRoom,
   getAllComplaints,
   resolveComplaint,
+  updateComplaintStatus,
   getAllVisitorLogs,
   createVisitorLog,
   checkoutVisitor,
@@ -37,8 +38,38 @@ const {
   requireHostelOwner,
 } = require("../middleware/hostelAccessMiddleware");
 
-// Apply hostel access validation to all admin routes
-router.use(verifyToken, validateHostelAccess);
+// 🔧 SIMPLE MIDDLEWARE: Handle both URL-based and JWT-based hostelId
+const flexibleHostelAccess = (req, res, next) => {
+  // If hostelId is in URL params (owner routes), skip this middleware
+  // The existing validateHostelAccess will handle it
+  if (req.params.hostelId) {
+    return next();
+  }
+  
+  // If no hostelId in URL (warden routes), validate JWT has hostelId
+  if (!req.user || !req.user.hostelId) {
+    return res.status(400).json({ 
+      success: false,
+      message: 'Hostel ID is required (either in URL or JWT)' 
+    });
+  }
+  
+  // Set hostelId from JWT for warden routes
+  req.hostelId = req.user.hostelId;
+  next();
+};
+
+// Apply flexible hostel access validation to all admin routes
+router.use(verifyToken, flexibleHostelAccess);
+
+// For owner routes, we need to apply validateHostelAccess after the flexible middleware
+// This ensures that owner routes still get proper hostel validation
+router.use((req, res, next) => {
+  if (req.params.hostelId) {
+    return validateHostelAccess(req, res, next);
+  }
+  next();
+});
 
 // Dashboard & Analytics (Owner or Warden)
 router.get("/stats", requireOwnerOrWarden, getHostelStats);
@@ -74,14 +105,15 @@ router.put(
 
 // Complaint Management (Owner or Warden)
 router.get("/complaints", requireOwnerOrWarden, getAllComplaints);
+router.put("/complaints/:id", requireOwnerOrWarden, updateComplaintStatus);
 router.put("/complaints/:id/resolve", requireOwnerOrWarden, resolveComplaint);
 
 // Visitor Log Management (Owner or Warden)
 router.get("/visitor-logs", requireOwnerOrWarden, getAllVisitorLogs);
 router.post("/visitor-logs", requireOwnerOrWarden, createVisitorLog);
+router.put("/visitor-logs/:id/checkout", requireOwnerOrWarden, checkoutVisitor);
 router.put("/visitor-logs/:id", requireOwnerOrWarden, updateVisitorLog); // ✅ NEW
 router.delete("/visitor-logs/:id", requireOwnerOrWarden, deleteVisitorLog); // ✅ NEW
-router.put("/visitor-logs/:id/checkout", requireOwnerOrWarden, checkoutVisitor);
 router.get("/visitor-stats", requireOwnerOrWarden, getVisitorStats); // ✅ NEW
 router.get("/visitor-logs/export", requireOwnerOrWarden, exportVisitorLogs); // ✅ NEW
 

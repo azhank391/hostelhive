@@ -208,6 +208,34 @@ export const Sidebar = memo(({
           </div>
         )}
         
+        {isStudent && (
+          <div className="px-3 sm:px-4 mt-6 lg:mt-4">
+            <p className="px-2 sm:px-4 text-sm sm:text-xs font-semibold text-gray-300 uppercase tracking-wider mb-3 sm:mb-2">
+              Student
+            </p>
+            <nav className="mt-2 lg:mt-1 space-y-2 sm:space-y-1">
+              <NavItem 
+                to="/dashboard/student/rooms" 
+                icon={<BedIcon size={24} className="sm:w-5 sm:h-5" />}
+              >
+                My Room
+              </NavItem>
+              <NavItem 
+                to="/dashboard/student/complaints" 
+                icon={<AlertCircleIcon size={24} className="sm:w-5 sm:h-5" />}
+              >
+                My Complaints
+              </NavItem>
+              <NavItem 
+                to="/dashboard/student/visitors" 
+                icon={<UserCheckIcon size={24} className="sm:w-5 sm:h-5" />}
+              >
+                My Visitors
+              </NavItem>
+            </nav>
+          </div>
+        )}
+        
         <div className="px-3 sm:px-4 mt-6 lg:mt-4">
             <p className="px-2 sm:px-4 text-sm sm:text-xs font-semibold text-gray-300 uppercase tracking-wider mb-3 sm:mb-2">
               Operations
@@ -219,14 +247,6 @@ export const Sidebar = memo(({
                 icon={<AlertCircleIcon size={24} className="sm:w-5 sm:h-5" />}
               >
                 Complaints
-              </NavItem>
-            )}
-            {isStudent && (
-              <NavItem 
-                to="/dashboard/student/complaints" 
-                icon={<AlertCircleIcon size={24} className="sm:w-5 sm:h-5" />}
-              >
-                My Complaints
               </NavItem>
             )}
             <NavItem 

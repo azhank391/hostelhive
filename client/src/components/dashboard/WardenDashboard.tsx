@@ -1,25 +1,24 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
-import { useCurrentHostelId, useAdminApiWithHostel } from '@/lib/context-aware-api'
-import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { notification } from '@/lib/toast'
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { Card } from '../ui/Card';
+import { Button } from '../ui/Button';
+import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { 
   UsersIcon, 
-  BedIcon, 
+  HomeIcon, 
   AlertCircleIcon, 
   UserCheckIcon,
-  TrendingUpIcon,
-  ClockIcon,
   RefreshCwIcon,
-  PlusIcon,
-  BarChart3Icon,
-  AlertTriangleIcon,
-  CheckCircleIcon
-} from 'lucide-react'
-import Link from 'next/link'
+  BarChartIcon,
+  CalendarIcon,
+  ClockIcon
+} from '../ui/icons';
+import { wardenApi as wardenApiClient } from '../../lib/api';
+import { notification } from '../../lib/toast';
+import { useCurrentHostelId } from '@/lib/context-aware-api';
+import { useAuth } from '@/contexts/AuthContext';
+import Link from 'next/link';
 
 interface WardenDashboardStats {
   totalStudents: number;
@@ -70,7 +69,6 @@ interface QuickAction {
 export const WardenDashboard = React.memo(() => {
   const { user } = useAuth()
   const { hasHostel, getHostelIdSafe } = useCurrentHostelId()
-  const adminApi = useAdminApiWithHostel()
   
   // State management
   const [stats, setStats] = useState<WardenDashboardStats | null>(null)
@@ -94,7 +92,7 @@ export const WardenDashboard = React.memo(() => {
       id: 'rooms',
       title: 'Manage Rooms',
       description: 'Room assignments and availability',
-      icon: BedIcon,
+      icon: HomeIcon,
       href: '/dashboard/warden/rooms',
       color: 'green',
       count: stats?.totalRooms
@@ -121,7 +119,7 @@ export const WardenDashboard = React.memo(() => {
       id: 'analytics',
       title: 'View Analytics',
       description: 'Dashboard reports and insights',
-      icon: BarChart3Icon,
+      icon: CalendarIcon,
       href: '/dashboard/warden/analytics',
       color: 'indigo',
     },
@@ -129,7 +127,7 @@ export const WardenDashboard = React.memo(() => {
       id: 'settings',
       title: 'Hostel Settings',
       description: 'Configure hostel preferences',
-      icon: AlertTriangleIcon,
+      icon: AlertCircleIcon,
       href: '/dashboard/warden/settings',
       color: 'gray',
     }
@@ -179,10 +177,10 @@ export const WardenDashboard = React.memo(() => {
       
       // Use context-aware API for all data fetching
       const [complaints, visitors, students, rooms] = await Promise.all([
-        adminApi.getComplaints({ limit: 50 }),
-        adminApi.getVisitorLogs({ limit: 20 }),
-        adminApi.getStudents({ limit: 10 }),
-        adminApi.getRooms({ limit: 10 })
+        wardenApiClient.getComplaints({ limit: 50 }),
+        wardenApiClient.getVisitorLogs({ limit: 20 }),
+        wardenApiClient.getStudents({ limit: 10 }),
+        wardenApiClient.getRooms({ limit: 10 })
       ])
       
       console.log('API Responses:', { complaints, visitors, students, rooms });
@@ -271,7 +269,7 @@ export const WardenDashboard = React.memo(() => {
     } finally {
       setLoading(false)
     }
-  }, [hasHostel, adminApi])
+  }, [hasHostel, getHostelIdSafe])
 
   // 🎯 PERFORMANCE: Optimized refresh handler
   const handleRefresh = useCallback(async () => {
@@ -305,7 +303,7 @@ export const WardenDashboard = React.memo(() => {
       case 'complaint': return AlertCircleIcon
       case 'visitor': return UserCheckIcon
       case 'student': return UsersIcon
-      case 'room': return BedIcon
+      case 'room': return HomeIcon
       default: return ClockIcon
     }
   }, [])
@@ -332,7 +330,7 @@ export const WardenDashboard = React.memo(() => {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <LoadingSpinner className="h-12 w-12 border-b-2 border-blue-600 mx-auto" />
           <p className="mt-4 text-gray-600">Loading warden dashboard...</p>
         </div>
       </div>
@@ -344,7 +342,7 @@ export const WardenDashboard = React.memo(() => {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center max-w-md mx-auto p-6">
-          <AlertTriangleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <AlertCircleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Failed to load dashboard</h3>
           <p className="text-gray-600 mb-4">{error}</p>
           <Button onClick={fetchDashboardData} className="w-full">
@@ -361,7 +359,7 @@ export const WardenDashboard = React.memo(() => {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center max-w-md mx-auto p-6">
-          <BedIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <HomeIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Hostel Assigned</h3>
           <p className="text-gray-600">Please contact your administrator to assign you to a hostel.</p>
         </div>
@@ -401,7 +399,7 @@ export const WardenDashboard = React.memo(() => {
       {priorityMetrics.urgent > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <div className="flex items-center">
-            <AlertTriangleIcon className="h-5 w-5 text-red-600 mr-2" />
+            <AlertCircleIcon className="h-5 w-5 text-red-600 mr-2" />
             <div>
               <h3 className="text-sm font-medium text-red-800">Urgent Attention Required</h3>
               <p className="text-sm text-red-700">
@@ -427,7 +425,7 @@ export const WardenDashboard = React.memo(() => {
 
         <Card className="p-6">
           <div className="flex items-center space-x-3">
-            <BedIcon className="h-8 w-8 text-green-500" />
+            <HomeIcon className="h-8 w-8 text-green-500" />
             <div>
               <p className="text-sm text-gray-600">Room Occupancy</p>
               <p className="text-2xl font-bold text-gray-900">{stats?.occupancyRate || 0}%</p>
@@ -470,7 +468,7 @@ export const WardenDashboard = React.memo(() => {
         {/* Quick Actions */}
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <TrendingUpIcon className="h-5 w-5 mr-2 text-blue-600" />
+            <BarChartIcon className="h-5 w-5 mr-2 text-blue-600" />
             Quick Actions
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -557,13 +555,13 @@ export const WardenDashboard = React.memo(() => {
       {/* Performance Summary */}
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-          <BarChart3Icon className="h-5 w-5 mr-2 text-indigo-600" />
+          <CalendarIcon className="h-5 w-5 mr-2 text-indigo-600" />
           Performance Overview
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="text-center">
             <div className="flex items-center justify-center mb-2">
-              <CheckCircleIcon className="h-8 w-8 text-green-500" />
+              <UsersIcon className="h-8 w-8 text-green-500" />
             </div>
             <p className="text-2xl font-bold text-gray-900">
               {stats ? Math.round(((stats.resolvedComplaints || 0) / Math.max(stats.totalComplaints, 1)) * 100) : 0}%
@@ -572,7 +570,7 @@ export const WardenDashboard = React.memo(() => {
           </div>
           <div className="text-center">
             <div className="flex items-center justify-center mb-2">
-              <BedIcon className="h-8 w-8 text-blue-500" />
+              <HomeIcon className="h-8 w-8 text-blue-500" />
             </div>
             <p className="text-2xl font-bold text-gray-900">{stats?.occupancyRate || 0}%</p>
             <p className="text-sm text-gray-600">Room Occupancy Rate</p>

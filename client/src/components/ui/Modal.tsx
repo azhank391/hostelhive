@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { XIcon } from 'lucide-react';
+import { XIcon } from './icons';
 
 interface ModalProps {
   isOpen: boolean;

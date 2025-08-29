@@ -9,11 +9,32 @@ const {
 } = require("../models");
 const { Op } = require("sequelize");
 
+// 🚀 HELPER: Extract hostelId from URL params or JWT token
+const getHostelIdFromRequest = (req) => {
+  // First try to get from URL params (for owner endpoints)
+  if (req.params.hostelId) {
+    return req.params.hostelId;
+  }
+  
+  // Check if middleware already set hostelId (for warden endpoints)
+  if (req.hostelId) {
+    return req.hostelId;
+  }
+  
+  // Fallback to JWT token (for warden endpoints)
+  if (req.user && req.user.hostelId) {
+    return req.user.hostelId;
+  }
+  
+  // If neither exists, throw error
+  throw new Error('Hostel ID is required');
+};
+
 // ✅ Get Hostel Statistics (Dashboard)
 exports.getHostelStats = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
 
     console.log(`[getHostelStats] Fetching stats for hostel: ${hostelId}`);
 
@@ -67,12 +88,12 @@ exports.getHostelStats = async (req, res) => {
 // ✅ Room Management
 exports.getAllRooms = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
     
     // Extract pagination parameters
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 12;
+    const limit = parseInt(req.query.limit) || 50; // Increased default limit to get more rooms
     const offset = (page - 1) * limit;
     
     // Extract search parameter
@@ -86,16 +107,69 @@ exports.getAllRooms = async (req, res) => {
       whereClause.roomNumber = { [Op.like]: `%${search}%` };
     }
 
+    console.log(`[getAllRooms] Fetching rooms for hostel: ${hostelId}`);
+    console.log(`[getAllRooms] Pagination: page=${page}, limit=${limit}, offset=${offset}`);
+    console.log(`[getAllRooms] Where clause:`, whereClause);
+
     // Get total count for pagination
     const total = await Room.count({ where: whereClause });
+    console.log(`[getAllRooms] Total rooms found: ${total}`);
     
-    // Get rooms with pagination
-    const rooms = await Room.findAll({
+
+    
+    // Get ALL rooms first (without includes to ensure we get all rooms)
+    const allRooms = await Room.findAll({
       where: whereClause,
       limit: limit,
       offset: offset,
       order: [['createdAt', 'DESC']]
     });
+    
+    console.log(`[getAllRooms] All rooms query returned: ${allRooms.length} rooms`);
+    
+    // Now get allocations for these rooms separately
+    const roomIds = allRooms.map(r => r.id);
+    const allocations = await RoomAllocation.findAll({
+      where: {
+        roomId: { [Op.in]: roomIds },
+        status: 'active'
+      },
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'email'],
+          where: { role: 'student' }
+        }
+      ]
+    });
+    
+    // Group allocations by roomId
+    const allocationsByRoom = {};
+    allocations.forEach(allocation => {
+      if (!allocationsByRoom[allocation.roomId]) {
+        allocationsByRoom[allocation.roomId] = [];
+      }
+      allocationsByRoom[allocation.roomId].push(allocation);
+    });
+    
+    // Attach allocations to rooms
+    allRooms.forEach(room => {
+      room.dataValues.allocations = allocationsByRoom[room.id] || [];
+    });
+    
+    // Use the result with manually attached allocations
+    const rooms = allRooms;
+
+    console.log(`[getAllRooms] Rooms returned: ${rooms.length}`);
+    console.log(`[getAllRooms] Room IDs:`, rooms.map(r => r.id));
+    
+    // Log rooms without allocations to verify they're included
+    const roomsWithoutAllocations = rooms.filter(r => !r.allocations || r.allocations.length === 0);
+    console.log(`[getAllRooms] Rooms without allocations: ${roomsWithoutAllocations.length}`);
+    if (roomsWithoutAllocations.length > 0) {
+      console.log(`[getAllRooms] Rooms without allocations IDs:`, roomsWithoutAllocations.map(r => r.id));
+    }
 
     // Calculate pagination info
     const pages = Math.ceil(total / limit);
@@ -120,8 +194,8 @@ exports.getAllRooms = async (req, res) => {
 
 exports.createRoom = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
 
     const { roomNumber, capacity, block } = req.body;
 
@@ -145,8 +219,9 @@ exports.updateRoom = async (req, res) => {
   console.log(`[updateRoom] User:`, req.user);
   
   try {
-    // Extract hostelId and roomId from URL parameters
-    const { hostelId, roomId } = req.params;
+    // Extract hostelId from URL parameters or JWT token, roomId from URL params
+    const hostelId = getHostelIdFromRequest(req);
+    const { id: roomId } = req.params;
     const { roomNumber, capacity, block } = req.body;
 
     console.log(`[updateRoom] Updating room ${roomId} in hostel ${hostelId}`);
@@ -182,8 +257,9 @@ exports.updateRoom = async (req, res) => {
 
 exports.deleteRoom = async (req, res) => {
   try {
-    // Extract hostelId and roomId from URL parameters
-    const { hostelId, roomId } = req.params;
+    // Extract hostelId from URL parameters or JWT token, roomId from URL params
+    const hostelId = getHostelIdFromRequest(req);
+    const { id: roomId } = req.params;
 
     const room = await Room.findOne({ where: { id: roomId, hostelId } });
     if (!room) {
@@ -201,7 +277,9 @@ exports.deleteRoom = async (req, res) => {
 // ✅ Get Students in a Specific Room
 exports.getRoomStudents = async (req, res) => {
   try {
-    const { hostelId, roomId } = req.params;
+    // Extract hostelId from URL parameters or JWT token, roomId from URL params
+    const hostelId = getHostelIdFromRequest(req);
+    const { roomId } = req.params;
 
     console.log(`[getRoomStudents] Fetching students for room ${roomId} in hostel ${hostelId}`);
 
@@ -263,8 +341,8 @@ exports.getRoomStudents = async (req, res) => {
 // ✅ Student Management
 exports.getAllStudents = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
 
     console.log(`[getAllStudents] Fetching students for hostel ${hostelId}`);
 
@@ -284,7 +362,7 @@ exports.getAllStudents = async (req, res) => {
             {
               model: Room,
               as: 'room',
-              attributes: ['id', 'roomNumber', 'capacity', 'occupied']
+              attributes: ['id', 'roomNumber', 'capacity', 'occupied', 'block']
             }
           ]
         }
@@ -293,19 +371,38 @@ exports.getAllStudents = async (req, res) => {
 
     console.log(`[getAllStudents] Found ${students.length} students`);
 
-    // Transform the data to include room information
+    // Transform the data to include room information and allocation status
     const studentsWithRooms = students.map(student => {
       const studentData = student.toJSON();
-      if (studentData.allocations && studentData.allocations[0] && studentData.allocations[0].room) {
+      
+      // Check if student has an active room allocation
+      const hasActiveAllocation = studentData.allocations && 
+        studentData.allocations.length > 0 && 
+        studentData.allocations[0].status === 'active';
+      
+      if (hasActiveAllocation && studentData.allocations[0].room) {
         studentData.roomNumber = studentData.allocations[0].room.roomNumber;
         studentData.roomId = studentData.allocations[0].room.id;
+        studentData.roomBlock = studentData.allocations[0].room.block;
+        studentData.hasRoom = true;
+        studentData.allocationId = studentData.allocations[0].id;
+      } else {
+        studentData.hasRoom = false;
+        studentData.roomNumber = null;
+        studentData.roomId = null;
+        studentData.roomBlock = null;
+        studentData.allocationId = null;
       }
-      // Remove the complex allocations object for cleaner response
-      delete studentData.allocations;
+      
+      // Keep the allocations data for frontend use
+      // studentData.allocations will contain the room allocation information
+      
       return studentData;
     });
 
-    console.log(`[getAllStudents] Returning ${studentsWithRooms.length} students with room data`);
+    console.log(`[getAllStudents] Returning ${studentsWithRooms.length} students with room allocation data`);
+    console.log(`[getAllStudents] Students with rooms: ${studentsWithRooms.filter(s => s.hasRoom).length}`);
+    console.log(`[getAllStudents] Students without rooms: ${studentsWithRooms.filter(s => !s.hasRoom).length}`);
 
     res.json(studentsWithRooms);
   } catch (err) {
@@ -316,8 +413,8 @@ exports.getAllStudents = async (req, res) => {
 
 exports.createStudent = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
     const { name, email, phone } = req.body;
 
     console.log(`[createStudent] Creating student in hostel ${hostelId}`);
@@ -374,8 +471,9 @@ exports.createStudent = async (req, res) => {
 
 exports.updateStudent = async (req, res) => {
   try {
-    // Extract hostelId and studentId from URL parameters
-    const { hostelId, studentId } = req.params;
+    // Extract hostelId from URL parameters or JWT token, studentId from URL params
+    const hostelId = getHostelIdFromRequest(req);
+    const { studentId } = req.params;
     const { name, email, phone } = req.body;
 
     console.log(`[updateStudent] Updating student ${studentId} in hostel ${hostelId}`);
@@ -420,8 +518,9 @@ exports.updateStudent = async (req, res) => {
 
 exports.deleteStudent = async (req, res) => {
   try {
-    // Extract hostelId and studentId from URL parameters
-    const { hostelId, studentId } = req.params;
+    // Extract hostelId from URL parameters or JWT token, studentId from URL params
+    const hostelId = getHostelIdFromRequest(req);
+    const { studentId } = req.params;
 
     console.log(`[deleteStudent] Deleting student ${studentId} from hostel ${hostelId}`);
 
@@ -440,6 +539,61 @@ exports.deleteStudent = async (req, res) => {
 
     console.log(`[deleteStudent] Found student:`, student.toJSON());
 
+    // Check if student has active room allocations
+    const { RoomAllocation } = require('../models');
+    const activeAllocations = await RoomAllocation.findAll({
+      where: {
+        userId: studentId,
+        status: 'active'
+      }
+    });
+
+    if (activeAllocations.length > 0) {
+      console.log(`[deleteStudent] Student ${studentId} has ${activeAllocations.length} active room allocation(s)`);
+      return res.status(400).json({ 
+        message: "Cannot delete student with active room allocation. Please remove the student from their room first.",
+        hasActiveAllocation: true,
+        allocationCount: activeAllocations.length
+      });
+    }
+
+    // Check if student has any pending complaints
+    const { Complaint } = require('../models');
+    const pendingComplaints = await Complaint.findAll({
+      where: {
+        userId: studentId,
+        status: ['pending', 'in_progress']
+      }
+    });
+
+    if (pendingComplaints.length > 0) {
+      console.log(`[deleteStudent] Student ${studentId} has ${pendingComplaints.length} pending complaint(s)`);
+      return res.status(400).json({ 
+        message: "Cannot delete student with pending complaints. Please resolve all complaints first.",
+        hasPendingComplaints: true,
+        complaintCount: pendingComplaints.length
+      });
+    }
+
+    // Check if student has any active visitor logs
+    const { VisitorLog } = require('../models');
+    const activeVisitorLogs = await VisitorLog.findAll({
+      where: {
+        studentId: studentId,
+        status: 'checked-in'
+      }
+    });
+
+    if (activeVisitorLogs.length > 0) {
+      console.log(`[deleteStudent] Student ${studentId} has ${activeVisitorLogs.length} active visitor log(s)`);
+      return res.status(400).json({ 
+        message: "Cannot delete student with active visitor logs. Please check out all visitors first.",
+        hasActiveVisitors: true,
+        visitorCount: activeVisitorLogs.length
+      });
+    }
+
+    // Safe to delete - no active allocations, complaints, or visitor logs
     await student.destroy();
     
     console.log(`[deleteStudent] Student deleted successfully`);
@@ -454,8 +608,8 @@ exports.deleteStudent = async (req, res) => {
 // ✅ Warden Management
 exports.getAllWardens = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
 
     const wardens = await User.findAll({
       where: {
@@ -474,8 +628,8 @@ exports.getAllWardens = async (req, res) => {
 
 exports.createWarden = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
 
     const { name, email, password, phone } = req.body;
 
@@ -517,8 +671,8 @@ exports.createWarden = async (req, res) => {
 
 exports.updateWarden = async (req, res) => {
   try {
-    // Extract hostelId and wardenId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token, wardenId from URL params
+    const hostelId = getHostelIdFromRequest(req);
     const { wardenId } = req.params;
     const { name, email, phone } = req.body;
 
@@ -556,8 +710,8 @@ exports.updateWarden = async (req, res) => {
 
 exports.deleteWarden = async (req, res) => {
   try {
-    // Extract hostelId and wardenId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token, wardenId from URL params
+    const hostelId = getHostelIdFromRequest(req);
     const { wardenId } = req.params;
 
     const warden = await User.findOne({
@@ -579,8 +733,8 @@ exports.deleteWarden = async (req, res) => {
 // ✅ Room Assignment
 exports.assignRoom = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
 
     const { studentId, roomId } = req.body;
 
@@ -615,8 +769,8 @@ exports.assignRoom = async (req, res) => {
 // ✅ Room Allocation Management (Using RoomAllocation model)
 exports.allocateRoom = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
     const { studentId, roomId } = req.body;
 
     console.log(`[allocateRoom] Allocating room ${roomId} to student ${studentId} in hostel ${hostelId}`);
@@ -688,8 +842,8 @@ exports.allocateRoom = async (req, res) => {
 
 exports.deallocateRoom = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
     const { allocationId: studentId } = req.params; // Accept studentId instead of allocationId
 
     console.log(`[deallocateRoom] Deallocating student ${studentId} from hostel ${hostelId}`);
@@ -729,8 +883,8 @@ exports.deallocateRoom = async (req, res) => {
 // ✅ Complaint Management
 exports.createComplaint = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
     const { title, description, userId } = req.body;
 
     if (!title || !description || !userId) {
@@ -781,8 +935,8 @@ exports.createComplaint = async (req, res) => {
 
 exports.getAllComplaints = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
     const { page = 1, limit = 10, status, priority, search } = req.query;
 
     // Build where clause
@@ -809,6 +963,21 @@ exports.getAllComplaints = async (req, res) => {
           model: User,
           as: "user",
           attributes: ["name", "email"],
+          include: [
+            {
+              model: RoomAllocation,
+              as: "allocations",
+              where: { status: "active" },
+              required: false,
+              include: [
+                {
+                  model: Room,
+                  as: "room",
+                  attributes: ["roomNumber", "block"],
+                },
+              ],
+            },
+          ],
         },
       ],
       order: [["createdAt", "DESC"]],
@@ -836,13 +1005,15 @@ exports.getAllComplaints = async (req, res) => {
 
 exports.updateComplaintStatus = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
-    const { id } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
+    const { complaintId } = req.params;
     const { status, priority } = req.body;
 
+    console.log('🔍 Updating complaint:', { hostelId, complaintId, status, priority });
+
     const complaint = await Complaint.findOne({
-      where: { id, hostelId },
+      where: { id: complaintId, hostelId },
     });
 
     if (!complaint) {
@@ -863,13 +1034,15 @@ exports.updateComplaintStatus = async (req, res) => {
 
 exports.resolveComplaint = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
-    const { id } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
+    const { complaintId } = req.params;
     const { resolutionNotes } = req.body;
 
+    console.log('🔍 Resolving complaint:', { hostelId, complaintId, resolutionNotes });
+
     const complaint = await Complaint.findOne({
-      where: { id, hostelId },
+      where: { id: complaintId, hostelId },
     });
 
     if (!complaint) {
@@ -889,11 +1062,41 @@ exports.resolveComplaint = async (req, res) => {
   }
 };
 
+// ✅ Delete Complaint
+exports.deleteComplaint = async (req, res) => {
+  try {
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
+    const { complaintId } = req.params;
+
+    const complaint = await Complaint.findOne({
+      where: { id: complaintId, hostelId },
+    });
+
+    if (!complaint) {
+      return res.status(404).json({ message: "Complaint not found" });
+    }
+
+    // Only allow deletion of pending or in_progress complaints
+    if (complaint.status === "resolved" || complaint.status === "rejected") {
+      return res.status(403).json({ 
+        message: "Cannot delete resolved or rejected complaints" 
+      });
+    }
+
+    await complaint.destroy();
+    res.json({ message: "Complaint deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting complaint:", err);
+    res.status(500).json({ message: "Failed to delete complaint" });
+  }
+};
+
 // ✅ Visitor Management
 exports.getAllVisitors = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
 
     const visitors = await VisitorLog.findAll({
       where: { hostelId },
@@ -916,8 +1119,8 @@ exports.getAllVisitors = async (req, res) => {
 
 exports.createVisitor = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
 
     const { visitorName, visitorPhone, studentId, purpose, entryTime } =
       req.body;
@@ -951,8 +1154,8 @@ exports.createVisitor = async (req, res) => {
 
 exports.updateVisitorExit = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
     const { id } = req.params;
     const { exitTime } = req.body;
 
@@ -974,8 +1177,8 @@ exports.updateVisitorExit = async (req, res) => {
 
 exports.getAllVisitorLogs = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
 
     const visitorLogs = await VisitorLog.findAll({
       where: { hostelId },
@@ -998,8 +1201,8 @@ exports.getAllVisitorLogs = async (req, res) => {
 
 exports.createVisitorLog = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
 
     const { visitorName, relation, studentId, checkIn } = req.body;
 
@@ -1031,12 +1234,16 @@ exports.createVisitorLog = async (req, res) => {
 
 exports.checkoutVisitor = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
-    const { visitorId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
+    const { id } = req.params; // Route parameter is :id, not :visitorId
+
+    if (!id) {
+      return res.status(400).json({ message: "Visitor ID is required" });
+    }
 
     const visitor = await VisitorLog.findOne({
-      where: { id: visitorId, hostelId },
+      where: { id, hostelId },
     });
 
     if (!visitor) {
@@ -1063,8 +1270,8 @@ exports.checkoutVisitor = async (req, res) => {
 
 exports.updateVisitorLog = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
     const { id } = req.params;
     const updateData = req.body;
 
@@ -1087,13 +1294,13 @@ exports.updateVisitorLog = async (req, res) => {
 // ✅ Delete Visitor Log
 exports.deleteVisitorLog = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters and visitorId from route params
-    const { hostelId } = req.params;
-    const { visitorId } = req.params;
+    // Extract hostelId from URL parameters or JWT token, id from route params
+    const hostelId = getHostelIdFromRequest(req);
+    const { id } = req.params; // Route parameter is :id
 
     const visitorLog = await VisitorLog.findOne({
       where: {
-        id: visitorId,
+        id,
         hostelId,
       },
     });
@@ -1114,8 +1321,8 @@ exports.deleteVisitorLog = async (req, res) => {
 // ✅ Get Visitor Statistics
 exports.getVisitorStats = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
 
     // Get total visitors count
     const totalVisitors = await VisitorLog.count({
@@ -1175,8 +1382,8 @@ exports.getVisitorStats = async (req, res) => {
 // ✅ Export Visitor Logs
 exports.exportVisitorLogs = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
     const { startDate, endDate, format = "json" } = req.query;
 
     let whereClause = { hostelId };
@@ -1237,8 +1444,8 @@ exports.exportVisitorLogs = async (req, res) => {
 // ✅ Dashboard Analytics
 exports.getDashboardAnalytics = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters
-    const { hostelId } = req.params;
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
 
     // Get visitor analytics for the past 30 days
     const thirtyDaysAgo = new Date();

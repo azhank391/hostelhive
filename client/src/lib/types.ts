@@ -35,6 +35,7 @@ export interface User {
   phone?: string;
   isActive?: boolean;
   requiresPasswordChange?: boolean; // Only relevant for students/wardens with default passwords
+  allocations?: RoomAllocation[]; // Room allocations for students
 }
 
 export interface Room {
@@ -59,7 +60,7 @@ export interface Complaint {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   userId: string;
   hostelId: string;
-  user?: User;
+  user?: User & { allocations?: RoomAllocation[] };
   resolutionNotes?: string;
   resolvedAt?: string;
   createdAt?: string;
@@ -82,13 +83,13 @@ export interface VisitorLog {
 
 export interface RoomAllocation {
   id: string;
-  studentId: string;
+  userId: string;
   roomId: string;
   hostelId: string;
   allocatedAt: string;
   deallocatedAt?: string;
   status: 'active' | 'inactive';
-  student?: User;
+  user?: User;
   room?: Room;
   createdAt?: string;
   updatedAt?: string;

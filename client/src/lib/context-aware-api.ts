@@ -30,6 +30,13 @@ export const useCurrentHostelId = () => {
       // Then try context methods
       const hostelId = getCurrentHostelId() || getCurrentHostelIdWithUrlFallback();
       if (!hostelId) {
+        // Try localStorage as final fallback
+        if (typeof window !== 'undefined') {
+          const activeHostel = localStorage.getItem('activeHostel');
+          if (activeHostel) {
+            return activeHostel;
+          }
+        }
         throw new Error('No active hostel selected. Please select a hostel first.');
       }
       
@@ -43,6 +50,13 @@ export const useCurrentHostelId = () => {
         const id = getHostelId();
         return id;
       } catch (error) {
+        // Try localStorage as final fallback
+        if (typeof window !== 'undefined') {
+          const activeHostel = localStorage.getItem('activeHostel');
+          if (activeHostel) {
+            return activeHostel;
+          }
+        }
         return null;
       }
     };
@@ -115,6 +129,7 @@ export const useAdminApiWithHostel = () => {
     },
     createRoom: (roomData: any) => {
       const hostelId = getHostelIdSafe();
+      console.log('🔍 DEBUG: createRoom - hostelId:', hostelId);
       if (!hostelId) {
         return Promise.reject(new Error('No hostel selected for creating room'));
       }
@@ -222,6 +237,13 @@ export const useAdminApiWithHostel = () => {
       }
       return adminApi.updateComplaint(hostelId, complaintId, updates);
     },
+    resolveComplaint: (complaintId: string, resolutionNotes: string) => {
+      const hostelId = getHostelIdSafe();
+      if (!hostelId) {
+        return Promise.reject(new Error('No hostel selected for resolving complaint'));
+      }
+      return adminApi.resolveComplaint(hostelId, complaintId, resolutionNotes);
+    },
 
     // Visitor Management
     getVisitorLogs: (params?: any) => {
@@ -230,6 +252,27 @@ export const useAdminApiWithHostel = () => {
         return Promise.reject(new Error('No hostel selected for visitor logs'));
       }
       return adminApi.getVisitorLogs(hostelId, params);
+    },
+    createVisitorLog: (visitorData: any) => {
+      const hostelId = getHostelIdSafe();
+      if (!hostelId) {
+        return Promise.reject(new Error('No hostel selected for creating visitor log'));
+      }
+      return adminApi.createVisitorLog(hostelId, visitorData);
+    },
+    updateVisitorLog: (visitorId: string, updates: any) => {
+      const hostelId = getHostelIdSafe();
+      if (!hostelId) {
+        return Promise.reject(new Error('No hostel selected for updating visitor log'));
+      }
+      return adminApi.updateVisitorLog(hostelId, visitorId, updates);
+    },
+    deleteVisitorLog: (visitorId: string) => {
+      const hostelId = getHostelIdSafe();
+      if (!hostelId) {
+        return Promise.reject(new Error('No hostel selected for deleting visitor log'));
+      }
+      return adminApi.deleteVisitorLog(hostelId, visitorId);
     },
     checkoutVisitor: (visitorId: string) => {
       const hostelId = getHostelIdSafe();

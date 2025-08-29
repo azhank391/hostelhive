@@ -16,7 +16,11 @@ exports.getMyRoom = async (req, res) => {
     const allocation = await RoomAllocation.findOne({
       where: { userId, status: "active" },
       include: [
-        { model: Room, as: "room" },
+        { 
+          model: Room, 
+          as: "room",
+          attributes: ["id", "roomNumber", "block", "capacity", "occupied"]
+        },
         { model: User, as: "user", attributes: ["name", "email"] },
       ],
     });
@@ -453,11 +457,15 @@ exports.getDashboardSummary = async (req, res) => {
     const userId = req.user.id;
     const hostelId = req.user.hostelId;
 
-    // Get room allocation
+    // Get room allocation with full room details
     const allocation = await RoomAllocation.findOne({
       where: { userId, status: "active" },
       include: [
-        { model: Room, as: "room", attributes: ["roomNumber", "block"] },
+        { 
+          model: Room, 
+          as: "room", 
+          attributes: ["roomNumber", "block", "capacity", "occupied"] 
+        },
       ],
     });
 

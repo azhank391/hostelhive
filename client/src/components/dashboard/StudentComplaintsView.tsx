@@ -22,6 +22,27 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useStudentApiWithHostel, useCurrentHostelId } from '@/lib/context-aware-api'
 import { Complaint } from '@/lib/types'
 
+// Interface for the transformed complaint data from backend
+interface TransformedComplaint {
+  id: string
+  title: string
+  description: string
+  status: 'Open' | 'In Progress' | 'Resolved' | 'Closed'
+  priority: 'Low' | 'Medium' | 'High' | 'Critical'
+  reportedBy: {
+    name: string
+    role: string
+    image?: string
+  }
+  hostel: {
+    id: string
+    name: string
+  }
+  room: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 interface ComplaintStats {
   total: number
   open: number
@@ -61,7 +82,7 @@ export const StudentComplaintsView = React.memo(() => {
   const studentApi = useStudentApiWithHostel()
   
   // State management
-  const [complaints, setComplaints] = useState<Complaint[]>([])
+  const [complaints, setComplaints] = useState<TransformedComplaint[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -152,28 +173,34 @@ export const StudentComplaintsView = React.memo(() => {
     }
 
     complaints.forEach(complaint => {
-      // Count by status
+      // Count by status (backend maps these to frontend values)
       switch (complaint.status) {
-        case 'pending':
+        case 'Open':
           stats.open++
           break
-        case 'in-progress':
+        case 'In Progress':
           stats.inProgress++
           break
-        case 'resolved':
+        case 'Resolved':
           stats.resolved++
+          break
+        case 'Closed':
+          stats.closed++
           break
       }
 
-      // Count by priority
+      // Count by priority (backend sends 'Low', 'Medium', 'High', 'Critical')
       switch (complaint.priority) {
-        case 'high':
+        case 'Critical':
+          stats.byPriority.critical++
+          break
+        case 'High':
           stats.byPriority.high++
           break
-        case 'medium':
+        case 'Medium':
           stats.byPriority.medium++
           break
-        case 'low':
+        case 'Low':
           stats.byPriority.low++
           break
       }
@@ -190,7 +217,12 @@ export const StudentComplaintsView = React.memo(() => {
       
       // Use context-aware API that automatically includes hostelId and studentId
       const data = await studentApi.getComplaints()
-      setComplaints(Array.isArray(data) ? data : [])
+      
+      // Backend returns { complaints: [...] } structure
+      const complaintsArray = (data as any)?.complaints || (Array.isArray(data) ? data : [])
+      console.log('Raw complaint data from backend:', data)
+      console.log('Processed complaints array:', complaintsArray)
+      setComplaints(complaintsArray)
       
     } catch (err) {
       console.error('Error fetching complaints:', err)
@@ -221,18 +253,24 @@ export const StudentComplaintsView = React.memo(() => {
     setIsSubmitting(true)
     try {
       // Optimistic update
-      const tempComplaint: Complaint = {
+      const tempComplaint: TransformedComplaint = {
         id: `temp-${Date.now()}`,
-        ...complaintData,
-        status: 'Open' as const,
+        title: complaintData.title,
+        description: complaintData.description,
+        status: 'Open',
+        priority: complaintData.priority === 'urgent' ? 'Critical' : 
+                 complaintData.priority === 'high' ? 'High' : 
+                 complaintData.priority === 'medium' ? 'Medium' : 'Low',
         reportedBy: {
-          name: user.name || user.email,
-          role: 'Student'
+          name: user.name || user.email || 'Unknown',
+          role: 'Student',
+          image: undefined
         },
         hostel: {
           id: studentApi.getCurrentHostelId(),
           name: 'Current Hostel'
         },
+        room: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       }
@@ -241,7 +279,32 @@ export const StudentComplaintsView = React.memo(() => {
       setIsAddComplaintModalOpen(false)
       
       // Make API call - using lodgeComplaint method
-      const newComplaint = await studentApi.lodgeComplaint(complaintData) as Complaint
+      const response = await studentApi.lodgeComplaint(complaintData)
+      
+      // Transform the response to match our interface
+      const newComplaint: TransformedComplaint = {
+        id: response.id,
+        title: response.title,
+        description: response.description,
+        status: response.status === 'pending' ? 'Open' : 
+                response.status === 'in_progress' ? 'In Progress' : 
+                response.status === 'resolved' ? 'Resolved' : 'Closed',
+        priority: response.priority === 'urgent' ? 'Critical' : 
+                 response.priority === 'high' ? 'High' : 
+                 response.priority === 'medium' ? 'Medium' : 'Low',
+        reportedBy: {
+          name: user.name || user.email || 'Unknown',
+          role: 'Student',
+          image: undefined
+        },
+        hostel: {
+          id: user.hostelId || '',
+          name: 'Current Hostel'
+        },
+        room: null,
+        createdAt: response.createdAt || new Date().toISOString(),
+        updatedAt: response.updatedAt || new Date().toISOString()
+      }
       
       // Replace temp complaint with real data
       setComplaints(prev => prev.map(c => 
@@ -508,27 +571,24 @@ export const StudentComplaintsView = React.memo(() => {
               </p>
             </div>
             <div className="grid gap-6">
-              {filteredComplaints.map((complaint) => {
-                // Transform the data to match ComplaintCard interface
+              {filteredComplaints.map((complaint, index) => {
+                console.log('Processing complaint:', complaint)
+                // Backend already provides transformed data, just ensure required fields exist
                 const transformedComplaint = {
-                  id: complaint.id,
-                  title: complaint.title,
-                  description: complaint.description,
-                  status: (complaint.status === 'pending' ? 'Open' : 
-                           complaint.status === 'in-progress' ? 'In Progress' : 
-                           complaint.status === 'resolved' ? 'Resolved' : 'Closed') as 'Open' | 'In Progress' | 'Resolved' | 'Closed',
-                  priority: (complaint.priority === 'low' ? 'Low' :
-                           complaint.priority === 'medium' ? 'Medium' :
-                           complaint.priority === 'high' ? 'High' : 'Low') as 'Low' | 'Medium' | 'High' | 'Critical',
-                  reportedBy: {
+                  id: complaint.id || `complaint-${index}`,
+                  title: complaint.title || 'Untitled Complaint',
+                  description: complaint.description || 'No description provided',
+                  status: complaint.status || 'Open',
+                  priority: complaint.priority || 'Medium',
+                  reportedBy: complaint.reportedBy || {
                     name: user?.name || 'Student',
                     role: 'Student'
                   },
-                  hostel: {
-                    id: complaint.hostelId,
+                  hostel: complaint.hostel || {
+                    id: 'unknown',
                     name: 'Your Hostel'
                   },
-                  room: '', // Room info not available in current Complaint type
+                  room: complaint.room || '',
                   createdAt: complaint.createdAt || new Date().toISOString(),
                   currentUserRole: "Student" as const,
                   showAdvancedActions: false,
@@ -537,7 +597,7 @@ export const StudentComplaintsView = React.memo(() => {
                 
                 return (
                   <ComplaintCard
-                    key={complaint.id}
+                    key={transformedComplaint.id}
                     {...transformedComplaint}
                   />
                 )

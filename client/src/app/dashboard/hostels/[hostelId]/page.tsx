@@ -271,11 +271,23 @@ export default function HostelDashboardPage() {
                 id={complaint.id}
                 title={complaint.title || 'Untitled Complaint'}
                 description={complaint.description || 'No description provided'}
-                status={complaint.status || 'pending'}
-                priority={complaint.priority || 'medium'}
-                reportedBy={complaint.reportedBy || { name: 'Unknown', id: '0' }}
+                status={(() => {
+                  switch (complaint.status) {
+                    case 'pending': return 'Open';
+                    case 'in_progress': return 'In Progress';
+                    case 'resolved': return 'Resolved';
+                    case 'rejected': return 'Closed';
+                    default: return 'Open';
+                  }
+                })() as 'Open' | 'In Progress' | 'Resolved' | 'Closed'}
+                priority={(complaint.priority || 'medium').charAt(0).toUpperCase() + (complaint.priority || 'medium').slice(1) as 'Low' | 'Medium' | 'High' | 'Critical'}
+                reportedBy={{
+                  name: complaint.user?.name || 'Unknown',
+                  role: complaint.user?.role || 'student',
+                  email: complaint.user?.email
+                }}
                 hostel={complaint.hostel || { name: 'Current Hostel', id: urlHostelId }}
-                room={complaint.room || ''}
+                room={complaint.user?.allocations?.[0]?.room?.roomNumber || 'N/A'}
                 createdAt={complaint.createdAt || new Date().toISOString()}
                 onResolve={() => {}} // Will be implemented later
               />

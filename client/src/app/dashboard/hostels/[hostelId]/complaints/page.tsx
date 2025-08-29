@@ -451,17 +451,24 @@ export default function HostelComplaintsPage() {
                            {complaint.status?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                          </span>
                        </div>
-                     ) : (
-                       // For owners, show student info
-                       <div>
-                         <div className="text-sm text-gray-900">
-                           {complaint.user?.name || 'Unknown'}
-                         </div>
-                         <div className="text-sm text-gray-500">
-                           {complaint.user?.email || 'N/A'}
-                         </div>
-                       </div>
-                     )}
+                                           ) : (
+                        // For owners, show student info
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {complaint.user?.name || 'Unknown'}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {complaint.user?.email || 'N/A'}
+                          </div>
+                          {/* Show room information if available */}
+                          {complaint.user?.allocations && complaint.user.allocations.length > 0 && (
+                            <div className="text-xs text-blue-600 mt-1">
+                              🏠 Room {complaint.user.allocations[0]?.room?.roomNumber}
+                              {complaint.user.allocations[0]?.room?.block && ` (${complaint.user.allocations[0].room.block})`}
+                            </div>
+                          )}
+                        </div>
+                      )}
                    </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(complaint.priority)}`}>
@@ -483,8 +490,8 @@ export default function HostelComplaintsPage() {
                          <Button variant="outline" size="sm">
                            <EyeIcon size={14} />
                          </Button>
-                       ) : (
-                         // Owners can update status and priority
+                       ) : (user?.role === 'owner' || user?.role === 'warden') ? (
+                         // Owners and Wardens can update status and priority
                          <>
                            {/* Status Update Dropdown */}
                            <div className="relative inline-block text-left">
@@ -514,6 +521,11 @@ export default function HostelComplaintsPage() {
                              </select>
                            </div>
                          </>
+                       ) : (
+                         // Other roles can only view
+                         <Button variant="outline" size="sm">
+                           <EyeIcon size={14} />
+                         </Button>
                        )}
                      </div>
                    </td>

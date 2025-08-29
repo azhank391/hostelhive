@@ -10,16 +10,12 @@ import { useStudentApiWithHostel } from '@/lib/context-aware-api'
 import { 
   BedIcon, 
   MapPinIcon, 
-  CalendarIcon, 
   UsersIcon, 
   RefreshCwIcon,
   HomeIcon,
-  ClockIcon,
-  DollarSignIcon,
   PhoneIcon,
   MailIcon,
-  AlertCircleIcon,
-  CheckCircleIcon
+  AlertCircleIcon
 } from 'lucide-react'
 
 interface RoomAllocation {
@@ -32,14 +28,10 @@ interface RoomAllocation {
     capacity: number
     type: 'Single' | 'Double' | 'Triple' | 'Shared'
     amenities: string[]
-    monthlyRent: number
   }
   allocationDate: string
   status: 'active' | 'inactive' | 'pending'
   endDate?: string
-  paymentStatus: 'paid' | 'pending' | 'overdue'
-  lastPaymentDate?: string
-  nextPaymentDue?: string
 }
 
 interface Roommate {
@@ -61,12 +53,6 @@ interface RoomDetails {
     type: string
     status: string
     requestDate: string
-  }>
-  paymentHistory: Array<{
-    id: string
-    amount: number
-    date: string
-    status: string
   }>
 }
 
@@ -98,62 +84,18 @@ export const StudentRoomInfo = React.memo(() => {
   const roomStats = useMemo(() => {
     if (!roomDetails) return null
 
-    const { allocation, roommates, paymentHistory } = roomDetails
+    const { allocation, roommates } = roomDetails
     const totalOccupants = roommates.length + 1 // Include current user
     const occupancyRate = Math.round((totalOccupants / allocation.room.capacity) * 100)
-    
-    const paidPayments = paymentHistory.filter(p => p.status === 'paid')
-    const totalPaid = paidPayments.reduce((sum, p) => sum + p.amount, 0)
     
     return {
       occupancyRate,
       totalOccupants,
-      availableSpots: allocation.room.capacity - totalOccupants,
-      totalPaid,
-      averagePayment: paidPayments.length > 0 ? totalPaid / paidPayments.length : 0,
-      paymentStreak: paymentHistory.slice(0, 6).every(p => p.status === 'paid') ? 6 : 0
+      availableSpots: allocation.room.capacity - totalOccupants
     }
   }, [roomDetails])
 
-  // 🎯 PERFORMANCE: Memoized payment status
-  const paymentInfo = useMemo(() => {
-    if (!roomDetails) return null
 
-    const { allocation } = roomDetails
-    const nextDue = allocation.nextPaymentDue ? new Date(allocation.nextPaymentDue) : null
-    const now = new Date()
-    
-    let statusColor = 'text-green-600'
-    let statusText = 'Up to date'
-    let urgency = 'low'
-    
-    if (allocation.paymentStatus === 'overdue') {
-      statusColor = 'text-red-600'
-      statusText = 'Overdue'
-      urgency = 'high'
-    } else if (allocation.paymentStatus === 'pending') {
-      if (nextDue) {
-        const daysUntilDue = Math.ceil((nextDue.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-        if (daysUntilDue <= 3) {
-          statusColor = 'text-orange-600'
-          statusText = `Due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}`
-          urgency = 'medium'
-        } else {
-          statusColor = 'text-blue-600'
-          statusText = `Due ${nextDue.toLocaleDateString()}`
-          urgency = 'low'
-        }
-      }
-    }
-    
-    return {
-      statusColor,
-      statusText,
-      urgency,
-      nextDue,
-      amount: allocation.room.monthlyRent
-    }
-  }, [roomDetails])
 
   // 🚀 PERFORMANCE: Optimized room data fetching
   const fetchRoomInfo = useCallback(async () => {
@@ -172,28 +114,25 @@ export const StudentRoomInfo = React.memo(() => {
         return
       }
       
-      // Enhance with mock data for demonstration
+      // Create enhanced data structure with available room information
       const enhancedData: RoomDetails = {
         allocation: {
-          ...data.allocation,
+          id: data.allocation.id,
           room: {
-            ...data.allocation.room,
-            capacity: data.allocation.room.capacity || 2,
-            type: data.allocation.room.type || 'Double',
-            amenities: data.allocation.room.amenities || ['WiFi', 'AC', 'Study Table', 'Wardrobe'],
-            monthlyRent: data.allocation.room.monthlyRent || 5000
+            id: data.room.id,
+            roomNumber: data.room.roomNumber || 'Unknown',
+            block: data.room.block,
+            floor: data.room.floor,
+            capacity: data.room.capacity || 1,
+            type: data.room.capacity === 1 ? 'Single' : data.room.capacity === 2 ? 'Double' : 'Shared',
+                      amenities: [] // No amenities data available
           },
-          paymentStatus: Math.random() > 0.7 ? 'overdue' : Math.random() > 0.5 ? 'pending' : 'paid',
-          nextPaymentDue: new Date(Date.now() + Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString()
+          allocationDate: data.allocation.allocationDate,
+          status: data.allocation.status,
+          endDate: data.allocation.endDate
         },
-        roommates: data.roommates || [],
-        maintenanceRequests: data.maintenanceRequests || [],
-        paymentHistory: data.paymentHistory || Array.from({ length: 6 }, (_, i) => ({
-          id: `payment-${i}`,
-          amount: 5000 + Math.random() * 1000,
-          date: new Date(Date.now() - i * 30 * 24 * 60 * 60 * 1000).toISOString(),
-          status: Math.random() > 0.8 ? 'pending' : 'paid'
-        }))
+        roommates: [], // No roommate data available yet
+        maintenanceRequests: [] // Not implemented yet
       }
       
       setRoomDetails(enhancedData)
@@ -281,122 +220,77 @@ export const StudentRoomInfo = React.memo(() => {
   const { allocation, roommates } = roomDetails
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Room Information</h1>
-          <p className="text-gray-600">Room {allocation.room.roomNumber} • {allocation.room.type} • {allocation.room.block || 'Main Block'}</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">My Room Information</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1 truncate">
+            Room {allocation.room.roomNumber} • {allocation.room.capacity === 1 ? 'Single' : allocation.room.capacity === 2 ? 'Double' : 'Shared'} • {allocation.room.block || 'Main Block'}
+          </p>
         </div>
         <Button 
           onClick={handleRefresh}
           variant="outline" 
           disabled={refreshing}
-          className="flex items-center"
+          className="flex items-center w-full sm:w-auto mt-3 sm:mt-0"
         >
           <RefreshCwIcon className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
           {refreshing ? 'Refreshing...' : 'Refresh'}
         </Button>
       </div>
 
-      {/* Payment Status Alert */}
-      {paymentInfo && paymentInfo.urgency !== 'low' && (
-        <div className={`p-4 rounded-lg border ${
-          paymentInfo.urgency === 'high' 
-            ? 'bg-red-50 border-red-200' 
-            : 'bg-orange-50 border-orange-200'
-        }`}>
-          <div className="flex items-center">
-            <AlertCircleIcon className={`h-5 w-5 mr-3 ${
-              paymentInfo.urgency === 'high' ? 'text-red-600' : 'text-orange-600'
-            }`} />
-            <div>
-              <h4 className={`font-medium ${
-                paymentInfo.urgency === 'high' ? 'text-red-800' : 'text-orange-800'
-              }`}>
-                Payment {paymentInfo.urgency === 'high' ? 'Overdue' : 'Due Soon'}
-              </h4>
-              <p className={`text-sm ${
-                paymentInfo.urgency === 'high' ? 'text-red-700' : 'text-orange-700'
-              }`}>
-                Monthly rent of ₹{paymentInfo.amount.toLocaleString()} is {paymentInfo.statusText.toLowerCase()}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Room Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+        <Card className="p-4 sm:p-6">
           <div className="flex items-center">
-            <HomeIcon className="h-8 w-8 text-blue-600" />
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Room Number</p>
-              <p className="text-2xl font-bold text-gray-900">{allocation.room.roomNumber}</p>
-              <p className="text-sm text-gray-500">{allocation.room.block || 'Main Block'}</p>
+            <HomeIcon className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
+            <div className="ml-3 sm:ml-4 min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-500">Room Number</p>
+              <p className="text-lg sm:text-2xl font-bold text-gray-900 truncate">{allocation.room.roomNumber}</p>
+              <p className="text-xs sm:text-sm text-gray-500 truncate">{allocation.room.block || 'Main Block'}</p>
             </div>
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
           <div className="flex items-center">
-            <UsersIcon className="h-8 w-8 text-green-600" />
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Occupancy</p>
-              <p className="text-2xl font-bold text-gray-900">{roomStats?.occupancyRate}%</p>
-              <p className="text-sm text-gray-500">{roomStats?.totalOccupants}/{allocation.room.capacity} occupied</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center">
-            <DollarSignIcon className="h-8 w-8 text-purple-600" />
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Monthly Rent</p>
-              <p className="text-2xl font-bold text-gray-900">₹{allocation.room.monthlyRent.toLocaleString()}</p>
-              <p className={`text-sm ${paymentInfo?.statusColor}`}>{paymentInfo?.statusText}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center">
-            <CalendarIcon className="h-8 w-8 text-orange-600" />
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Allocated Since</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {Math.floor((Date.now() - new Date(allocation.allocationDate).getTime()) / (1000 * 60 * 60 * 24 * 30))} mos
-              </p>
-              <p className="text-sm text-gray-500">{new Date(allocation.allocationDate).toLocaleDateString()}</p>
+            <UsersIcon className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 flex-shrink-0" />
+            <div className="ml-3 sm:ml-4 min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-500">Occupancy</p>
+              <p className="text-lg sm:text-2xl font-bold text-gray-900">{roomStats?.occupancyRate}%</p>
+              <p className="text-xs sm:text-sm text-gray-500">{roomStats?.totalOccupants}/{allocation.room.capacity} occupied</p>
             </div>
           </div>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
         {/* Room Details */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Room Details</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Room Type</span>
-              <span className="font-medium">{allocation.room.type}</span>
+        <Card className="p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Room Details</h3>
+          <div className="space-y-3 sm:space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+              <span className="text-sm sm:text-base text-gray-600">Room Type</span>
+              <span className="font-medium text-sm sm:text-base">
+                {allocation.room.capacity === 1 ? 'Single' : allocation.room.capacity === 2 ? 'Double' : 'Shared'}
+              </span>
             </div>
             {allocation.room.floor && (
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Floor</span>
-                <span className="font-medium">{allocation.room.floor}</span>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                <span className="text-sm sm:text-base text-gray-600">Floor</span>
+                <span className="font-medium text-sm sm:text-base">{allocation.room.floor}</span>
               </div>
             )}
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Capacity</span>
-              <span className="font-medium">{allocation.room.capacity} person{allocation.room.capacity > 1 ? 's' : ''}</span>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+              <span className="text-sm sm:text-base text-gray-600">Capacity</span>
+              <span className="font-medium text-sm sm:text-base">{allocation.room.capacity} person{allocation.room.capacity > 1 ? 's' : ''}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Status</span>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+              <span className="text-sm sm:text-base text-gray-600">Status</span>
+              <span className={`inline-flex items-center px-2 py-0.5 sm:px-2.5 rounded-full text-xs font-medium ${
                 allocation.status === 'active' 
                   ? 'bg-green-100 text-green-800' 
                   : 'bg-yellow-100 text-yellow-800'
@@ -406,59 +300,73 @@ export const StudentRoomInfo = React.memo(() => {
             </div>
           </div>
 
-          <div className="mt-6">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Amenities</h4>
-            <div className="flex flex-wrap gap-2">
-              {allocation.room.amenities.map((amenity, index) => (
-                <span
-                  key={index}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                >
-                  {amenity}
-                </span>
-              ))}
+          {allocation.room.amenities.length > 0 && (
+            <div className="mt-4 sm:mt-6">
+              <h4 className="text-sm font-semibold text-gray-900 mb-2 sm:mb-3">Amenities</h4>
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                {allocation.room.amenities.map((amenity, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-2 py-1 sm:px-3 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                  >
+                    {amenity}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </Card>
 
         {/* Roommates */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <Card className="p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">
             Roommates ({roommates.length})
           </h3>
           {roommates.length === 0 ? (
-            <div className="text-center py-8">
-              <UsersIcon className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-              <p className="text-gray-600">No roommates yet</p>
-              <p className="text-sm text-gray-500">You have this room to yourself for now</p>
+            <div className="text-center py-6 sm:py-8">
+              <UsersIcon className="mx-auto h-6 w-6 sm:h-8 sm:w-8 text-gray-400 mb-2" />
+              <p className="text-sm sm:text-base text-gray-600 mb-1 sm:mb-2">No roommates yet</p>
+              <p className="text-xs sm:text-sm text-gray-500 px-2 sm:px-0">
+                {allocation.room.capacity > 1 
+                  ? `This room can accommodate ${allocation.room.capacity} students. Contact administration if you need a roommate.`
+                  : 'You have this room to yourself for now'
+                }
+              </p>
+              {allocation.room.capacity > 1 && (
+                <div className="mt-3 sm:mt-4 p-2 sm:p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-xs sm:text-sm text-blue-800">
+                    💡 <strong>Tip:</strong> Roommate information will be displayed here once other students are assigned to this room.
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {roommates.map((roommate) => (
-                <div key={roommate.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                    <span className="text-blue-600 font-medium">
+                <div key={roommate.id} className="flex items-center space-x-2 sm:space-x-3 p-2 sm:p-3 bg-gray-50 rounded-lg">
+                  <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-blue-600 font-medium text-sm sm:text-base">
                       {roommate.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                     </span>
                   </div>
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-900">{roommate.name}</h4>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-gray-900 text-sm sm:text-base truncate">{roommate.name}</h4>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-xs sm:text-sm text-gray-500">
                       {roommate.email && (
-                        <span className="flex items-center">
-                          <MailIcon className="h-3 w-3 mr-1" />
-                          {roommate.email}
+                        <span className="flex items-center truncate">
+                          <MailIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                          <span className="truncate">{roommate.email}</span>
                         </span>
                       )}
                       {roommate.phone && (
-                        <span className="flex items-center">
-                          <PhoneIcon className="h-3 w-3 mr-1" />
-                          {roommate.phone}
+                        <span className="flex items-center truncate">
+                          <PhoneIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                          <span className="truncate">{roommate.phone}</span>
                         </span>
                       )}
                     </div>
                     {roommate.course && (
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-gray-400 truncate">
                         {roommate.course} • Year {roommate.year}
                       </p>
                     )}
@@ -470,82 +378,10 @@ export const StudentRoomInfo = React.memo(() => {
         </Card>
       </div>
 
-      {/* Payment Information */}
-      {paymentInfo && (
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <DollarSignIcon className="h-8 w-8 text-green-600 mx-auto mb-2" />
-              <p className="text-sm text-gray-600 mb-1">Monthly Rent</p>
-              <p className="text-xl font-bold text-gray-900">₹{paymentInfo.amount.toLocaleString()}</p>
-            </div>
-            <div className="text-center">
-              <ClockIcon className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-              <p className="text-sm text-gray-600 mb-1">Payment Status</p>
-              <p className={`text-lg font-semibold ${paymentInfo.statusColor}`}>
-                {paymentInfo.statusText}
-              </p>
-            </div>
-            <div className="text-center">
-              {roomStats && roomStats.paymentStreak > 0 ? (
-                <CheckCircleIcon className="h-8 w-8 text-green-600 mx-auto mb-2" />
-              ) : (
-                <AlertCircleIcon className="h-8 w-8 text-orange-600 mx-auto mb-2" />
-              )}
-              <p className="text-sm text-gray-600 mb-1">Payment Streak</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {roomStats?.paymentStreak || 0} months
-              </p>
-            </div>
-          </div>
-        </Card>
-      )}
 
-      {/* Recent Payment History */}
-      {roomDetails.paymentHistory.length > 0 && (
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Payments</h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {roomDetails.paymentHistory.slice(0, 5).map((payment) => (
-                  <tr key={payment.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(payment.date).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ₹{payment.amount.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        payment.status === 'paid'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {payment.status === 'paid' ? 'Paid' : 'Pending'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
+
+
+
     </div>
   )
 })

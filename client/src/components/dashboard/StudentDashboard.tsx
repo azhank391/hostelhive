@@ -95,7 +95,7 @@ interface DashboardStats {
  */
 export const StudentDashboard = React.memo(() => {
   const { user } = useAuth()
-  const { hostelId, hasHostel } = useCurrentHostelId()
+  const { getHostelId, hasHostel } = useCurrentHostelId()
   const studentApi = useStudentApiWithHostel()
   
   // State management
@@ -192,7 +192,7 @@ export const StudentDashboard = React.memo(() => {
   const handleNewComplaint = useCallback(async (complaintData: { 
     title: string; 
     description: string;
-    priority?: 'low' | 'medium' | 'high' | 'urgent';
+    priority: string;
   }) => {
     if (!hasHostel) {
       notification.error('Please select a hostel first')
@@ -210,7 +210,7 @@ export const StudentDashboard = React.memo(() => {
           title: complaintData.title,
           description: complaintData.description,
           status: 'pending',
-          priority: complaintData.priority || 'medium',
+          priority: (complaintData.priority || 'medium') as 'low' | 'medium' | 'high' | 'urgent',
           createdAt: new Date().toISOString()
         }
         
@@ -415,7 +415,7 @@ export const StudentDashboard = React.memo(() => {
                 </p>
                 {dashboardData?.room && (
                   <p className="text-sm text-gray-500">
-                    {dashboardData.room.occupied}/{dashboardData.room.capacity} occupied
+                    {dashboardData.room.occupied}/{dashboardData.room.capacity} {dashboardData.room.occupied === 1 ? 'student' : 'students'} occupied
                   </p>
                 )}
               </div>
@@ -486,11 +486,11 @@ export const StudentDashboard = React.memo(() => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Capacity:</span>
-                  <span className="font-medium">{dashboardData.room.capacity} students</span>
+                  <span className="font-medium">{dashboardData.room.capacity} {dashboardData.room.capacity === 1 ? 'student' : 'students'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Currently Occupied:</span>
-                  <span className="font-medium">{dashboardData.room.occupied} students</span>
+                  <span className="font-medium">{dashboardData.room.occupied} {dashboardData.room.occupied === 1 ? 'student' : 'students'}</span>
                 </div>
                 {dashboardData.room.floor && (
                   <div className="flex justify-between">

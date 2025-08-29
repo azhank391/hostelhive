@@ -1,7 +1,7 @@
 'use client'
 
-import { RoomManagement } from '@/components/dashboard/RoomManagement'
+import { WardenRoomManagement } from '@/components/dashboard/WardenRoomManagement'
 
 export default function WardenRoomsPage() {
-  return <RoomManagement />
+  return <WardenRoomManagement />
 }

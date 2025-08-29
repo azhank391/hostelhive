@@ -158,14 +158,21 @@ router.post('/:hostelId/complaints', adminController.createComplaint);
  * @desc Resolve complaint
  * @access Private (Owner, Warden)
  */
-router.post('/:hostelId/complaints/:complaintId/resolve', requireHostelRole('owner', 'warden'), adminController.resolveComplaint);
+router.post('/:hostelId/complaints/:complaintId/resolve', validateHostelAccess, requireHostelRole('owner', 'warden'), adminController.resolveComplaint);
 
 /**
  * @route PUT /api/hostels/:hostelId/complaints/:complaintId/status
  * @desc Update complaint status and priority
  * @access Private (Owner, Warden)
  */
-router.put('/:hostelId/complaints/:complaintId/status', requireHostelRole('owner', 'warden'), adminController.updateComplaintStatus);
+router.put('/:hostelId/complaints/:complaintId/status', validateHostelAccess, requireHostelRole('owner', 'warden'), adminController.updateComplaintStatus);
+
+/**
+ * @route DELETE /api/hostels/:hostelId/complaints/:complaintId
+ * @desc Delete complaint
+ * @access Private (Owner, Warden)
+ */
+router.delete('/:hostelId/complaints/:complaintId', validateHostelAccess, requireHostelRole('owner', 'warden'), adminController.deleteComplaint);
 
 // ========================================
 // ROOM MANAGEMENT ROUTES

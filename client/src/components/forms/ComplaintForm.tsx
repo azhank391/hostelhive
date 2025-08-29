@@ -6,9 +6,9 @@ import { AlertCircleIcon, MessageSquareIcon } from 'lucide-react';
 
 interface ComplaintFormProps {
   hasRoom: boolean;
-  onSubmit: (data: { title: string; description: string }) => void;
+  onSubmit: (data: { title: string; description: string; priority: string }) => void;
   onCancel: () => void;
-  initialData?: { title: string; description: string };
+  initialData?: { title: string; description: string; priority: string };
   isEditMode?: boolean;
 }
 
@@ -21,7 +21,8 @@ export function ComplaintForm({
 }: ComplaintFormProps) {
   const [formData, setFormData] = useState({
     title: initialData?.title || '',
-    description: initialData?.description || ''
+    description: initialData?.description || '',
+    priority: initialData?.priority || 'medium'
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -30,7 +31,8 @@ export function ComplaintForm({
     if (initialData) {
       setFormData({
         title: initialData.title || '',
-        description: initialData.description || ''
+        description: initialData.description || '',
+        priority: initialData.priority || 'medium'
       });
     }
   }, [initialData]);
@@ -57,6 +59,9 @@ export function ComplaintForm({
     }
     if (!formData.description.trim()) {
       newErrors.description = 'Description is required';
+    }
+    if (!formData.priority) {
+      newErrors.priority = 'Priority is required';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -132,6 +137,25 @@ export function ComplaintForm({
           />
         </div>
         {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
+      </div>
+
+      <div>
+        <label htmlFor="priority" className="block text-sm font-medium text-gray-700 mb-1">
+          {isEditMode ? 'Edit Priority' : 'Priority Level'}
+        </label>
+        <select
+          id="priority"
+          name="priority"
+          value={formData.priority}
+          onChange={handleChange}
+          className={`block w-full rounded-md border ${errors.priority ? 'border-red-300' : 'border-gray-300'} shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
+        >
+          <option value="low">Low - Minor issue, can wait</option>
+          <option value="medium">Medium - Standard issue</option>
+          <option value="high">High - Important issue</option>
+          <option value="urgent">Urgent - Critical issue</option>
+        </select>
+        {errors.priority && <p className="mt-1 text-sm text-red-600">{errors.priority}</p>}
       </div>
 
       <div className="flex justify-end space-x-3 pt-4 border-t">

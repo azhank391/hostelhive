@@ -22,7 +22,6 @@ app.use(cors({
 app.use(express.json({ 
   limit: '10mb',
   verify: (req, res, buf) => {
-    console.log('🔍 DEBUG: Raw request body:', buf.toString());
   }
 })); //parse JSON bodies
 
@@ -31,7 +30,7 @@ app.use(morgan("dev")); //HTTP request logger
 
 //health check route
 app.get("/health", (req, res) => {
-  res.json({ message: "HostelHive API is running" });
+  res.json({ message: "HostelHive API is running yayyy" });
 });
 
 // Mount routes
@@ -45,7 +44,8 @@ const superadminRoutes = require("./routes/superadmin");
 app.use("/api/auth", authRoutes);
 app.use("/api/hostels", hostelRoutes);
 app.use("/api/hostel-resolver", hostelResolverRoutes); // Add the missing route
-app.use("/api/hostels/:hostelId/admin", adminRoutes); // 🔧 URL-based admin routes
+app.use("/api/hostels/:hostelId/admin", adminRoutes); // 🔧 URL-based admin routes (for owners)
+app.use("/api/admin", adminRoutes); // 🔧 NEW: Direct admin routes for warden dashboard
 app.use("/api/student", studentRoutes);
 app.use("/api/superadmin", superadminRoutes);
 
