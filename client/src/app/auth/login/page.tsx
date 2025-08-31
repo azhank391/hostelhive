@@ -75,6 +75,7 @@ function LoginForm() {
       // We'll redirect after a brief delay to ensure state is updated
       setTimeout(() => {
         // Default redirect - the dashboard will handle role-based routing
+        console.log('🚀 DEBUG: Login redirect - redirecting to /dashboard');
         router.push('/dashboard')
       }, 100)
     } catch (error) {

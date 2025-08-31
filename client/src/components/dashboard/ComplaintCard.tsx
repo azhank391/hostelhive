@@ -303,7 +303,7 @@ export const ComplaintCard = memo<ComplaintCardProps>(({
   }, [estimatedResolution, status]);
 
   const detailsUrl = useMemo(() => {
-    return currentUserRole === 'student' 
+    return currentUserRole?.toLowerCase() === 'student' 
       ? `/dashboard/student/complaints/${id}` 
       : `/dashboard/complaints/${id}`;
   }, [currentUserRole, id]);

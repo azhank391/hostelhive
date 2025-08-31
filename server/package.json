@@ -7,6 +7,10 @@
     "start": "nodemon server.js",
     "dev": "nodemon server.js",
     "migrate": "sequelize-cli db:migrate",
+    "seed": "sequelize-cli db:seed:all",
+    "seed:undo": "sequelize-cli db:seed:undo:all",
+    "seed:superadmin": "node seed-superadmin.js",
+    "test:auth": "node test-integrated-auth.js",
     "check-db": "node check-database.js"
   },
   "keywords": [],

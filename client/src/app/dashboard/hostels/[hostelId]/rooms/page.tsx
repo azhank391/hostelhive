@@ -80,19 +80,26 @@ export default function HostelRoomsPage() {
       }
       
       const result = await response.json();
+      console.log('🔍 DEBUG: Raw API response:', result);
       
       const roomsData = result.rooms || result.data || [];
+      console.log('🔍 DEBUG: Rooms data before normalization:', roomsData);
       
       // Normalize the room data to match our frontend expectations
-      const normalizedRooms = roomsData.map((room: any) => ({
-        id: room.id,
-        roomNumber: room.roomNumber || room.number, // Handle both field names
-        capacity: room.capacity || 1,
-        block: room.block,
-        occupied: room.occupied || 0,
-        status: room.status || 'available',
-        hostelId: room.hostelId
-      }));
+      const normalizedRooms = roomsData.map((room: any) => {
+        console.log('🔍 DEBUG: Normalizing room:', room);
+        const normalized = {
+          id: room.id || room.roomId || room._id, // Handle multiple possible ID field names
+          roomNumber: room.roomNumber || room.number || room.room_number, // Handle multiple field names
+          capacity: room.capacity || 1,
+          block: room.block,
+          occupied: room.occupied || 0,
+          status: room.status || 'available',
+          hostelId: room.hostelId || room.hostel_id
+        };
+        console.log('🔍 DEBUG: Normalized room:', normalized);
+        return normalized;
+      });
       
       setRooms(normalizedRooms);
       setPagination({
@@ -199,9 +206,17 @@ export default function HostelRoomsPage() {
   };
 
   const handleUpdateRoom = async (updates: Partial<Room>) => {
-    if (!editingRoom) return;
+    console.log('🔍 DEBUG: handleUpdateRoom called with updates:', updates);
+    console.log('🔍 DEBUG: editingRoom:', editingRoom);
+    console.log('🔍 DEBUG: editingRoom.id:', editingRoom?.id, 'Type:', typeof editingRoom?.id);
+    
+    if (!editingRoom) {
+      console.error('❌ DEBUG: No editing room set');
+      return;
+    }
     
     if (!editingRoom.id) {
+      console.error('❌ DEBUG: Editing room has no ID:', editingRoom);
       notification.error('Invalid room data', {
         description: 'Room ID is missing. Please refresh and try again.'
       });
@@ -226,7 +241,11 @@ export default function HostelRoomsPage() {
       setIsUpdating(true);
       
       // Direct API call - more reliable
-      const response = await fetch(`/api/hostels/${hostelId}/rooms/${editingRoom.id}`, {
+      const apiUrl = `/api/hostels/${hostelId}/rooms/${editingRoom.id}`;
+      console.log('🔍 DEBUG: Making API call to:', apiUrl);
+      console.log('🔍 DEBUG: Request body:', updates);
+      
+      const response = await fetch(apiUrl, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -318,13 +337,18 @@ export default function HostelRoomsPage() {
   };
 
   const openEditModal = (room: Room) => {
+    console.log('🔍 DEBUG: openEditModal called with room:', room);
+    console.log('🔍 DEBUG: Room ID type and value:', typeof room.id, room.id);
+    
     if (!room.id) {
+      console.error('❌ DEBUG: Room ID is missing:', room);
       notification.error('Invalid room data', {
         description: 'Room ID is missing. Cannot edit this room.'
       });
       return;
     }
     
+    console.log('✅ DEBUG: Setting editing room with ID:', room.id);
     setEditingRoom(room);
     setEditForm({
       roomNumber: room.roomNumber || '',
@@ -732,10 +756,10 @@ export default function HostelRoomsPage() {
 
              {/* No pagination needed - all rooms loaded at once */}
 
-       {/* Create Room Modal */}
-       {showCreateModal && (
-         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+               {/* Create Room Modal */}
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" style={{ left: 0, right: 0, top: 0, bottom: 0, width: '100vw', height: '100vh', position: 'fixed' }}>
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-auto">
              <h3 className="text-lg font-semibold mb-4">Create New Room</h3>
              <div className="space-y-4">
                <div>
@@ -797,10 +821,10 @@ export default function HostelRoomsPage() {
          </div>
        )}
 
-                       {/* Edit Room Modal */}
-        {showEditModal && editingRoom && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+                                               {/* Edit Room Modal */}
+         {showEditModal && editingRoom && (
+           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" style={{ left: 0, right: 0, top: 0, bottom: 0, width: '100vw', height: '100vh' }}>
+             <div className="bg-white rounded-lg p-6 w-full max-w-md mx-auto">
               <h3 className="text-lg font-semibold mb-4">Edit Room {editingRoom.roomNumber}</h3>
               <div className="space-y-4">
                 <div>
@@ -865,10 +889,10 @@ export default function HostelRoomsPage() {
             </div>
                    )}
 
-        {/* View Room Details Modal */}
-        {showViewModal && viewingRoom && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+                 {/* View Room Details Modal */}
+         {showViewModal && viewingRoom && (
+           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" style={{ left: 0, right: 0, top: 0, bottom: 0, width: '100vw', height: '100vh' }}>
+             <div className="bg-white rounded-lg p-6 w-full max-w-md mx-auto">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">Room {viewingRoom.roomNumber} Details</h3>
                 <button

@@ -1,46 +1,25 @@
 "use client";
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect } from 'react';
 import { useHostel } from '../context/HostelContext';
 import { BuildingIcon, Share2Icon } from 'lucide-react';
 import { ShareableLink } from './ShareableLink';
 
 export function HostelSelector() {
   const { currentHostel, hostels, setActiveHostel, isMultiHostelOwner } = useHostel();
-  const [loading, setLoading] = useState(false);
-  const [localSelectedHostelId, setLocalSelectedHostelId] = useState<string>('');
-  const router = useRouter();
-
-  // Initialize local state when currentHostel changes
-  useEffect(() => {
-    if (currentHostel?.id) {
-      setLocalSelectedHostelId(currentHostel.id);
-    }
-  }, [currentHostel?.id]);
 
   // Hide selector if user has only one hostel
   if (!isMultiHostelOwner) return null;
 
   const handleHostelChange = useCallback(async (hostelId: string) => {
-    if (loading || !hostelId) return;
+    if (!hostelId) return;
     
     try {
-      setLoading(true);
-      
-      // IMMEDIATE UI UPDATE: Set local state first for instant feedback
-      setLocalSelectedHostelId(hostelId);
-      
       // Update the hostel context - this handles navigation internally
       await setActiveHostel(hostelId, true);
-      
     } catch (error) {
       console.error('Failed to switch hostel:', error);
-      // Revert local state on error to maintain consistency
-      setLocalSelectedHostelId(currentHostel?.id || '');
-    } finally {
-      setLoading(false);
     }
-  }, [loading, setActiveHostel, currentHostel?.id]);
+  }, [setActiveHostel]);
 
   const handleShareHostel = useCallback((hostel: any) => {
     if (!hostel?.subdomain) return;
@@ -54,11 +33,8 @@ export function HostelSelector() {
     window.open(shareUrl, '_blank', 'noopener,noreferrer');
   }, []);
 
-  // Use local state for immediate UI feedback, fallback to context
-  const selectedHostelId = localSelectedHostelId || currentHostel?.id || '';
-  
-  // Find the hostel object for display
-  const selectedHostel = hostels.find(h => h.id === selectedHostelId);
+  // Ensure we always have a string value for the select
+  const selectedHostelId = currentHostel?.id || '';
 
   return (
     <div className="flex items-center gap-4">
@@ -69,11 +45,10 @@ export function HostelSelector() {
         <select
           value={selectedHostelId}
           onChange={(e) => handleHostelChange(e.target.value)}
-          disabled={loading}
           className="px-4 py-2 border border-gray-300 rounded-lg text-base font-medium bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-gray-400 transition-colors min-w-[200px]"
         >
           <option value="" disabled>
-            {loading ? 'Switching...' : 'Select Hostel'}
+            Select Hostel
           </option>
           {hostels.map(hostel => (
             <option key={hostel.id} value={hostel.id}>
@@ -84,14 +59,14 @@ export function HostelSelector() {
       </div>
       
       {/* Share button for current hostel */}
-      {selectedHostel && (
+      {currentHostel && (
         <button
-          onClick={() => handleShareHostel(selectedHostel)}
+          onClick={() => handleShareHostel(currentHostel)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-          title={`Share ${selectedHostel.subdomain || selectedHostel.name}`}
+          title={`Share ${currentHostel.subdomain || currentHostel.name}`}
         >
           <Share2Icon size={16} />
-          <span>Share {selectedHostel.subdomain || selectedHostel.name}</span>
+          <span>Share {currentHostel.subdomain || currentHostel.name}</span>
         </button>
       )}
     </div>
@@ -103,43 +78,23 @@ export function HostelSelector() {
  */
 export function CompactHostelSelector() {
   const { currentHostel, hostels, setActiveHostel, isMultiHostelOwner } = useHostel();
-  const [loading, setLoading] = useState(false);
-  const [localSelectedHostelId, setLocalSelectedHostelId] = useState<string>('');
-  const router = useRouter();
-
-  // Initialize local state when currentHostel changes
-  useEffect(() => {
-    if (currentHostel?.id) {
-      setLocalSelectedHostelId(currentHostel.id);
-    }
-  }, [currentHostel?.id]);
 
   // Hide selector if user has only one hostel
   if (!isMultiHostelOwner) return null;
 
   const handleHostelChange = useCallback(async (hostelId: string) => {
-    if (loading || !hostelId) return;
+    if (!hostelId) return;
     
     try {
-      setLoading(true);
-      
-      // IMMEDIATE UI UPDATE: Set local state first for instant feedback
-      setLocalSelectedHostelId(hostelId);
-      
       // Update the hostel context - this handles navigation internally
       await setActiveHostel(hostelId, true);
-      
     } catch (error) {
       console.error('Failed to switch hostel:', error);
-      // Revert local state on error to maintain consistency
-      setLocalSelectedHostelId(currentHostel?.id || '');
-    } finally {
-      setLoading(false);
     }
-  }, [loading, setActiveHostel, currentHostel?.id]);
+  }, [setActiveHostel]);
 
-  // Use local state for immediate UI feedback, fallback to context
-  const selectedHostelId = localSelectedHostelId || currentHostel?.id || '';
+  // Ensure we always have a string value for the select
+  const selectedHostelId = currentHostel?.id || '';
 
   return (
     <div className="flex items-center gap-2">
@@ -147,11 +102,10 @@ export function CompactHostelSelector() {
       <select
         value={selectedHostelId}
         onChange={(e) => handleHostelChange(e.target.value)}
-        disabled={loading}
         className="px-3 py-1 border border-gray-300 rounded text-sm font-medium bg-white shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 hover:border-gray-400 transition-colors min-w-[150px]"
       >
         <option value="" disabled>
-          {loading ? 'Switching...' : 'Select Hostel'}
+          Select Hostel
         </option>
         {hostels.map(hostel => (
           <option key={hostel.id} value={hostel.id}>
@@ -168,46 +122,34 @@ export function CompactHostelSelector() {
  */
 export function MainContentHostelSelector() {
   const { currentHostel, hostels, setActiveHostel, isMultiHostelOwner } = useHostel();
-  const [loading, setLoading] = useState(false);
-  const [localSelectedHostelId, setLocalSelectedHostelId] = useState<string>('');
-  const router = useRouter();
 
-  // Initialize local state when currentHostel changes
+  // 🚀 DEBUG: Track component re-renders and context changes
   useEffect(() => {
-    if (currentHostel?.id) {
-      console.log('🔄 MainContentHostelSelector: Context updated, syncing local state:', currentHostel.id);
-      setLocalSelectedHostelId(currentHostel.id);
-    }
+    console.log('🔄 MainContentHostelSelector: Component re-rendered with currentHostel:', currentHostel?.id);
+  });
+
+  // 🚀 DEBUG: Track when currentHostel actually changes
+  useEffect(() => {
+    console.log('🎯 MainContentHostelSelector: currentHostel changed to:', currentHostel?.id);
   }, [currentHostel?.id]);
 
   // Hide selector if user has only one hostel
   if (!isMultiHostelOwner) return null;
 
   const handleHostelChange = useCallback(async (hostelId: string) => {
-    if (loading || !hostelId) return;
+    if (!hostelId) return;
     
-    console.log('🎯 MainContentHostelSelector: Hostel change requested:', hostelId);
+    console.log('🎯 MainContentHostelSelector: Hostel change requested:', hostelId, 'Type:', typeof hostelId);
+    console.log('🎯 MainContentHostelSelector: Current hostel before change:', currentHostel?.id, 'Type:', typeof currentHostel?.id);
     
     try {
-      setLoading(true);
-      
-      // IMMEDIATE UI UPDATE: Set local state first for instant feedback
-      console.log('⚡ MainContentHostelSelector: Setting local state immediately:', hostelId);
-      setLocalSelectedHostelId(hostelId);
-      
       // Update the hostel context - this handles navigation internally
-      console.log('🔄 MainContentHostelSelector: Calling setActiveHostel...');
       await setActiveHostel(hostelId, true);
       console.log('✅ MainContentHostelSelector: setActiveHostel completed');
-      
     } catch (error) {
-      console.error('❌ MainContentHostelSelector: Failed to switch hostel:', error);
-      // Revert local state on error to maintain consistency
-      setLocalSelectedHostelId(currentHostel?.id || '');
-    } finally {
-      setLoading(false);
+      console.error('Failed to switch hostel:', error);
     }
-  }, [loading, setActiveHostel, currentHostel?.id]);
+  }, [setActiveHostel]);
 
   const handleShareHostel = useCallback((hostel: any) => {
     if (!hostel?.subdomain) return;
@@ -221,19 +163,17 @@ export function MainContentHostelSelector() {
     window.open(shareUrl, '_blank', 'noopener,noreferrer');
   }, []);
 
-  // Use local state for immediate UI feedback, fallback to context
-  const selectedHostelId = localSelectedHostelId || currentHostel?.id || '';
+  // Ensure we always have a string value for the select
+  const selectedHostelId = currentHostel?.id || '';
   
-  // Find the hostel object for display
-  const selectedHostel = hostels.find(h => h.id === selectedHostelId);
-
   // Debug logging to track state values
   console.log('🔍 MainContentHostelSelector Debug:', {
-    localSelectedHostelId,
     currentHostelId: currentHostel?.id,
+    currentHostelIdType: typeof currentHostel?.id,
     selectedHostelId,
-    selectedHostelName: selectedHostel?.name,
-    loading
+    selectedHostelIdType: typeof selectedHostelId,
+    hostelsCount: hostels.length,
+    hostelsIds: hostels.map(h => ({ id: h.id, type: typeof h.id }))
   });
 
   return (
@@ -245,11 +185,10 @@ export function MainContentHostelSelector() {
         <select
           value={selectedHostelId}
           onChange={(e) => handleHostelChange(e.target.value)}
-          disabled={loading}
           className="px-4 py-2 border border-gray-300 rounded-lg text-base font-medium bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-gray-400 transition-colors min-w-[200px]"
         >
           <option value="" disabled>
-            {loading ? 'Switching...' : 'Select Hostel'}
+            Select Hostel
           </option>
           {hostels.map(hostel => (
             <option key={hostel.id} value={hostel.id}>
@@ -260,14 +199,14 @@ export function MainContentHostelSelector() {
       </div>
       
       {/* Share button for current hostel */}
-      {selectedHostel && (
+      {currentHostel && (
         <button
-          onClick={() => handleShareHostel(selectedHostel)}
+          onClick={() => handleShareHostel(currentHostel)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-          title={`Share ${selectedHostel.subdomain || selectedHostel.name}`}
+          title={`Share ${currentHostel.subdomain || currentHostel.name}`}
         >
           <Share2Icon size={16} />
-          <span>Share {selectedHostel.subdomain || selectedHostel.name}</span>
+          <span>Share {currentHostel.subdomain || currentHostel.name}</span>
         </button>
       )}
     </div>

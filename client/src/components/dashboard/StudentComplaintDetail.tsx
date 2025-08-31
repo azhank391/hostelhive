@@ -15,12 +15,16 @@ import { Complaint as ApiComplaint } from '@/lib/types';
 // TYPES & INTERFACES
 // ==========================================
 
-interface ExtendedComplaint extends ApiComplaint {
+interface ExtendedComplaint extends Omit<ApiComplaint, 'status' | 'priority'> {
+  status: string; // Transformed status from backend
+  priority: string; // Transformed priority from backend
   category?: string;
   dateSubmitted?: string;
   dateResolved?: string;
   assignedTo?: string;
   response?: string;
+  resolution?: string; // Main resolution text
+  resolutionNotes?: string; // Additional notes from warden/owner
   attachments?: string[];
   studentName?: string;
   roomNumber?: string;
@@ -29,11 +33,11 @@ interface ExtendedComplaint extends ApiComplaint {
 interface ComplaintFormData {
   title: string;
   description: string;
-  priority: ApiComplaint['priority'];
+  priority: string;
   category?: string;
 }
 
-interface OptimizedStudentComplaintDetailProps {
+interface StudentComplaintDetailProps {
   complaintId?: string;
   onComplaintUpdate?: (complaint: ExtendedComplaint) => void;
   onComplaintDelete?: (complaintId: string) => void;
@@ -43,36 +47,38 @@ interface OptimizedStudentComplaintDetailProps {
 // MEMOIZED HELPERS
 // ==========================================
 
-const getStatusIcon = memo((status: ApiComplaint['status']) => {
+const getStatusIcon = (status: string) => {
   switch (status) {
-    case 'pending':
+    case 'Open':
       return <ClockIcon className="w-4 h-4" />;
-    case 'in-progress':
+    case 'In Progress':
       return <AlertCircleIcon className="w-4 h-4" />;
-    case 'resolved':
+    case 'Resolved':
       return <CheckCircleIcon className="w-4 h-4" />;
+    case 'Closed':
+      return <ClockIcon className="w-4 h-4" />;
     default:
       return <ClockIcon className="w-4 h-4" />;
   }
-});
+};
 
-getStatusIcon.displayName = 'GetStatusIcon';
-
-const getStatusVariant = (status: ApiComplaint['status']): 'primary' | 'success' | 'warning' | 'error' | 'neutral' => {
+const getStatusVariant = (status: string): 'primary' | 'success' | 'warning' | 'error' | 'neutral' => {
   switch (status) {
-    case 'pending':
+    case 'Open':
       return 'warning';
-    case 'in-progress':
+    case 'In Progress':
       return 'primary';
-    case 'resolved':
+    case 'Resolved':
       return 'success';
+    case 'Closed':
+      return 'neutral';
     default:
       return 'neutral';
   }
 };
 
-const getPriorityVariant = (priority?: ApiComplaint['priority']): 'primary' | 'success' | 'warning' | 'error' | 'neutral' => {
-  switch (priority) {
+const getPriorityVariant = (priority?: string): 'primary' | 'success' | 'warning' | 'error' | 'neutral' => {
+  switch (priority?.toLowerCase()) {
     case 'high':
       return 'warning';
     case 'medium':
@@ -88,16 +94,16 @@ const getPriorityVariant = (priority?: ApiComplaint['priority']): 'primary' | 's
 // MAIN COMPONENT
 // ==========================================
 
-const OptimizedStudentComplaintDetail: React.FC<OptimizedStudentComplaintDetailProps> = memo(({
+const StudentComplaintDetail: React.FC<StudentComplaintDetailProps> = memo(({
   complaintId,
   onComplaintUpdate,
   onComplaintDelete
 }) => {
+  console.log('🎯 StudentComplaintDetail rendered with complaintId:', complaintId);
   // ==========================================
   // STATE MANAGEMENT
   // ==========================================
 
-  const [complaints, setComplaints] = useState<ExtendedComplaint[]>([]);
   const [selectedComplaint, setSelectedComplaint] = useState<ExtendedComplaint | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -105,7 +111,7 @@ const OptimizedStudentComplaintDetail: React.FC<OptimizedStudentComplaintDetailP
   const [editFormData, setEditFormData] = useState<ComplaintFormData>({
     title: '',
     description: '',
-    priority: 'medium',
+    priority: 'Medium',
     category: ''
   });
 
@@ -114,14 +120,11 @@ const OptimizedStudentComplaintDetail: React.FC<OptimizedStudentComplaintDetailP
   // ==========================================
 
   const displayComplaint = useMemo(() => {
-    if (complaintId) {
-      return complaints.find(c => c.id === complaintId) || null;
-    }
     return selectedComplaint;
-  }, [complaints, complaintId, selectedComplaint]);
+  }, [selectedComplaint]);
 
   const canEdit = useMemo(() => {
-    return displayComplaint?.status === 'pending';
+    return displayComplaint?.status === 'Open' || displayComplaint?.status === 'In Progress';
   }, [displayComplaint?.status]);
 
   const formattedDate = useMemo(() => {
@@ -150,41 +153,48 @@ const OptimizedStudentComplaintDetail: React.FC<OptimizedStudentComplaintDetailP
   // DATA FETCHING
   // ==========================================
 
-  const fetchComplaints = useCallback(async () => {
+  const fetchComplaint = useCallback(async () => {
+    if (!complaintId) return;
+    
+    console.log('🔍 Fetching complaint with ID:', complaintId);
     try {
       setIsLoading(true);
-      const data = await studentApi.getComplaints();
-      const extendedData: ExtendedComplaint[] = (data || []).map((complaint: ApiComplaint) => ({
-        ...complaint,
-        category: complaint.title, // Use title as category fallback
-        dateSubmitted: complaint.createdAt || new Date().toISOString(),
-        dateResolved: complaint.resolvedAt,
-        studentName: complaint.student?.name || 'Unknown Student',
-        roomNumber: undefined,
-        assignedTo: undefined,
-        response: complaint.resolution,
-        attachments: []
-      }));
-      setComplaints(extendedData);
+      const complaint = await studentApi.getComplaintById(complaintId);
       
-      if (complaintId && extendedData) {
-        const found = extendedData.find((c: ExtendedComplaint) => c.id === complaintId);
-        if (found) {
-          setSelectedComplaint(found);
-        }
+      console.log('📡 Raw complaint data from API:', complaint);
+      
+      if (complaint) {
+        const extendedComplaint: ExtendedComplaint = {
+          ...complaint,
+          category: complaint.title, // Use title as category fallback
+          dateSubmitted: complaint.createdAt || new Date().toISOString(),
+          dateResolved: complaint.resolvedAt,
+          studentName: complaint.user?.name || 'Unknown Student',
+          roomNumber: complaint.room?.roomNumber,
+          assignedTo: undefined,
+          response: complaint.resolutionNotes,
+          resolution: complaint.resolution,
+          resolutionNotes: complaint.resolutionNotes,
+          attachments: []
+        };
+        console.log('✨ Extended complaint data:', extendedComplaint);
+        setSelectedComplaint(extendedComplaint);
+      } else {
+        console.log('❌ No complaint data received from API');
       }
     } catch (error) {
-      console.error('Error fetching complaints:', error);
-      toast.error('Failed to fetch complaints');
-      setComplaints([]);
+      console.error('💥 Error fetching complaint:', error);
+      toast.error('Failed to fetch complaint details');
+      setSelectedComplaint(null);
     } finally {
       setIsLoading(false);
     }
   }, [complaintId]);
 
   useEffect(() => {
-    fetchComplaints();
-  }, [fetchComplaints]);
+    console.log('🔄 useEffect triggered, calling fetchComplaint');
+    fetchComplaint();
+  }, [fetchComplaint]);
 
   // ==========================================
   // EVENT HANDLERS
@@ -206,10 +216,15 @@ const OptimizedStudentComplaintDetail: React.FC<OptimizedStudentComplaintDetailP
     if (!displayComplaint) return;
 
     try {
-      await studentApi.updateComplaint(displayComplaint.id, editFormData);
+      // Transform priority back to raw value for API
+      const apiUpdates = {
+        ...editFormData,
+        priority: editFormData.priority.toLowerCase() as 'low' | 'medium' | 'high' | 'urgent'
+      };
+      
+      await studentApi.updateComplaint(displayComplaint.id, apiUpdates);
       
       const updatedComplaint = { ...displayComplaint, ...editFormData };
-      setComplaints(prev => prev.map(c => c.id === displayComplaint.id ? updatedComplaint : c));
       setSelectedComplaint(updatedComplaint);
       
       onComplaintUpdate?.(updatedComplaint);
@@ -231,7 +246,6 @@ const OptimizedStudentComplaintDetail: React.FC<OptimizedStudentComplaintDetailP
     try {
       await studentApi.deleteComplaint(displayComplaint.id);
       
-      setComplaints(prev => prev.filter(c => c.id !== displayComplaint.id));
       setSelectedComplaint(null);
       
       onComplaintDelete?.(displayComplaint.id);
@@ -247,60 +261,16 @@ const OptimizedStudentComplaintDetail: React.FC<OptimizedStudentComplaintDetailP
     setEditFormData(prev => ({ ...prev, [field]: value }));
   }, []);
 
-  const handleComplaintSelect = useCallback((complaint: ExtendedComplaint) => {
-    setSelectedComplaint(complaint);
-  }, []);
+
 
   // ==========================================
   // RENDER HELPERS
   // ==========================================
 
   const renderComplaintsList = useMemo(() => {
-    if (complaintId) return null; // Don't show list if specific complaint is requested
-
-    return (
-      <div className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900">Your Complaints</h3>
-        {complaints.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No complaints found</p>
-        ) : (
-          <div className="space-y-2">
-            {complaints.map((complaint) => (
-              <div
-                key={complaint.id}
-                className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                  selectedComplaint?.id === complaint.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => handleComplaintSelect(complaint)}
-              >
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-gray-900">{complaint.title}</h4>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant={getPriorityVariant(complaint.priority)}>
-                      {complaint.priority || 'medium'}
-                    </Badge>
-                    <Badge variant={getStatusVariant(complaint.status)}>
-                      {getStatusIcon(complaint.status)}
-                      <span className="ml-1">{complaint.status}</span>
-                    </Badge>
-                  </div>
-                </div>
-                <p className="text-gray-600 text-sm mt-1 line-clamp-2">
-                  {complaint.description}
-                </p>
-                <div className="flex items-center text-xs text-gray-500 mt-2">
-                  <CalendarIcon className="w-3 h-3 mr-1" />
-                  {complaint.dateSubmitted ? new Date(complaint.dateSubmitted).toLocaleDateString() : 'No date'}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }, [complaintId, complaints, selectedComplaint, handleComplaintSelect]);
+    // This component is for detail view only, no list needed
+    return null;
+  }, []);
 
   const renderComplaintDetail = useMemo(() => {
     if (!displayComplaint) {
@@ -349,7 +319,7 @@ const OptimizedStudentComplaintDetail: React.FC<OptimizedStudentComplaintDetailP
               <label className="text-sm font-medium text-gray-700">Priority</label>
               <div className="mt-1">
                 <Badge variant={getPriorityVariant(displayComplaint.priority)}>
-                  {displayComplaint.priority || 'medium'}
+                  {displayComplaint.priority || 'Medium'}
                 </Badge>
               </div>
             </div>
@@ -404,7 +374,49 @@ const OptimizedStudentComplaintDetail: React.FC<OptimizedStudentComplaintDetailP
           </div>
         </div>
 
-        {displayComplaint.response && (
+        {/* Resolution Details - Show when complaint is resolved */}
+        {displayComplaint.status === 'Resolved' && (
+          <div className="space-y-4">
+            {displayComplaint.resolution && (
+              <div>
+                <label className="text-sm font-medium text-gray-700">Resolution</label>
+                <div className="mt-1 p-4 bg-green-50 rounded-lg border border-green-200">
+                  <p className="text-gray-900 whitespace-pre-wrap">{displayComplaint.resolution}</p>
+                </div>
+              </div>
+            )}
+            
+            {displayComplaint.resolutionNotes && (
+              <div>
+                <label className="text-sm font-medium text-gray-700">Resolution Notes</label>
+                <div className="mt-1 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-gray-900 whitespace-pre-wrap">{displayComplaint.resolutionNotes}</p>
+                </div>
+              </div>
+            )}
+            
+            {displayComplaint.dateResolved && (
+              <div>
+                <label className="text-sm font-medium text-gray-700">Resolved On</label>
+                <div className="mt-1 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex items-center text-gray-900">
+                    <CalendarIcon className="w-4 h-4 mr-2" />
+                    {new Date(displayComplaint.dateResolved).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Legacy Response field - keep for backward compatibility */}
+        {displayComplaint.response && displayComplaint.status !== 'Resolved' && (
           <div>
             <label className="text-sm font-medium text-gray-700">Response</label>
             <div className="mt-1 p-4 bg-blue-50 rounded-lg">
@@ -434,15 +446,8 @@ const OptimizedStudentComplaintDetail: React.FC<OptimizedStudentComplaintDetailP
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {!complaintId && (
-          <div className="lg:col-span-1">
-            {renderComplaintsList}
-          </div>
-        )}
-        <div className={complaintId ? 'lg:col-span-3' : 'lg:col-span-2'}>
-          {renderComplaintDetail}
-        </div>
+      <div className="w-full">
+        {renderComplaintDetail}
       </div>
 
       {/* Edit Modal */}
@@ -531,9 +536,9 @@ const OptimizedStudentComplaintDetail: React.FC<OptimizedStudentComplaintDetailP
   );
 });
 
-OptimizedStudentComplaintDetail.displayName = 'OptimizedStudentComplaintDetail';
+StudentComplaintDetail.displayName = 'StudentComplaintDetail';
 
-export default OptimizedStudentComplaintDetail;
+export default StudentComplaintDetail;
 
 // Export as named export for compatibility
-export { OptimizedStudentComplaintDetail as StudentComplaintDetail };
+export { StudentComplaintDetail as StudentComplaintDetail };

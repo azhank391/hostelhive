@@ -487,6 +487,12 @@ export const studentApi = {
     });
   },
 
+  async getComplaintById(complaintId: string) {
+    return apiClient.get<Complaint>(`/student/complaints/${complaintId}`, {
+      cacheTTL: 60000 // Cache for 1 minute
+    });
+  },
+
   async lodgeComplaint(complaintData: {
     title: string;
     description: string;

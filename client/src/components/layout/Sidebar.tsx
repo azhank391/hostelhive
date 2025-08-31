@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useHostel } from '@/context/HostelContext';
 import { useAdminApiWithHostel, useCurrentHostelId } from '@/lib/context-aware-api';
 
-import { BuildingIcon, UsersIcon, LayoutDashboardIcon, BedIcon, SettingsIcon, HelpCircleIcon, XIcon, GraduationCapIcon, AlertCircleIcon, UserCheckIcon } from 'lucide-react';
+import { BuildingIcon, UsersIcon, LayoutDashboardIcon, BedIcon, SettingsIcon, HelpCircleIcon, XIcon, GraduationCapIcon, AlertCircleIcon, UserCheckIcon, CreditCardIcon, BarChart3Icon } from 'lucide-react';
 
 interface SidebarProps {
   mobile?: boolean;
@@ -65,8 +65,13 @@ export const Sidebar = memo(({
 }: SidebarProps) => {
   const { user } = useAuth();
   const { currentHostel } = useHostel();
-  const { hasHostel, getHostelIdSafe, isReady } = useCurrentHostelId();
-  const admin = useAdminApiWithHostel();
+  
+  // 🚀 NEW: Skip hostel-related hooks for superadmin users
+  const isSuperadmin = user?.role === 'superadmin';
+  
+  // Only call hostel-related hooks for non-superadmin users
+  const { hasHostel, getHostelIdSafe, isReady } = isSuperadmin ? { hasHostel: false, getHostelIdSafe: () => null, isReady: true } : useCurrentHostelId();
+  const admin = isSuperadmin ? null : useAdminApiWithHostel();
   const [visitorCount, setVisitorCount] = useState(0);
   
   const { isOwner, isWarden, isStudent } = useMemo(() => ({
@@ -76,10 +81,13 @@ export const Sidebar = memo(({
   }), [user?.role]);
 
   // Get current hostel ID for URL construction
-  const currentHostelId = getHostelIdSafe();
+  const currentHostelId = isSuperadmin ? null : (typeof getHostelIdSafe === 'function' ? getHostelIdSafe() : getHostelIdSafe);
 
   // Fetch visitor count for owners/wardens using context-aware API with caching
   useEffect(() => {
+    // 🚀 NEW: Skip for superadmin users or if admin API is not available
+    if (isSuperadmin || !admin) return;
+    
     if ((isOwner || isWarden) && hasHostel && isReady) {
       let isMounted = true;
       
@@ -106,7 +114,7 @@ export const Sidebar = memo(({
       };
 
       // Only fetch if we have a valid hostel ID
-      const hostelId = getHostelIdSafe();
+      const hostelId = typeof getHostelIdSafe === 'function' ? getHostelIdSafe() : getHostelIdSafe;
       if (hostelId) {
         // Initial fetch
         fetchVisitorCount();
@@ -120,7 +128,7 @@ export const Sidebar = memo(({
         };
       }
     }
-  }, [isOwner, isWarden, hasHostel, isReady, admin, getHostelIdSafe]);
+  }, [isOwner, isWarden, hasHostel, isReady, admin, getHostelIdSafe, isSuperadmin]);
 
 
   const userInitial = useMemo(() => 
@@ -155,7 +163,7 @@ export const Sidebar = memo(({
           </p>
           <nav className="mt-2 lg:mt-1 space-y-2 sm:space-y-1">
             <NavItem 
-              to={isOwner && currentHostelId ? `/dashboard/hostels/${currentHostelId}` : `/dashboard/${user?.role}`} 
+              to={isSuperadmin ? '/dashboard/superadmin' : (isOwner && currentHostelId ? `/dashboard/hostels/${currentHostelId}` : `/dashboard/${user?.role}`)} 
               icon={<LayoutDashboardIcon size={24} className="sm:w-5 sm:h-5" />} 
               end
             >
@@ -179,6 +187,35 @@ export const Sidebar = memo(({
             )}
           </nav>
         </div>
+        
+        {/* 🚀 NEW: Superadmin-specific navigation */}
+        {isSuperadmin && (
+          <div className="px-3 sm:px-4 mt-6 lg:mt-4">
+            <p className="px-2 sm:px-4 text-sm sm:text-xs font-semibold text-gray-300 uppercase tracking-wider mb-3 sm:mb-2">
+              Superadmin
+            </p>
+            <nav className="mt-2 lg:mt-1 space-y-2 sm:space-y-1">
+              <NavItem 
+                to="/dashboard/superadmin/hostels" 
+                icon={<BuildingIcon size={24} className="sm:w-5 sm:h-5" />}
+              >
+                All Hostels
+              </NavItem>
+              <NavItem 
+                to="/dashboard/superadmin/billing" 
+                icon={<CreditCardIcon size={24} className="sm:w-5 sm:h-5" />}
+              >
+                Billing Overview
+              </NavItem>
+              <NavItem 
+                to="/dashboard/superadmin/analytics" 
+                icon={<BarChart3Icon size={24} className="sm:w-5 sm:h-5" />}
+              >
+                Analytics
+            </NavItem>
+            </nav>
+          </div>
+        )}
         
         {(isOwner || isWarden) && currentHostelId && (
           <div className="px-3 sm:px-4 mt-6 lg:mt-4">
@@ -250,7 +287,7 @@ export const Sidebar = memo(({
               </NavItem>
             )}
             <NavItem 
-              to={isOwner && currentHostelId ? `/dashboard/hostels/${currentHostelId}/settings` : `/dashboard/${user?.role}/settings`} 
+              to={isSuperadmin ? '/dashboard/superadmin/settings' : (isOwner && currentHostelId ? `/dashboard/hostels/${currentHostelId}/settings` : `/dashboard/${user?.role}/settings`)} 
               icon={<SettingsIcon size={24} className="sm:w-5 sm:h-5" />}
             >
               Settings

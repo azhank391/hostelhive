@@ -61,6 +61,11 @@ export interface Complaint {
   userId: string;
   hostelId: string;
   user?: User & { allocations?: RoomAllocation[] };
+  room?: {
+    roomNumber: string;
+    block?: string;
+  };
+  resolution?: string;
   resolutionNotes?: string;
   resolvedAt?: string;
   createdAt?: string;

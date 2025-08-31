@@ -24,6 +24,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingIn, setIsLoggingIn] = useState(false); // 🚀 NEW: Flag to prevent useEffect during login
   const router = useRouter();
 
   // Computed property for authentication status
@@ -183,6 +184,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout();
     });
 
+    // 🚀 NEW: Don't run if we're currently logging in
+    if (isLoggingIn) {
+      console.log('🔍 DEBUG: AuthContext useEffect - login in progress, skipping token check');
+      return;
+    }
+
     // Don't run if we already have a user
     if (user) {
       console.log('🔍 DEBUG: AuthContext useEffect - user already authenticated, skipping token check');
@@ -232,10 +239,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 5 * 60 * 1000) // 5 minutes
 
     return () => clearInterval(interval)
-  }, [router]) // Add router dependency since it's used in the interval
+  }, [router, isLoggingIn]) // Add router and isLoggingIn dependencies
 
   const login = async (credentials: LoginCredentials) => {
     const { email, password } = credentials;
+    
+    // 🚀 NEW: Set flag to prevent useEffect interference
+    setIsLoggingIn(true);
     
     // Clear any previous hostel selection from localStorage
     localStorage.removeItem(STORAGE_KEYS.ACTIVE_HOSTEL);
@@ -303,6 +313,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userData)
         console.log('🔍 DEBUG: Login - User state set, login process complete');
         
+        // 🚀 NEW: Reset flag after successful login
+        setIsLoggingIn(false);
+        
         return data;
       } catch (userLoginError) {
         // Log the error for debugging
@@ -319,6 +332,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('❌ AuthContext: Login error:', error);
+      // 🚀 NEW: Reset flag on error
+      setIsLoggingIn(false);
       // Error handling is now done by our enhanced HTTP client
       throw error
     }

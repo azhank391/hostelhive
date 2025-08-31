@@ -56,7 +56,16 @@ exports.loginSuperadmin = async (req, res) => {
 exports.getDashboardData = async (req, res) => {
   try {
     const totalHostels = await Hostel.count();
-    const totalUsers = await User.count();
+    
+    // Get paying owners (real users who generate revenue)
+    const payingOwners = await User.count({ 
+      where: { 
+        role: 'owner',
+        // You can add additional conditions here if needed
+      } 
+    });
+    
+    // Get total rooms across all hostels
     const totalRooms = await Room.count();
 
     const paidHostels = await Hostel.count({ where: { isPaid: true } });
@@ -69,7 +78,7 @@ exports.getDashboardData = async (req, res) => {
       where: { status: "resolved" },
     });
 
-    // Plan Distribution
+    // Plan Distribution with revenue calculation
     const plans = await Hostel.findAll({
       attributes: [
         "plan",
@@ -77,6 +86,21 @@ exports.getDashboardData = async (req, res) => {
       ],
       group: ["plan"],
     });
+
+    // Calculate revenue metrics
+    const planRevenue = {
+      'free': 0,
+      'basic': 29,
+      'premium': 49,
+      'enterprise': 99
+    };
+    
+    const totalMonthlyRevenue = plans.reduce((total, plan) => {
+      const planName = plan.plan;
+      const count = parseInt(plan.count);
+      const revenue = planRevenue[planName] || 0;
+      return total + (count * revenue);
+    }, 0);
 
     // Hostel regional distribution by country
     const regions = await TenantLocation.findAll({
@@ -90,10 +114,11 @@ exports.getDashboardData = async (req, res) => {
     res.status(200).json({
       metrics: {
         totalHostels,
-        totalUsers,
+        payingOwners, // Real users who pay
         totalRooms,
         paidHostels,
         unpaidHostels,
+        totalMonthlyRevenue,
         complaints: {
           pending: complaintsPending,
           resolved: complaintsResolved,

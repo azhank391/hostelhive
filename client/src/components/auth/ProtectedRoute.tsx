@@ -14,12 +14,28 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   const { user, isLoading, isAuthenticated } = useAuth()
   const router = useRouter()
 
+  // Debug logging
+  console.log('🔍 DEBUG: ProtectedRoute render', {
+    user: user ? { id: user.id, name: user.name, role: user.role } : null,
+    isLoading,
+    isAuthenticated,
+    requiredRole
+  });
+
   useEffect(() => {
+    console.log('🔍 DEBUG: ProtectedRoute effect triggered', {
+      isLoading,
+      isAuthenticated,
+      user: user ? { id: user.id, role: user.role } : null,
+      requiredRole
+    });
+
     // Wait for authentication to complete
     if (isLoading) return
 
     // Check if user is authenticated
     if (!isAuthenticated || !user) {
+      console.log('🔍 DEBUG: User not authenticated, redirecting to login');
       // Clear any stale data and redirect to login
       if (typeof window !== 'undefined') {
         localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN)
@@ -30,9 +46,12 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 
     // Check if user has required role (if specified)
     if (requiredRole && user.role !== requiredRole) {
+      console.log('🔍 DEBUG: User role mismatch, redirecting to login');
       router.push('/auth/login?error=insufficient_permissions')
       return
     }
+
+    console.log('🔍 DEBUG: ProtectedRoute access granted');
   }, [user, isLoading, isAuthenticated, requiredRole, router])
 
   // Show loading while checking authentication

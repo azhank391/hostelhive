@@ -222,6 +222,87 @@ exports.getMyComplaints = async (req, res) => {
   }
 };
 
+// ✅ Get Student's Single Complaint by ID
+exports.getMyComplaintById = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const hostelId = req.user.hostelId;
+    const { id } = req.params;
+
+    const complaint = await Complaint.findOne({
+      where: { id, userId, hostelId },
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["name", "email"],
+        },
+      ],
+    });
+
+    // Get room allocation for the student
+    const roomAllocation = await RoomAllocation.findOne({
+      where: { userId, hostelId, status: "active" },
+      include: [
+        {
+          model: Room,
+          as: "room",
+          attributes: ["roomNumber", "block"],
+        },
+      ],
+    });
+
+    if (!complaint) {
+      return res.status(404).json({ message: "Complaint not found" });
+    }
+
+    // Get hostel info for the response
+    const hostel = await Hostel.findByPk(hostelId, {
+      attributes: ["id", "name"],
+    });
+
+    // Transform data to match frontend expectations
+    const formattedComplaint = {
+      id: complaint.id,
+      title: complaint.title,
+      description: complaint.description,
+      status:
+        complaint.status === "pending"
+          ? "Open"
+          : complaint.status === "in_progress"
+          ? "In Progress"
+          : complaint.status === "resolved"
+          ? "Resolved"
+          : complaint.status === "closed"
+          ? "Closed"
+          : "Open",
+      priority: complaint.priority || "Medium",
+      createdAt: complaint.createdAt,
+      updatedAt: complaint.updatedAt,
+      resolvedAt: complaint.resolvedAt,
+      resolution: complaint.resolution,
+      resolutionNotes: complaint.resolutionNotes,
+      user: {
+        name: complaint.user.name,
+        email: complaint.user.email,
+      },
+      hostel: {
+        id: hostel.id,
+        name: hostel.name,
+      },
+      room: roomAllocation?.room ? {
+        roomNumber: roomAllocation.room.roomNumber,
+        block: roomAllocation.room.block,
+      } : null,
+    };
+
+    res.json(formattedComplaint);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to fetch complaint details" });
+  }
+};
+
 // ✅ Get Student's Visitor Logs
 exports.getMyVisitorLogs = async (req, res) => {
   try {

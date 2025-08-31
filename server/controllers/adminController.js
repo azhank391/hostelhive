@@ -221,7 +221,7 @@ exports.updateRoom = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token, roomId from URL params
     const hostelId = getHostelIdFromRequest(req);
-    const { id: roomId } = req.params;
+    const { roomId } = req.params;
     const { roomNumber, capacity, block } = req.body;
 
     console.log(`[updateRoom] Updating room ${roomId} in hostel ${hostelId}`);
@@ -259,7 +259,7 @@ exports.deleteRoom = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token, roomId from URL params
     const hostelId = getHostelIdFromRequest(req);
-    const { id: roomId } = req.params;
+    const { roomId } = req.params;
 
     const room = await Room.findOne({ where: { id: roomId, hostelId } });
     if (!room) {
@@ -1236,14 +1236,14 @@ exports.checkoutVisitor = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token
     const hostelId = getHostelIdFromRequest(req);
-    const { id } = req.params; // Route parameter is :id, not :visitorId
+    const { visitorId } = req.params; // Route parameter is :visitorId
 
-    if (!id) {
+    if (!visitorId) {
       return res.status(400).json({ message: "Visitor ID is required" });
     }
 
     const visitor = await VisitorLog.findOne({
-      where: { id, hostelId },
+      where: { id: visitorId, hostelId },
     });
 
     if (!visitor) {
@@ -1272,11 +1272,11 @@ exports.updateVisitorLog = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token
     const hostelId = getHostelIdFromRequest(req);
-    const { id } = req.params;
+    const { visitorId } = req.params;
     const updateData = req.body;
 
     const visitor = await VisitorLog.findOne({
-      where: { id, hostelId },
+      where: { id: visitorId, hostelId },
     });
 
     if (!visitor) {
@@ -1294,13 +1294,13 @@ exports.updateVisitorLog = async (req, res) => {
 // ✅ Delete Visitor Log
 exports.deleteVisitorLog = async (req, res) => {
   try {
-    // Extract hostelId from URL parameters or JWT token, id from route params
+    // Extract hostelId from URL parameters or JWT token, visitorId from route params
     const hostelId = getHostelIdFromRequest(req);
-    const { id } = req.params; // Route parameter is :id
+    const { visitorId } = req.params; // Route parameter is :visitorId
 
     const visitorLog = await VisitorLog.findOne({
       where: {
-        id,
+        id: visitorId,
         hostelId,
       },
     });

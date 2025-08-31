@@ -45,6 +45,18 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [loadingState, setLoadingState] = useState<LoadingState>(LoadingState.IDLE);
   const [error, setError] = useState<string | null>(null);
   const didFetchOnce = useRef(false);
+  const isChangingHostel = useRef(false); // 🚀 NEW: Flag to prevent URL sync conflicts
+
+  // 🚀 DEBUG: Track provider creation
+  useEffect(() => {
+    console.log('🏗️ HostelProvider: Provider created/updated');
+  });
+
+  // 🚀 DEBUG: Wrap setCurrentHostel to track state changes
+  const setCurrentHostelWithLog = useCallback((hostel: Hostel | null) => {
+    console.log('🔄 HostelContext.setCurrentHostel called with:', hostel?.id, 'Type:', typeof hostel?.id);
+    setCurrentHostel(hostel);
+  }, []);
 
   // Fetch owner hostels using optimized API
   const fetchOwnerHostels = useCallback(async (): Promise<Hostel[]> => {
@@ -124,6 +136,16 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       didFetchOnce.current = false;
       return;
     }
+    
+    // 🚀 NEW: Skip hostel fetching for superadmin users
+    if (user?.role === 'superadmin') {
+      console.log('🔍 DEBUG: HostelContext - Skipping hostel fetch for superadmin user');
+      setLoadingState(LoadingState.LOADED);
+      setHostels([]);
+      setCurrentHostel(null);
+      return;
+    }
+    
     if (didFetchOnce.current) return;
     didFetchOnce.current = true;
 
@@ -198,10 +220,21 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Implementation of HostelContextValue methods
   const setActiveHostel = useCallback(async (hostelId: string, syncToServer: boolean = true) => {
+    console.log('🎯 HostelContext.setActiveHostel called with:', hostelId, 'Type:', typeof hostelId);
+    console.log('🎯 HostelContext.setActiveHostel - Current hostel before update:', currentHostel?.id, 'Type:', typeof currentHostel?.id);
+    
     const hostel = hostels.find(h => h.id === hostelId);
     if (hostel) {
-      setCurrentHostel(hostel);
-      localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, hostel.id);
+      // 🚀 NEW: Set flag to prevent URL sync conflicts
+      isChangingHostel.current = true;
+      setCurrentHostelWithLog(hostel);
+      
+      // 🚀 NEW: Reset flag after a short delay to allow navigation to complete
+      setTimeout(() => {
+        isChangingHostel.current = false;
+      }, 100);
+      
+      console.log('🔄 HostelContext.setActiveHostel - State update triggered for hostel:', hostel.id);
       
       // 🚀 CRITICAL: Navigate to hostel-specific URL (matches backend structure)
       if (typeof window !== 'undefined') {
@@ -230,18 +263,20 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         try {
           // Only call API if user is authenticated, has a token, and is an owner
           if (typeof window !== 'undefined' && user?.role === 'owner') {
-            const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-            if (token) {
-              // Include hostelId in both query params and body for backend compatibility
+                          const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+              if (token) {
+                console.log('🔄 HostelContext.setActiveHostel - Syncing to server...');
+                // Include hostelId in both query params and body for backend compatibility
               const response = await api.post(`/auth/set-active-hostel?hostelId=${hostelId}`, { 
                 hostelId,
                 userId: user.id 
               });
               
-              // If the API returns a new token, update it
-              if (response.data?.token) {
-                localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.data.token);
-              }
+                              // If the API returns a new token, update it
+                if (response.data?.token) {
+                  localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.data.token);
+                }
+                console.log('✅ HostelContext.setActiveHostel - Server sync completed');
             }
           }
         } catch (error) {
@@ -258,6 +293,14 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [hostels, user, router]);
 
+  // 🚀 NEW: Effect to sync localStorage when currentHostel changes
+  useEffect(() => {
+    if (currentHostel?.id && typeof window !== 'undefined') {
+      console.log('💾 HostelContext: Syncing to localStorage:', currentHostel.id);
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, currentHostel.id);
+    }
+  }, [currentHostel?.id]);
+
   // 🚀 URL Sync: Ensure context matches URL when navigating directly
   useEffect(() => {
     if (typeof window !== 'undefined' && isAuthenticated && user && hostels.length > 0 && loadingState === LoadingState.LOADED) {
@@ -268,25 +311,24 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const urlHostelId = hostelMatch[1];
         const isValidHostel = hostels.some(h => h.id === urlHostelId);
         
-        if (isValidHostel && currentHostel?.id !== urlHostelId) {
+        if (isValidHostel && currentHostel?.id !== urlHostelId && !isChangingHostel.current) {
           // Sync context with valid URL hostel ID (no navigation needed)
+          // Only run if we're not actively changing hostels
+          console.log('🔄 HostelContext: URL sync - syncing context with URL hostel:', urlHostelId);
           const hostel = hostels.find(h => h.id === urlHostelId);
           if (hostel) {
-            setCurrentHostel(hostel);
-            localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, hostel.id);
+            setCurrentHostelWithLog(hostel);
           }
         } else if (!isValidHostel && hostels.length > 0) {
           // Invalid hostel in URL, redirect to first available hostel
           const firstHostel = hostels[0];
-          setCurrentHostel(firstHostel);
-          localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, firstHostel.id);
+          setCurrentHostelWithLog(firstHostel);
           router.replace(`/dashboard/hostels/${firstHostel.id}`);
         }
       } else if (currentPath === '/dashboard' && hostels.length > 0 && !currentHostel) {
         // On main dashboard without hostel selected, auto-select first hostel
         const firstHostel = hostels[0];
-        setCurrentHostel(firstHostel);
-        localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, firstHostel.id);
+        setCurrentHostelWithLog(firstHostel);
         router.replace(`/dashboard/hostels/${firstHostel.id}`);
       }
     }
@@ -383,13 +425,24 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [getCurrentHostelId, hostels, loadingState]);
 
   // Memoized context value to prevent unnecessary re-renders
-  const contextValue = useMemo(() => ({
+  const contextValue = useMemo(() => {
+    const computedIsReady = loadingState === LoadingState.LOADED && (user?.role === 'superadmin' || currentHostel !== null);
+    
+    console.log('🔄 HostelContext: Context value updated, currentHostel:', currentHostel?.id);
+    console.log('🔍 DEBUG: HostelContext isReady computation:', {
+      loadingState,
+      userRole: user?.role,
+      currentHostel: currentHostel?.id,
+      computedIsReady
+    });
+    
+    return {
     hostels,
     currentHostel,
     loadingState,
     error,
-    setCurrentHostel,
-    isReady: loadingState === LoadingState.LOADED && currentHostel !== null,
+    setCurrentHostel: setCurrentHostelWithLog,
+    isReady: computedIsReady,
     setActiveHostel,
     refreshHostels,
     createHostel,
@@ -397,7 +450,8 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     isMultiHostelOwner: hostels.length > 1,
     getCurrentHostelId,
     getCurrentHostelIdWithUrlFallback,
-  }), [hostels, currentHostel, loadingState, error, setActiveHostel, refreshHostels, createHostel, updateHostel, getCurrentHostelId, getCurrentHostelIdWithUrlFallback]);
+    };
+  }, [hostels, currentHostel, loadingState, error, setActiveHostel, refreshHostels, createHostel, updateHostel, getCurrentHostelId, getCurrentHostelIdWithUrlFallback, user?.role]);
 
   return (
     <HostelContext.Provider value={contextValue}>

@@ -18,12 +18,14 @@ const LayoutWrapper = React.memo(({
   children, 
   showHostelSelector = false,
   showCreateForm = false,
-  currentHostel 
+  currentHostel,
+  isSuperadmin = false
 }: {
   children: React.ReactNode;
   showHostelSelector?: boolean;
   showCreateForm?: boolean;
   currentHostel?: any;
+  isSuperadmin?: boolean;
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(() => {
@@ -75,18 +77,18 @@ const LayoutWrapper = React.memo(({
             
             <div className="flex-1 overflow-auto">
               <main className={`py-6 transition-all duration-300 ease-in-out ${desktopSidebarOpen ? 'px-4 sm:px-6 md:px-8' : 'px-4 sm:px-6 md:px-8'}`}>
-                {showCreateForm ? (
-                  <CreateHostelForm />
-                ) : currentHostel || showHostelSelector ? (
-                  children
-                ) : (
-                  <div className="text-center py-12">
-                    <div className="text-gray-500">
-                      <h3 className="text-lg font-medium mb-2">No Hostel Selected</h3>
-                      <p className="text-sm">Please select a hostel to continue.</p>
-                    </div>
-                  </div>
-                )}
+                                 {showCreateForm ? (
+                   <CreateHostelForm />
+                 ) : (currentHostel || showHostelSelector || showCreateForm || isSuperadmin) ? (
+                   children
+                 ) : (
+                   <div className="text-center py-12">
+                     <div className="text-gray-500">
+                       <h3 className="text-lg font-medium mb-2">No Hostel Selected</h3>
+                       <p className="text-sm">Please select a hostel to continue.</p>
+                     </div>
+                   </div>
+                 )}
               </main>
             </div>
           </div>
@@ -129,6 +131,17 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     const isStudent = user?.role === 'student';
     const isWarden = user?.role === 'warden';
     const isOwner = user?.role === 'owner';
+    const isSuperadmin = user?.role === 'superadmin';
+    
+    // Superadmin users see the normal dashboard without hostel requirements
+    if (isSuperadmin) {
+      return {
+        type: 'normal',
+        showHostelSelector: false,
+        showCreateForm: false,
+        currentHostel: null // Superadmin doesn't need a hostel
+      };
+    }
     
     // Students and wardens always see the normal dashboard
     if (isStudent || isWarden) {
@@ -207,14 +220,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
-  // Render appropriate layout
-  return (
-    <LayoutWrapper
-      showHostelSelector={layoutConfig.showHostelSelector}
-      showCreateForm={layoutConfig.showCreateForm}
-      currentHostel={layoutConfig.currentHostel}
-    >
-      {children}
-    </LayoutWrapper>
-  );
+     // Render appropriate layout
+   return (
+     <LayoutWrapper
+       showHostelSelector={layoutConfig.showHostelSelector}
+       showCreateForm={layoutConfig.showCreateForm}
+       currentHostel={layoutConfig.currentHostel}
+       isSuperadmin={user?.role === 'superadmin'}
+     >
+       {children}
+     </LayoutWrapper>
+   );
 }

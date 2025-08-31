@@ -24,7 +24,7 @@ import { Room } from '@/lib/types';
  */
 export const RoomManagement = React.memo(() => {
   const { hostels } = useHostel();
-  const { hostelId, hasHostel } = useCurrentHostelId();
+  const { getHostelId, hasHostel } = useCurrentHostelId();
   const adminApi = useAdminApiWithHostel();
   
   // State management
@@ -71,7 +71,7 @@ export const RoomManagement = React.memo(() => {
 
   // 🚀 PERFORMANCE: Optimized fetch function with useCallback
   const fetchRooms = useCallback(async () => {
-    console.log('🚀 DEBUG: fetchRooms called with hasHostel:', hasHostel, 'hostelId:', hostelId);
+    console.log('🚀 DEBUG: fetchRooms called with hasHostel:', hasHostel, 'hostelId:', getHostelId());
     
     if (!hasHostel) {
       console.log('🚀 DEBUG: No hostel selected, setting loading to false');
@@ -81,7 +81,7 @@ export const RoomManagement = React.memo(() => {
     
     try {
       setError(null);
-      console.log('🚀 DEBUG: Calling adminApi.getRooms() for hostelId:', hostelId);
+      console.log('🚀 DEBUG: Calling adminApi.getRooms() for hostelId:', getHostelId());
       
       // Debug: Check if we have authentication token
       if (typeof window !== 'undefined') {
@@ -121,7 +121,7 @@ export const RoomManagement = React.memo(() => {
     } finally {
       setLoading(false);
     }
-  }, [hasHostel, adminApi, hostelId]);
+  }, [hasHostel, adminApi, getHostelId]);
 
   // 🎯 PERFORMANCE: Optimized refresh with loading state
   const handleRefresh = useCallback(async () => {
@@ -155,20 +155,27 @@ export const RoomManagement = React.memo(() => {
   }, [hasHostel, adminApi, fetchRooms]);
 
   const handleUpdateRoom = useCallback(async (roomData: { roomNumber: string; capacity: number; block?: string }) => {
-    if (!selectedRoom || !hasHostel) return;
+    console.log('🔍 DEBUG: handleUpdateRoom called with:', { selectedRoom, hasHostel, roomData, hostelId: getHostelId() });
+    
+    if (!selectedRoom || !hasHostel) {
+      console.log('❌ DEBUG: handleUpdateRoom early return - selectedRoom:', !!selectedRoom, 'hasHostel:', hasHostel);
+      return;
+    }
     
     try {
+      console.log('✅ DEBUG: handleUpdateRoom calling adminApi.updateRoom with:', { roomId: selectedRoom.id, roomData });
       await adminApi.updateRoom(selectedRoom.id, roomData);
       setShowEditModal(false);
       setSelectedRoom(null);
       await fetchRooms();
       notification.success('Room updated successfully!');
     } catch (err) {
+      console.error('❌ DEBUG: handleUpdateRoom error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to update room';
       notification.error('Failed to update room', { description: errorMessage });
       throw err;
     }
-  }, [selectedRoom, hasHostel, adminApi, fetchRooms]);
+  }, [selectedRoom, hasHostel, adminApi, fetchRooms, getHostelId]);
 
   const handleDeleteRoom = useCallback(async (roomId: string) => {
     if (!hasHostel || !confirm('Are you sure you want to delete this room? This action cannot be undone.')) {
@@ -197,23 +204,23 @@ export const RoomManagement = React.memo(() => {
 
   // Initial data fetch when hostel changes
   useEffect(() => {
-    console.log('🚀 DEBUG: useEffect triggered. hostelId:', hostelId, 'hasHostel:', hasHostel);
+    console.log('🚀 DEBUG: useEffect triggered. hostelId:', getHostelId(), 'hasHostel:', hasHostel);
     fetchRooms();
-  }, [fetchRooms, hostelId, hasHostel]);
+  }, [fetchRooms, getHostelId, hasHostel]);
 
   // Early returns for loading and error states
   if (!hasHostel) {
-    console.log('🚀 DEBUG: No hostel selected. hostelId:', hostelId, 'hasHostel:', hasHostel);
+    console.log('🚀 DEBUG: No hostel selected. hostelId:', getHostelId(), 'hasHostel:', hasHostel);
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Hostel Selected</h3>
           <p className="text-gray-600">Please select a hostel to manage rooms.</p>
-          <div className="mt-4 text-sm text-gray-500">
-            <p>Debug Info:</p>
-            <p>Hostel ID: {hostelId || 'null'}</p>
-            <p>Has Hostel: {hasHostel ? 'true' : 'false'}</p>
-          </div>
+                  <div className="mt-4 text-sm text-gray-500">
+          <p>Debug Info:</p>
+          <p>Hostel ID: {getHostelId() || 'null'}</p>
+          <p>Has Hostel: {hasHostel ? 'true' : 'false'}</p>
+        </div>
         </div>
       </div>
     );
@@ -236,7 +243,7 @@ export const RoomManagement = React.memo(() => {
             <div className="mt-2 text-sm text-red-700">{error}</div>
             <div className="mt-2 text-xs text-red-600">
               <p>Debug Info:</p>
-              <p>Hostel ID: {hostelId || 'null'}</p>
+              <p>Hostel ID: {getHostelId() || 'null'}</p>
               <p>Has Hostel: {hasHostel ? 'true' : 'false'}</p>
             </div>
             <div className="mt-4 space-x-2">

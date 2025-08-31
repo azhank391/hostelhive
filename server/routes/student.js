@@ -6,6 +6,7 @@ const {
   updateMyProfile,
   lodgeComplaint,
   getMyComplaints,
+  getMyComplaintById,
   getMyVisitorLogs,
   createMyVisitorLog,
   getDashboardSummary,
@@ -30,6 +31,7 @@ router.get('/room', verifyToken, requireRole('student'), getMyRoom);
 // Complaint Management
 router.post('/complaints', verifyToken, requireRole('student'), lodgeComplaint);
 router.get('/complaints', verifyToken, requireRole('student'), getMyComplaints);
+router.get('/complaints/:id', verifyToken, requireRole('student'), getMyComplaintById);
 router.put('/complaints/:id', verifyToken, requireRole('student'), updateMyComplaint);
 router.delete('/complaints/:id', verifyToken, requireRole('student'), deleteMyComplaint);
 

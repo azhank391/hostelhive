@@ -10,7 +10,32 @@ export default function DashboardPage() {
   const { currentHostel, hostels, loadingState, isReady } = useHostel()
   const router = useRouter()
 
+  // Skip hostel logic for superadmin users
+  const shouldSkipHostelLogic = user?.role === 'superadmin';
+
+  // Debug logging
+  console.log('🔍 DEBUG: DashboardPage render', {
+    user: user ? { id: user.id, name: user.name, role: user.role } : null,
+    isLoading,
+    currentHostel: currentHostel?.id,
+    hostelsCount: hostels.length,
+    loadingState,
+    isReady,
+    shouldSkipHostelLogic
+  });
+
+  // 🚀 NEW: Immediate debug log for superadmin routing
+  if (user?.role === 'superadmin' && !isLoading) {
+    console.log('🚀 DEBUG: Superadmin detected in render, should route immediately');
+  }
+
   const handleOwnerRedirect = () => {
+    // Skip for superadmin users
+    if (shouldSkipHostelLogic) {
+      console.log('🔍 DEBUG: Skipping hostel redirect for superadmin user');
+      return;
+    }
+
     // Wait for hostel data to be fully loaded
     if (loadingState === 'loading' || !isReady) {
       return;
@@ -42,23 +67,41 @@ export default function DashboardPage() {
     }
   }
 
+  // 🚀 NEW: Debug log before useEffect
+  console.log('🔍 DEBUG: DashboardPage - About to define useEffect, user role:', user?.role);
+
   useEffect(() => {
+    console.log('🔍 DEBUG: Dashboard routing effect triggered', {
+      isLoading,
+      user: user ? { id: user.id, name: user.name, role: user.role } : null,
+      currentHostel: currentHostel?.id,
+      hostelsCount: hostels.length,
+      loadingState,
+      isReady,
+      shouldSkipHostelLogic
+    });
+
     // Wait for authentication to complete
     if (isLoading || !user) {
       if (!isLoading && !user) {
+        console.log('🔍 DEBUG: No user, redirecting to login');
         router.push('/auth/login?error=unauthorized');
       }
       return;
     }
 
     const role = user.role;
+    console.log('🔍 DEBUG: User authenticated, role:', role);
+    
+    // 🚀 NEW: For superadmin users, route immediately without waiting for hostel data
+    if (role === 'superadmin') {
+      console.log('🔍 DEBUG: Routing superadmin to /dashboard/superadmin (immediate)');
+      router.push('/dashboard/superadmin');
+      return;
+    }
     
     // Route based on user role
     switch (role) {
-      case 'superadmin':
-        router.push('/dashboard/superadmin');
-        break;
-        
       case 'student':
         router.push('/dashboard/student');
         break;
@@ -83,7 +126,7 @@ export default function DashboardPage() {
         console.warn(`Unknown user role: ${role}, defaulting to student dashboard`);
         router.push('/dashboard/student');
     }
-  }, [user, isLoading, router, currentHostel, hostels, loadingState, isReady]);
+  }, [user, isLoading, router, currentHostel, hostels, loadingState, isReady, handleOwnerRedirect]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

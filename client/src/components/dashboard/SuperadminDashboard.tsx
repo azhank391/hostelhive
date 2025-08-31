@@ -28,10 +28,11 @@ import Link from 'next/link'
 interface SuperadminMetrics {
   metrics: {
     totalHostels: number;
-    totalUsers: number;
+    payingOwners: number; // Real users who pay
     totalRooms: number;
     paidHostels: number;
     unpaidHostels: number;
+    totalMonthlyRevenue: number;
     complaints: {
       pending: number;
       resolved: number;
@@ -45,18 +46,6 @@ interface SuperadminMetrics {
       country: string;
       count: string;
     }>;
-    recentActivity?: Array<{
-      id: string;
-      type: string;
-      message: string;
-      timestamp: string;
-    }>;
-    systemHealth?: {
-      uptime: number;
-      cpu: number;
-      memory: number;
-      storage: number;
-    };
   };
 }
 
@@ -101,33 +90,21 @@ export const SuperadminDashboard = React.memo(() => {
   const [error, setError] = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
 
-  // 🎯 PERFORMANCE: Memoized system health calculations
-  const systemHealth = useMemo(() => {
-    if (!metrics?.metrics.systemHealth) return null
-    
-    const { cpu, memory, storage, uptime } = metrics.metrics.systemHealth
-    const overallHealth = Math.round((100 - cpu + 100 - memory + 100 - storage) / 3)
-    
-    return {
-      ...metrics.metrics.systemHealth,
-      overallHealth,
-      status: overallHealth > 80 ? 'excellent' : overallHealth > 60 ? 'good' : overallHealth > 40 ? 'warning' : 'critical'
-    }
-  }, [metrics?.metrics.systemHealth])
+
 
   // 🎯 PERFORMANCE: Memoized revenue and growth calculations
   const revenueMetrics = useMemo(() => {
     if (!metrics?.metrics) return null
     
-    const { paidHostels, unpaidHostels, totalHostels } = metrics.metrics
+    const { paidHostels, unpaidHostels, totalHostels, totalMonthlyRevenue } = metrics.metrics
     const revenueRate = totalHostels > 0 ? Math.round((paidHostels / totalHostels) * 100) : 0
     const conversionOpportunity = unpaidHostels
     
     return {
       revenueRate,
       conversionOpportunity,
-      totalRevenue: paidHostels * 29, // Assuming $29/month per hostel
-      potentialRevenue: unpaidHostels * 29
+      totalRevenue: totalMonthlyRevenue, // Real revenue from backend
+      potentialRevenue: unpaidHostels * 29 // Potential if all upgrade to basic plan
     }
   }, [metrics?.metrics])
 
@@ -195,7 +172,7 @@ export const SuperadminDashboard = React.memo(() => {
     const alerts: SystemAlert[] = []
     
     if (metrics?.metrics) {
-      const { complaints, unpaidHostels, systemHealth } = metrics.metrics
+      const { complaints, unpaidHostels } = metrics.metrics
       
       // High pending complaints alert
       if (complaints.pending > 20) {
@@ -218,29 +195,6 @@ export const SuperadminDashboard = React.memo(() => {
           timestamp: new Date().toISOString()
         })
       }
-      
-      // System health alerts
-      if (systemHealth) {
-        if (systemHealth.cpu > 85) {
-          alerts.push({
-            id: 'high-cpu',
-            type: 'error',
-            title: 'High CPU Usage',
-            message: `System CPU usage is at ${systemHealth.cpu}%`,
-            timestamp: new Date().toISOString()
-          })
-        }
-        
-        if (systemHealth.memory > 90) {
-          alerts.push({
-            id: 'high-memory',
-            type: 'error',
-            title: 'High Memory Usage',
-            message: `Memory usage is at ${systemHealth.memory}%`,
-            timestamp: new Date().toISOString()
-          })
-        }
-      }
     }
     
     return alerts.slice(0, 5) // Limit to 5 most critical alerts
@@ -251,10 +205,10 @@ export const SuperadminDashboard = React.memo(() => {
     try {
       setError(null)
       
-      // Simulate enhanced metrics with system health
+      // Fetch real metrics from backend
       const baseMetrics = await superadminApi.getDashboard() as any
       
-      // Add mock system health data for demonstration
+      // Enhance with calculated fields from real data
       const enhancedMetrics = {
         ...baseMetrics,
         metrics: {
@@ -262,33 +216,7 @@ export const SuperadminDashboard = React.memo(() => {
           complaints: {
             ...baseMetrics.metrics.complaints,
             total: (baseMetrics.metrics.complaints?.pending || 0) + (baseMetrics.metrics.complaints?.resolved || 0)
-          },
-          systemHealth: {
-            uptime: 99.9,
-            cpu: Math.floor(Math.random() * 30) + 20, // 20-50%
-            memory: Math.floor(Math.random() * 25) + 45, // 45-70%
-            storage: Math.floor(Math.random() * 20) + 30  // 30-50%
-          },
-          recentActivity: [
-            {
-              id: '1',
-              type: 'hostel_registered',
-              message: 'New hostel registered: Sunshine Hostel',
-              timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString() // 30 min ago
-            },
-            {
-              id: '2',
-              type: 'payment_received',
-              message: 'Payment received from Green Valley Hostel',
-              timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString() // 2 hours ago
-            },
-            {
-              id: '3',
-              type: 'complaint_resolved',
-              message: 'Critical complaint resolved in Blue Ridge Hostel',
-              timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString() // 4 hours ago
-            }
-          ]
+          }
         }
       }
       
@@ -476,9 +404,9 @@ export const SuperadminDashboard = React.memo(() => {
               <div className="flex items-center">
                 <UsersIcon className="h-8 w-8 text-green-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">Total Users</p>
-                  <p className="text-2xl font-bold text-gray-900">{metrics?.metrics.totalUsers || 0}</p>
-                  <p className="text-sm text-gray-500">System users</p>
+                  <p className="text-sm font-medium text-gray-500">Paying Owners</p>
+                  <p className="text-2xl font-bold text-gray-900">{metrics?.metrics.payingOwners || 0}</p>
+                  <p className="text-sm text-gray-500">Revenue-generating users</p>
                 </div>
               </div>
             </div>
@@ -489,11 +417,9 @@ export const SuperadminDashboard = React.memo(() => {
               <div className="flex items-center">
                 <DollarSignIcon className="h-8 w-8 text-yellow-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">Revenue Rate</p>
-                  <p className="text-2xl font-bold text-gray-900">{revenueMetrics?.revenueRate || 0}%</p>
-                  <p className="text-sm text-gray-500">
-                    ${revenueMetrics?.totalRevenue || 0}/month
-                  </p>
+                  <p className="text-sm font-medium text-gray-500">Monthly Revenue</p>
+                  <p className="text-2xl font-bold text-gray-900">${metrics?.metrics.totalMonthlyRevenue || 0}</p>
+                  <p className="text-sm text-gray-500">Recurring revenue</p>
                 </div>
               </div>
             </div>
@@ -502,17 +428,11 @@ export const SuperadminDashboard = React.memo(() => {
           <Card>
             <div className="p-6">
               <div className="flex items-center">
-                <ShieldCheckIcon className="h-8 w-8 text-purple-600" />
+                <CreditCardIcon className="h-8 w-8 text-purple-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">System Health</p>
-                  <p className="text-2xl font-bold text-gray-900">{systemHealth?.overallHealth || 0}%</p>
-                  <p className={`text-sm ${
-                    systemHealth?.status === 'excellent' ? 'text-green-600' :
-                    systemHealth?.status === 'good' ? 'text-blue-600' :
-                    systemHealth?.status === 'warning' ? 'text-orange-600' : 'text-red-600'
-                  }`}>
-                    {systemHealth?.status || 'Unknown'}
-                  </p>
+                  <p className="text-sm font-medium text-gray-500">Conversion Rate</p>
+                  <p className="text-2xl font-bold text-gray-900">{revenueMetrics?.revenueRate || 0}%</p>
+                  <p className="text-sm text-gray-500">Free to paid plans</p>
                 </div>
               </div>
             </div>
@@ -554,106 +474,13 @@ export const SuperadminDashboard = React.memo(() => {
             </div>
           </Card>
 
-          {/* Recent Activity */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <ClockIcon className="h-5 w-5 mr-2 text-green-600" />
-              Recent Activity
-            </h3>
-            {metrics?.metrics.recentActivity && metrics.metrics.recentActivity.length > 0 ? (
-              <div className="space-y-3">
-                {metrics.metrics.recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="p-2 rounded-full bg-blue-50">
-                      <ServerIcon className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">
-                        {activity.message}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {formatRelativeTime(activity.timestamp)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <ClockIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                <p>No recent activity</p>
-                <p className="text-sm">System activity will appear here</p>
-              </div>
-            )}
-          </Card>
+
         </div>
 
-        {/* System Health Details */}
-        {systemHealth && (
-          <Card className="p-6 mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <ServerIcon className="h-5 w-5 mr-2 text-indigo-600" />
-              System Health Monitoring
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    systemHealth.uptime > 99 ? 'bg-green-100' : 'bg-orange-100'
-                  }`}>
-                    <ShieldCheckIcon className={`h-6 w-6 ${
-                      systemHealth.uptime > 99 ? 'text-green-600' : 'text-orange-600'
-                    }`} />
-                  </div>
-                </div>
-                <p className="text-2xl font-bold text-gray-900">{systemHealth.uptime}%</p>
-                <p className="text-sm text-gray-600">Uptime</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    systemHealth.cpu < 70 ? 'bg-green-100' : systemHealth.cpu < 85 ? 'bg-yellow-100' : 'bg-red-100'
-                  }`}>
-                    <ServerIcon className={`h-6 w-6 ${
-                      systemHealth.cpu < 70 ? 'text-green-600' : systemHealth.cpu < 85 ? 'text-yellow-600' : 'text-red-600'
-                    }`} />
-                  </div>
-                </div>
-                <p className="text-2xl font-bold text-gray-900">{systemHealth.cpu}%</p>
-                <p className="text-sm text-gray-600">CPU Usage</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    systemHealth.memory < 75 ? 'bg-green-100' : systemHealth.memory < 90 ? 'bg-yellow-100' : 'bg-red-100'
-                  }`}>
-                    <BarChart3Icon className={`h-6 w-6 ${
-                      systemHealth.memory < 75 ? 'text-green-600' : systemHealth.memory < 90 ? 'text-yellow-600' : 'text-red-600'
-                    }`} />
-                  </div>
-                </div>
-                <p className="text-2xl font-bold text-gray-900">{systemHealth.memory}%</p>
-                <p className="text-sm text-gray-600">Memory Usage</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    systemHealth.storage < 80 ? 'bg-green-100' : systemHealth.storage < 95 ? 'bg-yellow-100' : 'bg-red-100'
-                  }`}>
-                    <GlobeIcon className={`h-6 w-6 ${
-                      systemHealth.storage < 80 ? 'text-green-600' : systemHealth.storage < 95 ? 'text-yellow-600' : 'text-red-600'
-                    }`} />
-                  </div>
-                </div>
-                <p className="text-2xl font-bold text-gray-900">{systemHealth.storage}%</p>
-                <p className="text-sm text-gray-600">Storage Usage</p>
-              </div>
-            </div>
-          </Card>
-        )}
+
 
         {/* Revenue and Growth Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <DollarSignIcon className="h-5 w-5 mr-2 text-yellow-600" />
@@ -661,12 +488,12 @@ export const SuperadminDashboard = React.memo(() => {
             </h3>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Paid Hostels:</span>
-                <span className="font-semibold">{metrics?.metrics.paidHostels || 0}</span>
+                <span className="text-gray-600">Paying Owners:</span>
+                <span className="font-semibold text-green-600">{metrics?.metrics.payingOwners || 0}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Monthly Revenue:</span>
-                <span className="font-semibold text-green-600">${revenueMetrics?.totalRevenue || 0}</span>
+                <span className="font-semibold text-green-600">${metrics?.metrics.totalMonthlyRevenue || 0}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Potential Revenue:</span>
@@ -678,6 +505,43 @@ export const SuperadminDashboard = React.memo(() => {
                   <span className="font-bold text-purple-600">{revenueMetrics?.revenueRate || 0}%</span>
                 </div>
               </div>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <CreditCardIcon className="h-5 w-5 mr-2 text-blue-600" />
+              Plan Distribution
+            </h3>
+            <div className="space-y-3">
+              {metrics?.metrics.planDistribution ? (
+                metrics.metrics.planDistribution.map((plan) => {
+                  const planName = plan.plan;
+                  const count = parseInt(plan.count);
+                  const planRevenue = {
+                    'free': 0,
+                    'basic': 29,
+                    'premium': 49,
+                    'enterprise': 99
+                  }[planName] || 0;
+                  const revenue = count * planRevenue;
+                  
+                  return (
+                    <div key={plan.plan} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <span className="font-medium text-gray-900 capitalize">{planName}</span>
+                        <span className="text-sm text-gray-500 ml-2">({count} hostels)</span>
+                      </div>
+                      <span className="font-semibold text-green-600">${revenue}/month</span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <CreditCardIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                  <p>No plan data available</p>
+                </div>
+              )}
             </div>
           </Card>
 
@@ -712,6 +576,26 @@ export const SuperadminDashboard = React.memo(() => {
             </div>
           </Card>
         </div>
+
+        {/* Regional Distribution */}
+        {metrics?.metrics.regionalDistribution && metrics.metrics.regionalDistribution.length > 0 && (
+          <div className="mt-8">
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <GlobeIcon className="h-5 w-5 mr-2 text-indigo-600" />
+                Regional Distribution
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {metrics.metrics.regionalDistribution.map((region) => (
+                  <div key={region.country} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <span className="font-medium text-gray-900">{region.country}</span>
+                    <span className="font-semibold text-indigo-600">{region.count} hostels</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   )

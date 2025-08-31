@@ -38,6 +38,7 @@ module.exports = (sequelize, DataTypes) => {
     description: DataTypes.TEXT,
     status: DataTypes.ENUM('pending', 'in_progress', 'resolved', 'rejected'),
     priority: DataTypes.ENUM('low', 'medium', 'high', 'urgent'),
+    resolution: DataTypes.TEXT,
     resolutionNotes: DataTypes.TEXT,
     resolvedAt: DataTypes.DATE
   }, {
