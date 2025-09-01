@@ -187,7 +187,7 @@ exports.updateHostel = async (req, res) => {
   try {
     // Extract hostelId from URL parameters
     const { hostelId } = req.params;
-    const { name, email, country, city, address } = req.body;
+    const { name, email, country, city, address, plan, isActive, subdomain } = req.body;
 
     const hostel = await Hostel.findByPk(hostelId);
     if (!hostel) {
@@ -202,11 +202,26 @@ exports.updateHostel = async (req, res) => {
       }
     }
 
-    // Update hostel
-    await hostel.update({
+    // 🚀 AUTO-SUBDOMAIN GENERATION: Generate new subdomain if name changed
+    let newSubdomain = hostel.subdomain;
+    if (name && name !== hostel.name) {
+      console.log("🔄 Hostel name changed from", hostel.name, "to", name);
+      
+      // Generate new subdomain
+      newSubdomain = await generateUniqueSubdomain(name);
+      console.log("🔗 Generated new subdomain:", newSubdomain);
+    }
+
+    // Update hostel with new subdomain if generated
+    const updateData = {
       name: name || hostel.name,
       email: email || hostel.email,
-    });
+      subdomain: newSubdomain,
+      plan: plan || hostel.plan,
+      isActive: isActive !== undefined ? isActive : hostel.isActive
+    };
+
+    await hostel.update(updateData);
 
     // Update or create location
     if (country || city || address) {
@@ -222,9 +237,23 @@ exports.updateHostel = async (req, res) => {
       });
     }
 
-    res.json({ message: "Hostel updated successfully", hostel });
+    // Fetch updated hostel with location
+    const updatedHostel = await Hostel.findByPk(hostelId, {
+      include: [
+        {
+          model: TenantLocation,
+          as: "location",
+        },
+      ],
+    });
+
+    res.json({ 
+      message: "Hostel updated successfully", 
+      hostel: updatedHostel,
+      subdomainUpdated: name !== hostel.name
+    });
   } catch (err) {
-    console.error(err);
+    console.error("❌ Error updating hostel:", err);
     res.status(500).json({ message: "Failed to update hostel" });
   }
 };
@@ -702,5 +731,93 @@ exports.getRooms = async (req, res) => {
   } catch (error) {
     console.error("Error in getRooms:", error);
     res.status(500).json({ error: "Failed to fetch rooms" });
+  }
+};
+
+// 🚀 NEW: Delete hostel and all related data
+exports.deleteHostel = async (req, res) => {
+  try {
+    const { hostelId } = req.params;
+    const userId = req.user.id;
+
+    console.log("🗑️ Deleting hostel:", { hostelId, userId });
+
+    // Verify the hostel exists and user owns it
+    const hostel = await Hostel.findOne({
+      where: { id: hostelId, ownerId: userId }
+    });
+
+    if (!hostel) {
+      return res.status(404).json({ 
+        message: "Hostel not found or you don't have permission to delete it" 
+      });
+    }
+
+    // 🚀 CASCADE DELETE: Remove all related data
+    // This will automatically delete due to foreign key constraints with CASCADE
+    
+    // Delete in order to avoid foreign key constraint issues
+    console.log("🗑️ Deleting related data for hostel:", hostelId);
+    
+    // 1. Delete visitor logs
+    const visitorLogsDeleted = await VisitorLog.destroy({
+      where: { hostelId }
+    });
+    console.log("🗑️ Deleted visitor logs:", visitorLogsDeleted);
+
+    // 2. Delete complaints
+    const complaintsDeleted = await Complaint.destroy({
+      where: { hostelId }
+    });
+    console.log("🗑️ Deleted complaints:", complaintsDeleted);
+
+    // 3. Delete room allocations
+    const allocationsDeleted = await RoomAllocation.destroy({
+      where: { hostelId }
+    });
+    console.log("🗑️ Deleted room allocations:", allocationsDeleted);
+
+    // 4. Delete rooms
+    const roomsDeleted = await Room.destroy({
+      where: { hostelId }
+    });
+    console.log("🗑️ Deleted rooms:", roomsDeleted);
+
+    // 5. Delete location
+    const locationDeleted = await TenantLocation.destroy({
+      where: { hostelId }
+    });
+    console.log("🗑️ Deleted location:", locationDeleted);
+
+    // 6. Update users to remove hostelId (set to null)
+    const usersUpdated = await User.update(
+      { hostelId: null },
+      { where: { hostelId } }
+    );
+    console.log("🗑️ Updated users:", usersUpdated);
+
+    // 7. Finally, delete the hostel itself
+    await hostel.destroy();
+    console.log("✅ Hostel deleted successfully:", hostelId);
+
+    res.json({ 
+      message: "Hostel and all related data deleted successfully",
+      deleted: {
+        hostel: true,
+        visitorLogs: visitorLogsDeleted,
+        complaints: complaintsDeleted,
+        roomAllocations: allocationsDeleted,
+        rooms: roomsDeleted,
+        location: locationDeleted,
+        usersUpdated: usersUpdated[0] // Sequelize returns [affectedCount]
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Error deleting hostel:", error);
+    res.status(500).json({ 
+      message: "Failed to delete hostel",
+      error: error.message 
+    });
   }
 };

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { PlusIcon, FilterIcon, SearchIcon, BuildingIcon, RefreshCwIcon, TrendingUpIcon, MapPinIcon, UsersIcon, BedIcon } from 'lucide-react'
+import { PlusIcon, FilterIcon, SearchIcon, BuildingIcon, RefreshCwIcon, TrendingUpIcon, MapPinIcon, UsersIcon, BedIcon, TrashIcon, EditIcon, EyeIcon, ShareIcon } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import HostelCard from '@/components/dashboard/HostelCard'
 import { CreateHostelModal } from '@/components/modals/CreateHostelModal'
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/Input'
 import toast from '@/lib/toast'
 import { useHostel } from '@/context/HostelContext'
 import { superadminApi } from '@/lib/api'
+import Link from 'next/link'
 
 interface Hostel {
   id: string;
@@ -45,16 +46,13 @@ interface FilterCriteria {
 }
 
 /**
- * 🚀 OPTIMIZED HostelManagement Component
+ * 🚀 COMPACT HostelManagement Component
  * 
- * Performance Improvements:
- * ✅ React.memo for re-render prevention
- * ✅ useMemo for expensive filtering and calculations
- * ✅ useCallback for stable function references
- * ✅ Batch data fetching for hostel statistics
- * ✅ Optimized search and filtering operations
- * ✅ Context-aware data management
- * ✅ Enhanced error handling with recovery
+ * Features:
+ * ✅ Compact, space-efficient design
+ * ✅ Smaller cards and spacing
+ * ✅ Maintains functionality while reducing size
+ * ✅ Better for smaller screens and dense layouts
  */
 export const HostelManagement = React.memo(() => {
   const { hostels: availableHostels, refreshHostels, loadingState } = useHostel()
@@ -91,8 +89,7 @@ export const HostelManagement = React.memo(() => {
         (hostel.name && hostel.name.toLowerCase().includes(lowercaseQuery)) ||
         (hostel.email && hostel.email.toLowerCase().includes(lowercaseQuery)) ||
         (hostel.subdomain && hostel.subdomain.toLowerCase().includes(lowercaseQuery)) ||
-        (hostel.location?.city && hostel.location.city.toLowerCase().includes(lowercaseQuery)) ||
-        (hostel.location?.country && hostel.location.country.toLowerCase().includes(lowercaseQuery))
+        (hostel.location?.city && hostel.location.city.toLowerCase().includes(lowercaseQuery))
       )
     }
 
@@ -322,10 +319,11 @@ export const HostelManagement = React.memo(() => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading hostels...</p>
+          <h2 className="text-lg font-medium text-gray-900 mt-4">Loading hostels...</h2>
+          <p className="text-gray-600 mt-2">Please wait while we fetch your hostel information</p>
         </div>
       </div>
     )
@@ -333,231 +331,297 @@ export const HostelManagement = React.memo(() => {
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-md p-6 max-w-md mx-auto">
-        <h3 className="text-sm font-medium text-red-800 mb-2">Error loading hostels</h3>
-        <p className="text-sm text-red-700 mb-4">{error}</p>
-        <Button onClick={fetchHostels} variant="outline" size="sm" className="w-full">
-          Try Again
-        </Button>
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-100 flex items-center justify-center">
+        <div className="bg-white border border-red-200 rounded-xl p-6 max-w-md mx-4 shadow-lg">
+          <div className="text-center">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-3">
+              <BuildingIcon className="h-6 w-6 text-red-600" />
+            </div>
+            <h3 className="text-base font-semibold text-red-800 mb-2">Error loading hostels</h3>
+            <p className="text-sm text-red-700 mb-4">{error}</p>
+            <Button onClick={fetchHostels} variant="outline" size="lg" className="w-full">
+              Try Again
+            </Button>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Hostel Management</h1>
-          <p className="text-gray-600">
-            {summaryStats.totalHostels} total hostels • {summaryStats.activeHostels} active • {summaryStats.paidHostels} paid
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* 🚀 COMPACT: Smaller Header Section */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mb-4 shadow-lg">
+            <BuildingIcon className="h-8 w-8 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Hostel Management</h1>
+          <p className="text-lg text-gray-600 max-w-xl mx-auto">
+            Manage all your hostels, monitor performance, and track key metrics in one centralized dashboard
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-          <Button 
-            onClick={handleRefresh}
-            variant="outline" 
-            disabled={refreshing}
-            className="flex items-center justify-center"
-          >
-            <RefreshCwIcon className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Refreshing...' : 'Refresh'}
-          </Button>
-          <Button onClick={handleCreateHostel} className="flex items-center justify-center">
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Add Hostel
-          </Button>
-        </div>
-      </div>
 
-      {/* Summary Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <div className="flex items-center">
-            <BuildingIcon className="h-8 w-8 text-blue-600" />
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Total Hostels</p>
-              <p className="text-2xl font-bold text-gray-900">{summaryStats.totalHostels}</p>
-              <p className="text-sm text-green-600">{summaryStats.activeHostels} active</p>
+        {/* 🚀 COMPACT: Smaller Summary Statistics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white p-6 rounded-xl shadow-md border-0 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+            <div className="flex items-center">
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl">
+                <BuildingIcon className="h-6 w-6 text-white" />
+              </div>
+              <div className="ml-4">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Hostels</p>
+                <p className="text-2xl font-bold text-gray-900">{summaryStats.totalHostels}</p>
+                <p className="text-xs text-green-600 font-medium">{summaryStats.activeHostels} active</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-md border-0 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+            <div className="flex items-center">
+              <div className="p-2 bg-gradient-to-br from-green-500 to-green-600 rounded-xl">
+                <UsersIcon className="h-6 w-6 text-white" />
+              </div>
+              <div className="ml-4">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Students</p>
+                <p className="text-2xl font-bold text-gray-900">{summaryStats.totalStudents}</p>
+                <p className="text-xs text-gray-500">Across all hostels</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-md border-0 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+            <div className="flex items-center">
+              <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl">
+                <BedIcon className="h-6 w-6 text-white" />
+              </div>
+              <div className="ml-4">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Avg Occupancy</p>
+                <p className="text-2xl font-bold text-gray-900">{summaryStats.avgOccupancy}%</p>
+                <p className="text-xs text-gray-500">{summaryStats.totalRooms} total rooms</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-md border-0 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+            <div className="flex items-center">
+              <div className="p-2 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl">
+                <TrendingUpIcon className="h-6 w-6 text-white" />
+              </div>
+              <div className="ml-4">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Paid Hostels</p>
+                <p className="text-2xl font-bold text-gray-900">{summaryStats.paidHostels}</p>
+                <p className="text-xs text-orange-600 font-medium">Revenue generating</p>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <div className="flex items-center">
-            <UsersIcon className="h-8 w-8 text-green-600" />
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Total Students</p>
-              <p className="text-2xl font-bold text-gray-900">{summaryStats.totalStudents}</p>
-              <p className="text-sm text-gray-500">Across all hostels</p>
+        {/* 🚀 COMPACT: Smaller Action Bar */}
+        <div className="bg-white rounded-xl shadow-md border-0 p-4 mb-6">
+          <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+            <div className="flex-1 w-full lg:w-auto">
+              <div className="relative">
+                <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <Input
+                  type="text"
+                  placeholder="Search hostels by name, email, subdomain, or location..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  className="pl-10 py-2 text-base border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-2 w-full lg:w-auto">
+              <Button
+                onClick={handleToggleFilter}
+                variant="outline"
+                className="flex items-center px-4 py-2 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all duration-200"
+              >
+                <FilterIcon className="h-4 w-4 mr-2" />
+                Filters
+                {Object.values(filterCriteria).some(v => v !== 'all') && (
+                  <span className="ml-2 bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {Object.values(filterCriteria).filter(v => v !== 'all').length}
+                  </span>
+                )}
+              </Button>
+              
+              <Button 
+                onClick={handleRefresh}
+                variant="outline"
+                disabled={refreshing}
+                className="flex items-center px-4 py-2 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all duration-200"
+              >
+                <RefreshCwIcon className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </Button>
+              
+              <Button 
+                onClick={handleCreateHostel} 
+                className="flex items-center px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1"
+              >
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Add Hostel
+              </Button>
             </div>
           </div>
-        </div>
 
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <div className="flex items-center">
-            <BedIcon className="h-8 w-8 text-purple-600" />
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Avg Occupancy</p>
-              <p className="text-2xl font-bold text-gray-900">{summaryStats.avgOccupancy}%</p>
-              <p className="text-sm text-gray-500">{summaryStats.totalRooms} total rooms</p>
+          {/* 🚀 COMPACT: Smaller Advanced Filters */}
+          {showFilter && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Plan</label>
+                  <select
+                    value={filterCriteria.plan}
+                    onChange={(e) => handleFilterChange('plan', e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                  >
+                    <option value="all">All Plans</option>
+                    {filterOptions.plans.map(plan => (
+                      <option key={plan} value={plan}>{plan.charAt(0).toUpperCase() + plan.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Status</label>
+                  <select
+                    value={filterCriteria.status}
+                    onChange={(e) => handleFilterChange('status', e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Payment</label>
+                  <select
+                    value={filterCriteria.payment}
+                    onChange={(e) => handleFilterChange('payment', e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                  >
+                    <option value="all">All Payment</option>
+                    <option value="paid">Paid</option>
+                    <option value="unpaid">Unpaid</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Location</label>
+                  <select
+                    value={filterCriteria.location}
+                    onChange={(e) => handleFilterChange('location', e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                  >
+                    <option value="all">All Locations</option>
+                    {filterOptions.countries.map(country => (
+                      <option key={country} value={country}>{country}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              {(searchTerm || Object.values(filterCriteria).some(v => v !== 'all')) && (
+                <div className="mt-3 flex justify-center">
+                  <Button 
+                    onClick={clearFilters} 
+                    variant="outline" 
+                    size="sm"
+                    className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all duration-200"
+                  >
+                    Clear All Filters
+                  </Button>
+                </div>
+              )}
             </div>
-          </div>
-        </div>
-
-
-      </div>
-
-      {/* Search and Filter */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center">
-        <div className="w-full sm:flex-1 relative">
-          <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-          <Input
-            type="text"
-            placeholder="Search hostels by name, email, subdomain, or location..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-            className="pl-10"
-          />
-        </div>
-        <div className="flex gap-2">
-          <Button
-            onClick={handleToggleFilter}
-            variant="outline"
-            className="flex items-center"
-          >
-            <FilterIcon className="h-4 w-4 mr-2" />
-            Filters
-            {Object.values(filterCriteria).some(v => v !== 'all') && (
-              <span className="ml-2 bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                {Object.values(filterCriteria).filter(v => v !== 'all').length}
-              </span>
-            )}
-          </Button>
-          {(searchTerm || Object.values(filterCriteria).some(v => v !== 'all')) && (
-            <Button onClick={clearFilters} variant="outline" size="sm">
-              Clear
-            </Button>
           )}
         </div>
-      </div>
 
-      {/* Advanced Filters */}
-      {showFilter && (
-        <div className="bg-white p-4 rounded-lg border shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Plan</label>
-              <select
-                value={filterCriteria.plan}
-                onChange={(e) => handleFilterChange('plan', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-              >
-                <option value="all">All Plans</option>
-                {filterOptions.plans.map(plan => (
-                  <option key={plan} value={plan}>{plan.charAt(0).toUpperCase() + plan.slice(1)}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select
-                value={filterCriteria.status}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Payment</label>
-              <select
-                value={filterCriteria.payment}
-                onChange={(e) => handleFilterChange('payment', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-              >
-                <option value="all">All Payment</option>
-                <option value="paid">Paid</option>
-                <option value="unpaid">Unpaid</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-              <select
-                value={filterCriteria.location}
-                onChange={(e) => handleFilterChange('location', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-              >
-                <option value="all">All Locations</option>
-                {filterOptions.countries.map(country => (
-                  <option key={country} value={country}>{country}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Results */}
-      <div>
-        {filteredHostels.length === 0 ? (
-          <div className="text-center py-12">
-            <BuildingIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">
-              {searchTerm || Object.values(filterCriteria).some(v => v !== 'all') 
-                ? 'No hostels found' 
-                : 'No hostels yet'}
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchTerm || Object.values(filterCriteria).some(v => v !== 'all')
-                ? 'Try adjusting your search or filters'
-                : 'Get started by creating your first hostel'}
-            </p>
-            {!searchTerm && !Object.values(filterCriteria).some(v => v !== 'all') && (
-              <div className="mt-6">
-                <Button onClick={handleCreateHostel}>
-                  <PlusIcon className="h-4 w-4 mr-2" />
-                  Create Hostel
-                </Button>
+        {/* 🚀 COMPACT: Smaller Results Section */}
+        <div>
+          {filteredHostels.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 mb-4">
+                <BuildingIcon className="h-8 w-8 text-gray-400" />
               </div>
-            )}
-          </div>
-        ) : (
-          <>
-            <div className="flex justify-between items-center mb-4">
-              <p className="text-sm text-gray-600">
-                Showing {filteredHostels.length} of {hostels.length} hostels
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                {searchTerm || Object.values(filterCriteria).some(v => v !== 'all') 
+                  ? 'No hostels found' 
+                  : 'No hostels yet'}
+              </h3>
+              <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                {searchTerm || Object.values(filterCriteria).some(v => v !== 'all')
+                  ? 'Try adjusting your search or filters to find what you\'re looking for'
+                  : 'Get started by creating your first hostel to begin managing your properties'}
               </p>
+              {!searchTerm && !Object.values(filterCriteria).some(v => v !== 'all') && (
+                <Button 
+                  onClick={handleCreateHostel}
+                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1"
+                >
+                  <PlusIcon className="h-4 w-4 mr-2" />
+                  Create Your First Hostel
+                </Button>
+              )}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredHostels.map((hostel) => (
-                <HostelCard
-                  key={hostel.id}
-                  id={hostel.id}
-                  name={hostel.name}
-                  location={hostel.location?.city || 'Unknown'}
-                  image="/icons/default-hostel.svg"
-                  totalRooms={hostelStats[hostel.id]?.totalRooms || 0}
-                  occupiedRooms={hostelStats[hostel.id]?.occupiedRooms || 0}
-                  totalStudents={hostelStats[hostel.id]?.totalStudents || 0}
-                  status={hostel.isActive ? 'active' : 'inactive'}
-                />
-              ))}
-            </div>
-          </>
+          ) : (
+            <>
+              <div className="flex justify-between items-center mb-4">
+                <p className="text-base text-gray-700 font-medium">
+                  Showing {filteredHostels.length} of {hostels.length} hostels
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredHostels.map((hostel) => (
+                  <HostelCard
+                    key={hostel.id}
+                    id={hostel.id}
+                    name={hostel.name}
+                    location={hostel.location?.city || hostel.location?.country || 'Unknown'}
+                    image="/icons/default-hostel.svg"
+                    totalRooms={hostelStats[hostel.id]?.totalRooms || 0}
+                    occupiedRooms={hostelStats[hostel.id]?.occupiedRooms || 0}
+                    totalStudents={hostelStats[hostel.id]?.totalStudents || 0}
+                    status={hostel.isActive ? 'active' : 'inactive'}
+                    showQuickActions={true}
+                    customActions={[
+                      {
+                        label: 'View Details',
+                        icon: <EyeIcon className="w-4 h-4" />,
+                        action: (hostelId: string) => {
+                          window.location.href = `/dashboard/hostels/${hostelId}/detail`
+                        },
+                        variant: 'primary'
+                      },
+                      {
+                        label: 'Edit',
+                        icon: <EditIcon className="w-4 h-4" />,
+                        action: (hostelId: string) => {
+                          window.location.href = `/dashboard/hostels/${hostelId}/detail`
+                        },
+                        variant: 'outline'
+                      }
+                    ]}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Create Hostel Modal */}
+        {showCreateModal && (
+          <CreateHostelModal
+            isOpen={showCreateModal}
+            onClose={handleCloseCreateModal}
+            onSuccess={handleHostelCreated}
+          />
         )}
       </div>
-
-      {/* Create Hostel Modal */}
-      {showCreateModal && (
-        <CreateHostelModal
-          isOpen={showCreateModal}
-          onClose={handleCloseCreateModal}
-          onSuccess={handleHostelCreated}
-        />
-      )}
     </div>
   )
 })

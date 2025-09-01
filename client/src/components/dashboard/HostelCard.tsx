@@ -507,14 +507,14 @@ export const HostelCard = memo<OptimizedHostelCardProps>(({
 
   return (
     <div 
-      className={`bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 ${
-        enableHover ? 'hover:shadow-xl hover:scale-[1.02]' : ''
+      className={`bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 ${
+        enableHover ? 'hover:shadow-lg hover:scale-[1.01]' : ''
       } ${priority === 'high' ? 'ring-2 ring-red-200' : ''}`}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
     >
       {/* Image Header */}
-      <div className="relative h-48 overflow-hidden">
+      <div className="relative h-40 overflow-hidden">
         {!imageError ? (
           <Image 
             src={image} 
@@ -528,37 +528,37 @@ export const HostelCard = memo<OptimizedHostelCardProps>(({
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-            <HomeIcon className="w-16 h-16 text-white opacity-50" />
+            <HomeIcon className="w-12 h-12 text-white opacity-50" />
           </div>
         )}
         
         {!imageLoaded && !imageError && (
           <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
-            <RefreshCwIcon className="w-8 h-8 text-gray-400 animate-spin" />
+            <RefreshCwIcon className="w-6 h-6 text-gray-400 animate-spin" />
           </div>
         )}
 
         {/* Status Badge Overlay */}
-        <div className="absolute top-4 left-4">
+        <div className="absolute top-3 left-3">
           <StatusBadge status={status} priority={priority} />
         </div>
 
         {/* Quick Actions Overlay */}
         {showQuickActions && showActions && quickActions.length > 0 && (
-          <div className="absolute top-4 right-4">
-            <div className="flex items-center space-x-2 bg-white/90 backdrop-blur-sm rounded-lg p-2">
+          <div className="absolute top-3 right-3">
+            <div className="flex items-center space-x-1 bg-white/90 backdrop-blur-sm rounded-lg p-1 shadow-md">
               {onWatchlist && (
                 <button
                   onClick={handleWatchlist}
                   disabled={isProcessing}
-                  className={`p-1 rounded transition-colors ${
+                  className={`p-1 rounded-md transition-colors ${
                     isWatchlisted 
-                      ? 'text-red-600 hover:text-red-700' 
-                      : 'text-gray-600 hover:text-red-600'
+                      ? 'text-red-600 hover:text-red-700 bg-red-50' 
+                      : 'text-gray-600 hover:text-red-600 hover:bg-red-50'
                   }`}
                   title={isWatchlisted ? 'Remove from watchlist' : 'Add to watchlist'}
                 >
-                  <HeartIcon className={`w-4 h-4 ${isWatchlisted ? 'fill-current' : ''}`} />
+                  <HeartIcon className={`w-3 h-3 ${isWatchlisted ? 'fill-current' : ''}`} />
                 </button>
               )}
               
@@ -566,7 +566,7 @@ export const HostelCard = memo<OptimizedHostelCardProps>(({
                 <button
                   key={index}
                   onClick={() => action.action(id)}
-                  className="p-1 text-gray-600 hover:text-blue-600 rounded transition-colors"
+                  className="p-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
                   title={action.label}
                 >
                   {action.icon}
@@ -574,8 +574,8 @@ export const HostelCard = memo<OptimizedHostelCardProps>(({
               ))}
               
               {quickActions.length > 2 && (
-                <button className="p-1 text-gray-600 hover:text-gray-800 rounded transition-colors">
-                  <MoreVerticalIcon className="w-4 h-4" />
+                <button className="p-1 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-md transition-colors">
+                  <MoreVerticalIcon className="w-3 h-3" />
                 </button>
               )}
             </div>
@@ -587,15 +587,15 @@ export const HostelCard = memo<OptimizedHostelCardProps>(({
       </div>
 
       {/* Content */}
-      <div className="p-6">
+      <div className="p-4">
         {/* Header */}
         <div className="mb-4">
           <div className="flex items-start justify-between mb-2">
-            <h3 className="text-xl font-bold text-gray-900 line-clamp-1">{name}</h3>
+            <h3 className="text-lg font-bold text-gray-900 line-clamp-1">{name}</h3>
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-1 ml-2">
                 {tags.slice(0, 2).map(tag => (
-                  <span key={tag} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                  <span key={tag} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
                     {tag}
                   </span>
                 ))}
@@ -603,15 +603,15 @@ export const HostelCard = memo<OptimizedHostelCardProps>(({
             )}
           </div>
           
-          <div className="flex items-center text-gray-600 mb-3">
-            <MapPinIcon className="w-4 h-4 mr-2" />
-            <span className="text-sm">{location}</span>
+          <div className="flex items-center text-gray-600 mb-2">
+            <MapPinIcon className="w-3 h-3 mr-2 text-blue-500" />
+            <span className="text-sm font-medium">{location}</span>
           </div>
 
           {pricing && (
-            <div className="flex items-center text-sm text-gray-600">
-              <DollarSignIcon className="w-4 h-4 mr-1" />
-              <span>
+            <div className="flex items-center text-sm text-gray-600 bg-gray-50 px-2 py-1 rounded-md">
+              <DollarSignIcon className="w-3 h-3 mr-1 text-green-500" />
+              <span className="font-medium text-xs">
                 {pricing.currency || '₹'}{pricing.minRent.toLocaleString()} - {pricing.currency || '₹'}{pricing.maxRent.toLocaleString()}/month
               </span>
             </div>
@@ -630,12 +630,12 @@ export const HostelCard = memo<OptimizedHostelCardProps>(({
 
         {/* Students Count */}
         <div className="mb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center text-gray-600">
-              <UsersIcon className="w-4 h-4 mr-2" />
-              <span className="text-sm font-medium">Students</span>
+          <div className="flex items-center justify-between p-2 bg-blue-50 rounded-lg">
+            <div className="flex items-center text-gray-700">
+              <UsersIcon className="w-4 h-4 mr-2 text-blue-600" />
+              <span className="text-sm font-medium">Total Students</span>
             </div>
-            <span className="text-lg font-bold text-gray-900">{totalStudents}</span>
+            <span className="text-lg font-bold text-blue-900">{totalStudents}</span>
           </div>
         </div>
 
@@ -657,20 +657,20 @@ export const HostelCard = memo<OptimizedHostelCardProps>(({
         {contact && (
           <div className="mb-4 text-sm">
             {contact.manager && (
-              <div className="flex items-center space-x-2 mb-2">
+              <div className="flex items-center space-x-2 mb-2 p-2 bg-green-50 rounded-lg">
                 <span className="text-gray-500">Manager:</span>
-                <span className="font-medium">{contact.manager.name}</span>
+                <span className="font-medium text-green-800">{contact.manager.name}</span>
               </div>
             )}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               {contact.phone && (
-                <a href={`tel:${contact.phone}`} className="flex items-center text-blue-600 hover:text-blue-800">
+                <a href={`tel:${contact.phone}`} className="flex items-center text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded-md transition-colors">
                   <PhoneIcon className="w-3 h-3 mr-1" />
                   <span className="text-xs">{contact.phone}</span>
                 </a>
               )}
               {contact.email && (
-                <a href={`mailto:${contact.email}`} className="flex items-center text-blue-600 hover:text-blue-800">
+                <a href={`mailto:${contact.email}`} className="flex items-center text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded-md transition-colors">
                   <MailIcon className="w-3 h-3 mr-1" />
                   <span className="text-xs">Email</span>
                 </a>
@@ -681,20 +681,20 @@ export const HostelCard = memo<OptimizedHostelCardProps>(({
 
         {/* Recent Activity */}
         {stats.recentActivity && (
-          <div className="mb-4 p-2 bg-blue-50 rounded text-sm">
-            <div className="flex items-center space-x-1 text-blue-700">
+          <div className="mb-4 p-2 bg-blue-50 rounded-lg">
+            <div className="flex items-center space-x-2 text-blue-700">
               <InfoIcon className="w-3 h-3" />
-              <span className="font-medium">Recent:</span>
-              <span>{stats.recentActivity}</span>
+              <span className="font-medium text-xs">Recent:</span>
+              <span className="text-xs">{stats.recentActivity}</span>
             </div>
           </div>
         )}
 
         {/* Alerts */}
         {(isNearCapacity || stats.maintenanceRequests && stats.maintenanceRequests > 5) && (
-          <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded">
-            <div className="flex items-center space-x-1 text-yellow-800 text-sm">
-              <AlertCircleIcon className="w-4 h-4" />
+          <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-center space-x-2 text-yellow-800 text-xs">
+              <AlertCircleIcon className="w-3 h-3" />
               <span>
                 {isNearCapacity && 'Near capacity • '}
                 {stats.maintenanceRequests && stats.maintenanceRequests > 5 && `${stats.maintenanceRequests} pending requests`}
@@ -706,7 +706,7 @@ export const HostelCard = memo<OptimizedHostelCardProps>(({
         {/* Action Button */}
         <div className="flex items-center space-x-2">
           <Link href={`/dashboard/hostels/${id}/detail`} className="flex-1">
-            <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+            <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1">
               <EyeIcon className="w-4 h-4 mr-2" />
               View Details
             </Button>
@@ -720,14 +720,23 @@ export const HostelCard = memo<OptimizedHostelCardProps>(({
                   size="sm"
                   onClick={handleWatchlist}
                   disabled={isProcessing}
-                  className={isWatchlisted ? 'text-red-600 border-red-200' : ''}
+                  className={`px-2 py-2 rounded-lg transition-all duration-200 ${
+                    isWatchlisted 
+                      ? 'text-red-600 border-red-200 hover:bg-red-50' 
+                      : 'hover:bg-gray-50'
+                  }`}
                 >
-                  <HeartIcon className={`w-4 h-4 ${isWatchlisted ? 'fill-current' : ''}`} />
+                  <HeartIcon className={`w-3 h-3 ${isWatchlisted ? 'fill-current' : ''}`} />
                 </Button>
               )}
               
-              <Button variant="outline" size="sm" onClick={handleShare}>
-                <ShareIcon className="w-4 h-4" />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleShare}
+                className="px-2 py-2 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
+              >
+                <ShareIcon className="w-3 h-3" />
               </Button>
             </div>
           )}

@@ -5,7 +5,7 @@ import { useHostel } from '@/context/HostelContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { BuildingIcon, UsersIcon, BedIcon, AlertCircleIcon, MessageSquareIcon, ShareIcon, EditIcon, CopyIcon, CheckIcon, MapPinIcon, MailIcon, CreditCardIcon } from 'lucide-react';
+import { BuildingIcon, UsersIcon, BedIcon, AlertCircleIcon, MessageSquareIcon, ShareIcon, EditIcon, CopyIcon, CheckIcon, MapPinIcon, MailIcon, CreditCardIcon, TrashIcon } from 'lucide-react';
 import Link from 'next/link';
 import { hostelApi } from '@/lib/api';
 import toast from '@/lib/toast';
@@ -171,6 +171,26 @@ export const HostelDetail: React.FC<HostelDetailProps> = ({ id }) => {
     }
   };
 
+  // 🚀 NEW: Function to delete hostel and all related data
+  const handleDeleteHostel = async () => {
+    if (!confirm('⚠️ WARNING: This action cannot be undone!\n\nDeleting this hostel will permanently remove:\n• All rooms and room allocations\n• All student data and complaints\n• All visitor logs\n• All hostel settings and configurations\n\nAre you absolutely sure you want to proceed?')) {
+      return;
+    }
+
+    try {
+      // Call the delete hostel API
+      await hostelApi.deleteHostel(id);
+      
+      toast.success('Hostel deleted successfully!');
+      
+      // Redirect to hostel management page
+      window.location.href = '/dashboard/owner/hostels';
+    } catch (error: any) {
+      console.error('Failed to delete hostel:', error);
+      toast.error('Failed to delete hostel. Please try again.');
+    }
+  };
+
   // 🚀 IMPROVED: Function to open update modal
   const openUpdateModal = () => {
     setUpdateForm({
@@ -197,6 +217,20 @@ export const HostelDetail: React.FC<HostelDetailProps> = ({ id }) => {
       fetchHostelDetails(id);
     }
   }, [id, hostels, currentHostel]);
+
+  // 🚀 NEW: Disable body scroll when modal is open
+  useEffect(() => {
+    if (showUpdateModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    // Cleanup function to restore scroll when component unmounts
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showUpdateModal]);
 
   if (loadingState === 'loading') {
     return (
@@ -232,315 +266,295 @@ export const HostelDetail: React.FC<HostelDetailProps> = ({ id }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* 🚀 IMPROVED: Enhanced top cards with better styling */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-            <div className="flex items-center">
-              <div className="p-2 bg-white bg-opacity-20 rounded-lg">
-                <BuildingIcon className="h-8 w-8 text-white" />
+        {/* 🚀 IMPROVED: Side Panel Layout with Hostel Information and Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+          {/* Main Content Area */}
+          <div className="lg:col-span-2">
+            <Card className="p-6 lg:p-8 bg-white shadow-xl border-0 rounded-2xl">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl lg:text-2xl font-bold text-gray-900">Hostel Information</h3>
+                <div className="w-16 lg:w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-blue-100">Status</p>
-                <p className="text-2xl font-bold text-white">
-                  {hostel.isActive ? 'Active' : 'Inactive'}
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-            <div className="flex items-center">
-              <div className="p-2 bg-white bg-opacity-20 rounded-lg">
-                <UsersIcon className="h-8 w-8 text-white" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-green-100">Plan</p>
-                <p className="text-2xl font-bold text-white capitalize">
-                  {hostel.plan}
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="p-2 bg-white bg-opacity-20 rounded-lg">
-                  <BedIcon className="h-8 w-8 text-white" />
+              
+              <div className="space-y-4 lg:space-y-6">
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                  <p className="text-xs lg:text-sm font-medium text-blue-600 mb-1 uppercase tracking-wide">Hostel Name</p>
+                  <p className="text-lg lg:text-2xl font-bold text-gray-900">{hostel.name}</p>
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-purple-100">Subdomain</p>
-                  <p className="text-2xl font-bold text-white">
-                    {hostel.subdomain || 'N/A'}
-                  </p>
-                </div>
-              </div>
-              {/* 🚀 IMPROVED: Share button with better styling */}
-              <Button
-                onClick={handleShareHostel}
-                variant="outline"
-                size="sm"
-                className="flex items-center bg-white bg-opacity-20 border-white border-opacity-30 text-white hover:bg-white hover:text-purple-600 transition-all duration-200"
-                title="Share hostel link"
-              >
-                {copied ? (
-                  <CheckIcon className="h-4 w-4" />
-                ) : (
-                  <ShareIcon className="h-4 w-4" />
+                
+                {hostel.email && (
+                  <div className="p-3 lg:p-4 bg-gray-50 rounded-xl">
+                    <p className="text-xs lg:text-sm font-medium text-gray-600 mb-1 uppercase tracking-wide">Email</p>
+                    <p className="text-base lg:text-lg text-gray-900 font-medium">{hostel.email}</p>
+                  </div>
                 )}
-              </Button>
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-            <div className="flex items-center">
-              <div className="p-2 bg-white bg-opacity-20 rounded-lg">
-                <MessageSquareIcon className="h-8 w-8 text-white" />
+                
+                {(hostel.location?.country || hostel.location?.city || hostel.location?.address) && (
+                  <div className="p-3 lg:p-4 bg-blue-50 rounded-xl border border-blue-100">
+                    <p className="text-xs lg:text-sm font-medium text-blue-600 mb-3 uppercase tracking-wide">Location</p>
+                    <div className="space-y-2">
+                      {hostel.location?.country && (
+                        <div className="flex items-center">
+                          <MapPinIcon className="h-4 w-4 text-blue-500 mr-2" />
+                          <span className="text-sm lg:text-base text-gray-700">{hostel.location.country}</span>
+                        </div>
+                      )}
+                      {hostel.location?.city && (
+                        <div className="flex items-center">
+                          <MapPinIcon className="h-4 w-4 text-blue-500 mr-2" />
+                          <span className="text-sm lg:text-base text-gray-700">{hostel.location.city}</span>
+                        </div>
+                      )}
+                      {hostel.location?.address && (
+                        <div className="flex items-start">
+                          <MapPinIcon className="h-4 w-4 text-blue-500 mr-2 mt-1" />
+                          <span className="text-sm lg:text-base text-gray-700">{hostel.location.address}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-orange-100">Created</p>
-                <p className="text-2xl font-bold text-white">
-                  {new Date(hostel.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
+            </Card>
+          </div>
 
-        {/* 🚀 IMPROVED: Enhanced Hostel Information Card */}
-        <div className="grid grid-cols-1 gap-8">
-          <Card className="p-8 bg-white shadow-xl border-0 rounded-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-gray-900">Hostel Information</h3>
-              <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
-            </div>
-            
-            <div className="space-y-6">
-              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                <div>
-                  <p className="text-sm font-medium text-blue-600 mb-1">Hostel Name</p>
-                  <p className="text-2xl font-bold text-gray-900">{hostel.name}</p>
-                </div>
-                {/* 🚀 IMPROVED: Update button with better styling */}
+          {/* Side Panel with Stats and Actions */}
+          <div className="lg:col-span-1">
+            <Card className="p-6 bg-white shadow-xl border-0 rounded-2xl">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg lg:text-xl font-bold text-gray-900">Quick Actions</h3>
+                <div className="w-12 h-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"></div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="space-y-3 mb-6">
                 <Button
                   onClick={openUpdateModal}
                   size="lg"
-                  className="px-8 py-3 text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-1"
+                  className="w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-1"
                 >
-                  <EditIcon className="h-5 w-5 mr-2" />
-                  Update Hostel Details
+                  <EditIcon className="h-4 w-4 lg:h-5 lg:w-5 mr-2" />
+                  Edit Hostel
+                </Button>
+                
+                <Button
+                  onClick={handleDeleteHostel}
+                  variant="outline"
+                  size="lg"
+                  className="w-full px-4 py-3 border-2 border-red-300 text-red-600 hover:border-red-500 hover:bg-red-50 font-semibold rounded-xl transition-all duration-200"
+                >
+                  <TrashIcon className="h-4 w-4 lg:h-5 lg:w-5 mr-2" />
+                  Delete Hostel
                 </Button>
               </div>
-              
-              {hostel.email && (
-                <div className="p-4 bg-gray-50 rounded-xl">
-                  <p className="text-sm font-medium text-gray-600 mb-1">Email</p>
-                  <p className="text-lg text-gray-900 font-medium">{hostel.email}</p>
-                </div>
-              )}
-              
-              {hostel.subdomain && (
-                <div className="p-4 bg-purple-50 rounded-xl border border-purple-100">
-                  <p className="text-sm font-medium text-purple-600 mb-1">Subdomain</p>
-                  <p className="text-lg text-gray-900 font-medium font-mono">{hostel.subdomain}</p>
-                </div>
-              )}
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 bg-green-50 rounded-xl border border-green-100">
-                  <p className="text-sm font-medium text-green-600 mb-1">Plan</p>
-                  <p className="text-lg text-gray-900 font-medium capitalize">{hostel.plan}</p>
-                </div>
+
+              {/* Hostel Stats */}
+              <div className="space-y-4">
+                <h4 className="text-sm lg:text-base font-semibold text-gray-700 mb-3">Hostel Status</h4>
                 
-                <div className="p-4 bg-gray-50 rounded-xl">
-                  <p className="text-sm font-medium text-gray-600 mb-1">Status</p>
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                    hostel.isActive 
-                      ? 'bg-green-100 text-green-800 border border-green-200' 
-                      : 'bg-red-100 text-red-800 border border-red-200'
-                  }`}>
-                    {hostel.isActive ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-              </div>
-              
-              {(hostel.location?.country || hostel.location?.city || hostel.location?.address) && (
-                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                  <p className="text-sm font-medium text-blue-600 mb-3">Location</p>
-                  <div className="space-y-2">
-                    {hostel.location?.country && (
-                      <div className="flex items-center">
-                        <MapPinIcon className="h-4 w-4 text-blue-500 mr-2" />
-                        <span className="text-gray-700">{hostel.location.country}</span>
-                      </div>
-                    )}
-                    {hostel.location?.city && (
-                      <div className="flex items-center">
-                        <MapPinIcon className="h-4 w-4 text-blue-500 mr-2" />
-                        <span className="text-gray-700">{hostel.location.city}</span>
-                      </div>
-                    )}
-                    {hostel.location?.address && (
-                      <div className="flex items-start">
-                        <MapPinIcon className="h-4 w-4 text-blue-500 mr-2 mt-1" />
-                        <span className="text-gray-700">{hostel.location.address}</span>
-                      </div>
-                    )}
+                <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs lg:text-sm font-medium text-emerald-700 uppercase tracking-wide">Status</span>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      hostel.isActive 
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                        : 'bg-red-100 text-red-800 border border-red-200'
+                    }`}>
+                      {hostel.isActive ? 'Active' : 'Inactive'}
+                    </span>
                   </div>
                 </div>
-              )}
-            </div>
-          </Card>
+
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs lg:text-sm font-medium text-blue-700 uppercase tracking-wide">Plan</span>
+                    <span className="text-sm lg:text-base font-medium text-blue-900 capitalize">{hostel.plan}</span>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-violet-50 rounded-lg border border-violet-200">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs lg:text-sm font-medium text-violet-700 uppercase tracking-wide">Subdomain</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm lg:text-base font-medium text-violet-900 font-mono">{hostel.subdomain || 'N/A'}</span>
+                      <Button
+                        onClick={handleShareHostel}
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center bg-white bg-opacity-80 border-violet-200 text-violet-600 hover:bg-white hover:text-violet-700 transition-all duration-200 p-1"
+                        title="Share hostel link"
+                      >
+                        {copied ? (
+                          <CheckIcon className="h-3 w-3" />
+                        ) : (
+                          <ShareIcon className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs lg:text-sm font-medium text-amber-700 uppercase tracking-wide">Created</span>
+                    <span className="text-sm lg:text-base font-medium text-amber-900">
+                      {new Date(hostel.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
 
         {/* 🚀 IMPROVED: Enhanced Update Hostel Modal */}
         {showUpdateModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl p-8 w-full max-w-lg mx-4 shadow-2xl border-0">
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 backdrop-blur-sm overflow-hidden">
+            <div className="bg-white rounded-2xl p-6 lg:p-8 w-full max-w-md lg:max-w-lg mx-4 shadow-2xl border-0 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">Update Hostel Details</h3>
+                <h3 className="text-xl lg:text-2xl font-bold text-gray-900">Update Hostel Details</h3>
                 <div className="w-12 h-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
               </div>
               
-              <form onSubmit={handleUpdateHostel} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    <BuildingIcon className="inline h-4 w-4 mr-2 text-blue-500" />
-                    Hostel Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={updateForm.name}
-                    onChange={(e) => setUpdateForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                    required
-                  />
-                  <p className="mt-2 text-sm text-blue-600 bg-blue-50 p-2 rounded-lg">
-                    💡 Changing the name will automatically update the subdomain
-                  </p>
-                  {updateForm.name !== hostel.name && updateForm.name && (
-                    <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-sm text-green-800 font-medium">
-                        🔄 New subdomain will be: <span className="font-mono text-green-900">{generateSubdomain(updateForm.name)}</span>
-                      </p>
-                    </div>
-                  )}
-                </div>
+                             <form onSubmit={handleUpdateHostel} className="space-y-4 lg:space-y-6">
+                 <div>
+                   <label className="block text-sm font-semibold text-gray-700 mb-2">
+                     <BuildingIcon className="inline h-4 w-4 mr-2 text-blue-500" />
+                     Hostel Name *
+                   </label>
+                   <input
+                     type="text"
+                     value={updateForm.name}
+                     onChange={(e) => setUpdateForm(prev => ({ ...prev, name: e.target.value }))}
+                     className="w-full px-3 py-2 lg:px-4 lg:py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                     required
+                   />
+                   <p className="mt-2 text-xs lg:text-sm text-blue-600 bg-blue-50 p-2 rounded-lg">
+                     💡 Changing the name will automatically update the subdomain
+                   </p>
+                   {updateForm.name !== hostel.name && updateForm.name && (
+                     <div className="mt-2 p-2 lg:p-3 bg-green-50 border border-green-200 rounded-lg">
+                       <p className="text-xs lg:text-sm text-green-800 font-medium">
+                         🔄 New subdomain will be: <span className="font-mono text-green-900">{generateSubdomain(updateForm.name)}</span>
+                       </p>
+                     </div>
+                   )}
+                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    <MailIcon className="inline h-4 w-4 mr-2 text-green-500" />
-                    Contact Email
-                  </label>
-                  <input
-                    type="email"
-                    value={updateForm.email}
-                    onChange={(e) => setUpdateForm(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
-                    placeholder="Leave blank to keep current email"
-                  />
-                  <p className="mt-2 text-sm text-gray-500">
-                    Leave blank to keep the current email address
-                  </p>
-                </div>
+                                 <div>
+                   <label className="block text-sm font-semibold text-gray-700 mb-2">
+                     <MailIcon className="inline h-4 w-4 mr-2 text-green-500" />
+                     Contact Email
+                   </label>
+                   <input
+                     type="email"
+                     value={updateForm.email}
+                     onChange={(e) => setUpdateForm(prev => ({ ...prev, email: e.target.value }))}
+                     className="w-full px-3 py-2 lg:px-4 lg:py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
+                     placeholder="Leave blank to keep current email"
+                   />
+                   <p className="mt-2 text-xs lg:text-sm text-gray-500">
+                     Leave blank to keep the current email address
+                   </p>
+                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    <CreditCardIcon className="inline h-4 w-4 mr-2 text-purple-500" />
-                    Plan *
-                  </label>
-                  <select
-                    value={updateForm.plan}
-                    onChange={(e) => setUpdateForm(prev => ({ ...prev, plan: e.target.value as 'free' | 'pro' | 'enterprise' }))}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200"
-                    required
-                  >
-                    <option value="free">Free Plan (Up to 10 students)</option>
-                    <option value="pro">Pro Plan (Up to 100 students)</option>
-                    <option value="enterprise">Enterprise Plan (Unlimited students)</option>
-                  </select>
-                </div>
+                 <div>
+                   <label className="block text-sm font-semibold text-gray-700 mb-2">
+                     <CreditCardIcon className="inline h-4 w-4 mr-2 text-purple-500" />
+                     Plan *
+                   </label>
+                   <select
+                     value={updateForm.plan}
+                     onChange={(e) => setUpdateForm(prev => ({ ...prev, plan: e.target.value as 'free' | 'pro' | 'enterprise' }))}
+                     className="w-full px-3 py-2 lg:px-4 lg:py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200"
+                     required
+                   >
+                     <option value="free">Free Plan (Up to 10 students)</option>
+                     <option value="pro">Pro Plan (Up to 100 students)</option>
+                     <option value="enterprise">Enterprise Plan (Unlimited students)</option>
+                   </select>
+                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      <MapPinIcon className="inline h-4 w-4 mr-2 text-orange-500" />
-                      Country
-                    </label>
-                    <input
-                      type="text"
-                      value={updateForm.country}
-                      onChange={(e) => setUpdateForm(prev => ({ ...prev, country: e.target.value }))}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200"
-                      placeholder="e.g., United States"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      <MapPinIcon className="inline h-4 w-4 mr-2 text-orange-500" />
-                      City
-                    </label>
-                    <input
-                      type="text"
-                      value={updateForm.city}
-                      onChange={(e) => setUpdateForm(prev => ({ ...prev, city: e.target.value }))}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200"
-                      placeholder="e.g., New York"
-                    />
-                  </div>
-                </div>
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4">
+                   <div>
+                     <label className="block text-sm font-semibold text-gray-700 mb-2">
+                       <MapPinIcon className="inline h-4 w-4 mr-2 text-orange-500" />
+                       Country
+                     </label>
+                     <input
+                       type="text"
+                       value={updateForm.country}
+                       onChange={(e) => setUpdateForm(prev => ({ ...prev, country: e.target.value }))}
+                       className="w-full px-3 py-2 lg:px-4 lg:py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200"
+                       placeholder="e.g., United States"
+                     />
+                   </div>
+                   <div>
+                     <label className="block text-sm font-semibold text-gray-700 mb-2">
+                       <MapPinIcon className="inline h-4 w-4 mr-2 text-orange-500" />
+                       City
+                     </label>
+                     <input
+                       type="text"
+                       value={updateForm.city}
+                       onChange={(e) => setUpdateForm(prev => ({ ...prev, city: e.target.value }))}
+                       className="w-full px-3 py-2 lg:px-4 lg:py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200"
+                       placeholder="e.g., New York"
+                     />
+                   </div>
+                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    <MapPinIcon className="inline h-4 w-4 mr-2 text-orange-500" />
-                    Address
-                  </label>
-                  <textarea
-                    value={updateForm.address}
-                    onChange={(e) => setUpdateForm(prev => ({ ...prev, address: e.target.value }))}
-                    rows={3}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200"
-                    placeholder="Enter full address"
-                  />
-                </div>
+                 <div>
+                   <label className="block text-sm font-semibold text-gray-700 mb-2">
+                     <MapPinIcon className="inline h-4 w-4 mr-2 text-orange-500" />
+                     Address
+                   </label>
+                   <textarea
+                     value={updateForm.address}
+                     onChange={(e) => setUpdateForm(prev => ({ ...prev, address: e.target.value }))}
+                     rows={2}
+                     className="w-full px-3 py-2 lg:px-4 lg:py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200"
+                     placeholder="Enter full address"
+                   />
+                 </div>
 
-                <div className="flex items-center p-4 bg-blue-50 rounded-xl">
-                  <input
-                    type="checkbox"
-                    id="isActive"
-                    checked={updateForm.isActive}
-                    onChange={(e) => setUpdateForm(prev => ({ ...prev, isActive: e.target.checked }))}
-                    className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded-lg"
-                  />
-                  <label htmlFor="isActive" className="ml-3 text-sm font-medium text-gray-900">
-                    Active
-                  </label>
-                </div>
+                 <div className="flex items-center p-3 lg:p-4 bg-blue-50 rounded-xl">
+                   <input
+                     type="checkbox"
+                     id="isActive"
+                     checked={updateForm.isActive}
+                     onChange={(e) => setUpdateForm(prev => ({ ...prev, isActive: e.target.checked }))}
+                     className="h-4 w-4 lg:h-5 lg:w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded-lg"
+                   />
+                   <label htmlFor="isActive" className="ml-3 text-sm font-medium text-gray-900">
+                     Active
+                   </label>
+                 </div>
 
-                <div className="flex space-x-4 pt-6">
-                  <Button
-                    type="submit"
-                    disabled={isUpdating}
-                    className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-1"
-                  >
-                    {isUpdating ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                        Updating...
-                      </>
-                    ) : (
-                      'Update Hostel'
-                    )}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowUpdateModal(false)}
-                    className="flex-1 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-all duration-200"
-                  >
-                    Cancel
-                  </Button>
-                </div>
+                 <div className="flex space-x-3 lg:space-x-4 pt-4 lg:pt-6">
+                   <Button
+                     type="submit"
+                     disabled={isUpdating}
+                     className="flex-1 py-2 lg:py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-1 text-sm lg:text-base"
+                   >
+                     {isUpdating ? (
+                       <>
+                         <div className="animate-spin rounded-full h-4 w-4 lg:h-5 lg:w-5 border-b-2 border-white mr-2"></div>
+                         Updating...
+                       </>
+                     ) : (
+                       'Update Hostel'
+                     )}
+                   </Button>
+                   <Button
+                     type="button"
+                     variant="outline"
+                     onClick={() => setShowUpdateModal(false)}
+                     className="flex-1 py-2 lg:py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-all duration-200 text-sm lg:text-base"
+                   >
+                     Cancel
+                   </Button>
+                 </div>
               </form>
             </div>
           </div>

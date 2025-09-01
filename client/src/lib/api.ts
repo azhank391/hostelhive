@@ -170,6 +170,18 @@ export const hostelApi = {
     return result;
   },
 
+  async deleteHostel(hostelId: string) {
+    const result = await apiClient.delete(`/hostels/${hostelId}`, {
+      skipCache: true
+    });
+    
+    // Invalidate all related caches
+    apiClient.invalidateCache(`/hostels/${hostelId}`);
+    apiClient.invalidateCache('/hostels');
+    apiClient.invalidateCache('/auth/hostels');
+    return result;
+  },
+
   // Admin endpoints (URL-based: /hostels/:hostelId/admin/*)
   async getDashboardMetrics(hostelId: string) {
     const url = `/hostels/${hostelId}/stats`;

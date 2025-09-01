@@ -46,6 +46,13 @@ router.get('/:hostelId', hostelController.getHostelDetails);
  */
 router.put('/:hostelId', requireHostelOwner, hostelController.updateHostel);
 
+/**
+ * @route DELETE /api/hostels/:hostelId
+ * @desc Delete hostel and all related data
+ * @access Private (Owner only)
+ */
+router.delete('/:hostelId', requireHostelOwner, hostelController.deleteHostel);
+
 // ========================================
 // DASHBOARD ROUTES
 // ========================================
