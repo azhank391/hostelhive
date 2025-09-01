@@ -223,27 +223,23 @@ export const StudentVisitorLogs = React.memo(() => {
       // Use context-aware API that automatically includes hostelId and studentId
       const data = await studentApi.getVisitorLogs()
       
-      // Enhance with mock data for demonstration
-      const enhancedLogs: VisitorLog[] = (data || []).map((log: any, index: number) => ({
-        id: log.id || `visitor-${index}`,
-        visitorName: log.visitorName || `Visitor ${index + 1}`,
-        relation: log.relation || ['Parent', 'Sibling', 'Friend', 'Relative', 'Other'][Math.floor(Math.random() * 5)],
-        phone: log.phone || `+91-${Math.floor(Math.random() * 9000000000) + 1000000000}`,
-        email: log.email || `visitor${index}@example.com`,
-        purpose: log.purpose || ['Visit', 'Meeting', 'Documents', 'Emergency', 'Other'][Math.floor(Math.random() * 5)],
-        checkIn: log.checkIn || new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-        checkOut: Math.random() > 0.3 ? new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000).toISOString() : null,
-        status: log.status || (Math.random() > 0.3 ? 'checked_out' : 'active'),
-        createdAt: log.createdAt || new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-        updatedAt: log.updatedAt || new Date().toISOString(),
-        approvedBy: log.approvedBy || {
-          name: 'Admin User',
-          role: 'Admin'
-        },
-        roomNumber: log.roomNumber || `${Math.floor(Math.random() * 300) + 100}`
+      // Transform backend data to frontend format
+      const transformedLogs: VisitorLog[] = (data || []).map((log: any) => ({
+        id: log.id,
+        visitorName: log.visitorName,
+        relation: log.relation,
+        phone: log.phone || '',
+        email: log.email || '',
+        purpose: log.purpose || 'Visit',
+        checkIn: log.checkIn,
+        checkOut: log.checkOut,
+        status: log.checkOut ? 'checked_out' : 'active',
+        createdAt: log.createdAt,
+        updatedAt: log.updatedAt,
+        roomNumber: log.student?.room || 'Current Room'
       }))
       
-      setVisitorLogs(enhancedLogs)
+      setVisitorLogs(transformedLogs)
       
     } catch (err) {
       console.error('Failed to fetch visitor logs:', err)
@@ -270,6 +266,11 @@ export const StudentVisitorLogs = React.memo(() => {
   // 🎯 PERFORMANCE: Optimized visitor check-out
   const handleCheckOut = useCallback(async (logId: string) => {
     setActionLoading(logId)
+    
+    // Store original log for potential revert
+    const originalLog = visitorLogs.find(log => log.id === logId)
+    if (!originalLog) return
+    
     try {
       // Optimistic update
       setVisitorLogs(prev => prev.map(log => 
@@ -283,17 +284,28 @@ export const StudentVisitorLogs = React.memo(() => {
           : log
       ))
       
-      // Make API call (using available visitor log functionality)
-      // For now, we'll just update locally since specific checkout API doesn't exist
-      toast.success('Visitor checked out successfully!')
+             // Make API call in background
+       try {
+         await studentApi.checkoutVisitor(logId)
+         toast.success('Visitor checked out successfully!')
+         // NO fetchVisitorLogs() - let optimistic updates persist!
+       } catch (apiError) {
+         // Revert optimistic update on API error
+         setVisitorLogs(prev => prev.map(log => 
+           log.id === logId ? originalLog : log
+         ))
+         toast.error('Failed to check out visitor')
+       }
     } catch (err) {
       // Revert optimistic update
-      await fetchVisitorLogs()
+      setVisitorLogs(prev => prev.map(log => 
+        log.id === logId ? originalLog : log
+      ))
       toast.error('Failed to check out visitor')
     } finally {
       setActionLoading(null)
     }
-  }, [studentApi, fetchVisitorLogs])
+  }, [visitorLogs, studentApi])
 
   // 🎯 PERFORMANCE: Optimized visitor deletion
   const handleDeleteLog = useCallback(async (logId: string) => {
@@ -308,16 +320,24 @@ export const StudentVisitorLogs = React.memo(() => {
       // Optimistic update
       setVisitorLogs(prev => prev.filter(log => log.id !== logId))
       
-      // For now, we'll just update locally since specific delete API doesn't exist
-      toast.success('Visitor log deleted successfully!')
+             // Make API call in background
+       try {
+         await studentApi.deleteVisitorLog(logId)
+         toast.success('Visitor log deleted successfully!')
+         // NO fetchVisitorLogs() - let optimistic updates persist!
+       } catch (apiError) {
+         // Revert optimistic update on API error
+         setVisitorLogs(originalLogs)
+         toast.error('Failed to delete visitor log')
+       }
     } catch (err) {
-      // Revert optimistic update
+      // Revert optimistic update on error
       setVisitorLogs(originalLogs)
       toast.error('Failed to delete visitor log')
     } finally {
       setActionLoading(null)
     }
-  }, [visitorLogs])
+  }, [visitorLogs, studentApi])
 
   // 🎯 PERFORMANCE: Memoized event handlers
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -405,7 +425,7 @@ export const StudentVisitorLogs = React.memo(() => {
             <Link href="/dashboard/student" className="text-blue-600 hover:text-blue-700">
               <ArrowLeftIcon className="h-5 w-5" />
             </Link>
-            <h1 className="text-2xl font-bold text-gray-900">My Visitor Logs</h1>
+            <h1 className="text-2xl font-bold text-gray-900">My Visitors</h1>
           </div>
           <p className="text-gray-600">
             {visitorStats.totalVisitors} total visitors • {visitorStats.activeVisitors} currently visiting • {visitorStats.todaysVisitors} today
@@ -421,10 +441,10 @@ export const StudentVisitorLogs = React.memo(() => {
             <RefreshCwIcon className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             {refreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
-          <Button onClick={() => setIsAddModalOpen(true)} className="flex items-center justify-center">
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Request Visitor
-          </Button>
+                     <Button onClick={() => setIsAddModalOpen(true)} className="flex items-center justify-center">
+             <PlusIcon className="h-4 w-4 mr-2" />
+             Register Visitor
+           </Button>
         </div>
       </div>
 
@@ -569,19 +589,19 @@ export const StudentVisitorLogs = React.memo(() => {
                 ? 'No visitor logs found'
                 : 'No visitor logs yet'}
             </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchTerm || Object.values(filterCriteria).some(v => v !== 'all')
-                ? 'Try adjusting your search or filters'
-                : 'Request your first visitor to get started'}
-            </p>
-            {!searchTerm && !Object.values(filterCriteria).some(v => v !== 'all') && (
-              <div className="mt-6">
-                <Button onClick={() => setIsAddModalOpen(true)}>
-                  <PlusIcon className="h-4 w-4 mr-2" />
-                  Request Visitor
-                </Button>
-              </div>
-            )}
+                         <p className="mt-1 text-sm text-gray-500">
+               {searchTerm || Object.values(filterCriteria).some(v => v !== 'all')
+                 ? 'Try adjusting your search or filters'
+                 : 'Register your first visitor to get started'}
+             </p>
+             {!searchTerm && !Object.values(filterCriteria).some(v => v !== 'all') && (
+               <div className="mt-6">
+                 <Button onClick={() => setIsAddModalOpen(true)}>
+                   <PlusIcon className="h-4 w-4 mr-2" />
+                   Register Visitor
+                 </Button>
+               </div>
+             )}
           </div>
         ) : (
           <>
@@ -691,15 +711,15 @@ export const StudentVisitorLogs = React.memo(() => {
                               >
                                 <EditIcon className="h-4 w-4" />
                               </Button>
-                              <Button
-                                onClick={() => handleDeleteLog(log.id)}
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 hover:text-red-700"
-                                disabled={actionLoading === log.id}
-                              >
-                                <TrashIcon className="h-4 w-4" />
-                              </Button>
+                                                             <Button
+                                 onClick={() => handleDeleteLog(log.id)}
+                                 variant="outline"
+                                 size="sm"
+                                 className="text-red-600 hover:text-red-700"
+                                 disabled={actionLoading === log.id}
+                               >
+                                 <TrashIcon className="h-4 w-4" />
+                               </Button>
                             </div>
                           </td>
                         </tr>
@@ -713,53 +733,118 @@ export const StudentVisitorLogs = React.memo(() => {
         )}
       </div>
 
-      {/* Add Visitor Modal */}
-      {isAddModalOpen && (
-        <Modal
-          isOpen={isAddModalOpen}
-          onClose={() => setIsAddModalOpen(false)}
-          title="Request New Visitor"
-        >
-          <VisitorForm
-            hasRoom={true}
-            onSubmit={async (data) => {
-              // Handle visitor request submission
-              setIsAddModalOpen(false)
-              await fetchVisitorLogs()
-              toast.success('Visitor request submitted!')
-            }}
-            onCancel={() => setIsAddModalOpen(false)}
-          />
-        </Modal>
-      )}
+             {/* Add Visitor Modal */}
+       {isAddModalOpen && (
+         <Modal
+           isOpen={isAddModalOpen}
+           onClose={() => setIsAddModalOpen(false)}
+           title="Register New Visitor"
+         >
+           <VisitorForm
+             hasRoom={true}
+             onSubmit={async (data) => {
+               // Handle visitor registration
+               try {
+                 // Optimistic update - add new visitor
+                 const newVisitor: VisitorLog = {
+                   id: `temp-${Date.now()}`,
+                   visitorName: data.visitorName,
+                   relation: data.relation,
+                   phone: (data as any).phone || '',
+                   email: (data as any).email || '',
+                   purpose: (data as any).purpose || 'Visit',
+                   checkIn: new Date().toISOString(),
+                   checkOut: null,
+                   status: 'active',
+                   createdAt: new Date().toISOString(),
+                   updatedAt: new Date().toISOString(),
+                   roomNumber: 'Current Room'
+                 }
+                 
+                 setVisitorLogs(prev => [newVisitor, ...prev])
+                 setIsAddModalOpen(false)
+                 
+                 // Make API call in background
+                 try {
+                   await studentApi.createVisitorLog(data)
+                   toast.success('Visitor registered successfully!')
+                   // NO fetchVisitorLogs() - let optimistic updates persist!
+                 } catch (apiError) {
+                   // Revert optimistic update on API error
+                   setVisitorLogs(prev => prev.filter(visitor => visitor.id !== newVisitor.id))
+                   toast.error('Failed to register visitor')
+                 }
+                 
+               } catch (error) {
+                 toast.error('Failed to register visitor')
+               }
+             }}
+             onCancel={() => setIsAddModalOpen(false)}
+           />
+         </Modal>
+       )}
 
-      {/* Edit Visitor Modal */}
-      {isEditModalOpen && editingLog && (
-        <Modal
-          isOpen={isEditModalOpen}
-          onClose={() => {
-            setIsEditModalOpen(false)
-            setEditingLog(null)
-          }}
-          title="Edit Visitor Information"
-        >
-          <VisitorForm
-            hasRoom={true}
-            initialData={editingLog}
-            onSubmit={async (data) => {
-              // Handle visitor update
-              setIsEditModalOpen(false)
-              setEditingLog(null)
-              await fetchVisitorLogs()
-              toast.success('Visitor information updated!')
-            }}
-            onCancel={() => {
-              setIsEditModalOpen(false)
-              setEditingLog(null)
-            }}
-          />
-        </Modal>
-      )}
+             {/* Edit Visitor Modal */}
+       {isEditModalOpen && editingLog && (
+         <Modal
+           isOpen={isEditModalOpen}
+           onClose={() => {
+             setIsEditModalOpen(false)
+             setEditingLog(null)
+           }}
+           title="Edit Visitor Information"
+         >
+           <VisitorForm
+             hasRoom={true}
+             initialData={editingLog}
+             onSubmit={async (data) => {
+               // Handle visitor update
+               try {
+                 // Store original data for potential revert
+                 const originalLog = editingLog
+                 
+                 // Optimistic update - update visitor information
+                 setVisitorLogs(prev => prev.map(log => 
+                   log.id === editingLog.id 
+                     ? { 
+                         ...log, 
+                         visitorName: data.visitorName,
+                         relation: data.relation,
+                         phone: (data as any).phone || '',
+                         email: (data as any).email || '',
+                         purpose: (data as any).purpose || log.purpose,
+                         updatedAt: new Date().toISOString()
+                       }
+                     : log
+                 ))
+                 
+                 setIsEditModalOpen(false)
+                 setEditingLog(null)
+                 
+                 // Make API call in background
+                 try {
+                   await studentApi.updateVisitorLog(editingLog.id, data)
+                   toast.success('Visitor information updated successfully!')
+                   // NO fetchVisitorLogs() - let optimistic updates persist!
+                 } catch (apiError) {
+                   // Revert optimistic update on API error
+                   setVisitorLogs(prev => prev.map(log => 
+                     log.id === editingLog.id ? originalLog : log
+                   ))
+                   toast.error('Failed to update visitor information')
+                 }
+                 
+               } catch (error) {
+                 toast.error('Failed to update visitor information')
+               }
+             }}
+             onCancel={() => {
+               setIsEditModalOpen(false)
+               setEditingLog(null)
+             }}
+           />
+         </Modal>
+       )}
     </div>
   )
 })

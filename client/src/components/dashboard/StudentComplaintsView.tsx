@@ -586,7 +586,7 @@ export const StudentComplaintsView = React.memo(() => {
                   },
                   hostel: complaint.hostel || {
                     id: 'unknown',
-                    name: 'Your Hostel'
+                    name: 'Current Hostel'
                   },
                   room: complaint.room || '',
                   createdAt: complaint.createdAt || new Date().toISOString(),
@@ -595,10 +595,15 @@ export const StudentComplaintsView = React.memo(() => {
                   showMetrics: false
                 }
                 
+                console.log('Transformed complaint:', transformedComplaint)
+                console.log('Complaint title:', transformedComplaint.title)
+                console.log('Complaint description:', transformedComplaint.description)
+                
                 return (
                   <ComplaintCard
                     key={transformedComplaint.id}
                     {...transformedComplaint}
+                    compact={true}
                   />
                 )
               })}

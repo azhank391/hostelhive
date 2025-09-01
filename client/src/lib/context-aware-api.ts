@@ -259,7 +259,7 @@ export const useAdminApiWithHostel = () => {
       if (!hostelId) {
         return Promise.reject(new Error('No hostel selected for resolving complaint'));
       }
-      return adminApi.resolveComplaint(complaintId, resolutionNotes);
+      return adminApi.resolveComplaint(hostelId, complaintId, resolutionNotes);
     },
 
     // Visitor Management
@@ -326,10 +326,14 @@ export const useStudentApiWithHostel = () => {
     getComplaints: () => studentApi.getComplaints(),
     lodgeComplaint: (complaintData: any) => studentApi.lodgeComplaint(complaintData),
     updateComplaint: (complaintId: string, updates: any) => studentApi.updateComplaint(complaintId, updates),
+    deleteComplaint: (complaintId: string) => studentApi.deleteComplaint(complaintId),
 
     // Visitor Logs
     getVisitorLogs: () => studentApi.getVisitorLogs(),
     createVisitorLog: (visitorData: any) => studentApi.createVisitorLog(visitorData),
+    updateVisitorLog: (visitorId: string, updates: any) => studentApi.updateVisitorLog(visitorId, updates),
+    deleteVisitorLog: (visitorId: string) => studentApi.deleteVisitorLog(visitorId),
+    checkoutVisitor: (visitorId: string) => studentApi.checkoutVisitor(visitorId),
 
     // Utility
     getCurrentHostelId: getHostelId,

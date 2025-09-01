@@ -382,8 +382,8 @@ export const hostelApi = {
   },
 
   async resolveComplaint(hostelId: string, complaintId: string, resolution?: string) {
-    const result = await apiClient.put(`/hostels/${hostelId}/complaints/${complaintId}/resolve`, 
-      resolution ? { resolution } : {}, 
+    const result = await apiClient.post(`/hostels/${hostelId}/complaints/${complaintId}/resolve`, 
+      resolution ? { resolutionNotes: resolution } : {}, 
       { skipCache: true }
     );
     
