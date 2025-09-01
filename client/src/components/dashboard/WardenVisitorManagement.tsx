@@ -589,10 +589,15 @@ export const WardenVisitorManagement = React.memo(() => {
     
     try {
       // 2. Send request to server
-      await adminApi.createVisitorLog(data);
+      const response = await adminApi.createVisitorLog(data);
       
-      // 3. Refresh data to get real visitor data
-      await fetchVisitorLogs();
+      // 3. Replace optimistic visitor with real data from server
+      if (response && (response as any).id) {
+        setVisitorLogs(prev => prev.map(v => 
+          v.id === tempId ? { ...v, id: (response as any).id } : v
+        ));
+      }
+      // NO fetchVisitorLogs() - let optimistic updates persist!
     } catch (err) {
       // 4. Rollback on error
       setVisitorLogs(prev => prev.filter(v => v.id !== tempId));
@@ -600,7 +605,7 @@ export const WardenVisitorManagement = React.memo(() => {
       toast.error(errorMessage);
       throw err;
     }
-  }, [hasHostel, adminApi, students, fetchVisitorLogs]);
+  }, [hasHostel, adminApi, students]);
 
   const handleUpdateVisitor = useCallback(async (data: Partial<VisitorFormData>) => {
     if (!selectedVisitor || !hasHostel) return;
@@ -629,8 +634,7 @@ export const WardenVisitorManagement = React.memo(() => {
       // 3. Send request to server
       await adminApi.updateVisitorLog(selectedVisitor.id, data);
       
-      // 4. Refresh data to get real visitor data
-      await fetchVisitorLogs();
+      // 4. NO fetchVisitorLogs() - let optimistic updates persist!
     } catch (err) {
       // 5. Rollback on error
       setVisitorLogs(prev => 
@@ -640,16 +644,17 @@ export const WardenVisitorManagement = React.memo(() => {
       toast.error(errorMessage);
       throw err;
     }
-  }, [selectedVisitor, hasHostel, adminApi, visitorLogs, students, fetchVisitorLogs]);
+  }, [selectedVisitor, hasHostel, adminApi, visitorLogs, students]);
 
   const handleDeleteVisitor = useCallback(async (visitorId: string) => {
     if (!hasHostel || !confirm('Are you sure you want to delete this visitor log? This action cannot be undone.')) {
       return;
     }
 
-    // 1. Store original data for rollback
+    // 1. Store original data and position for rollback
     const originalVisitor = visitorLogs.find(v => v.id === visitorId);
     if (!originalVisitor) return;
+    const originalIndex = visitorLogs.findIndex(v => v.id === visitorId);
     
     // 2. Remove from UI immediately (optimistic)
     setVisitorLogs(prev => prev.filter(v => v.id !== visitorId));
@@ -659,12 +664,10 @@ export const WardenVisitorManagement = React.memo(() => {
       // 3. Send request to server
       await adminApi.deleteVisitorLog(visitorId);
     } catch (err) {
-      // 4. Rollback on error - restore the visitor
+      // 4. Rollback on error - restore the visitor to original position
       setVisitorLogs(prev => {
         const exists = prev.find(v => v.id === visitorId);
         if (!exists) {
-          // Insert back in original position
-          const originalIndex = visitorLogs.findIndex(v => v.id === visitorId);
           const newArray = [...prev];
           newArray.splice(originalIndex, 0, originalVisitor);
           return newArray;
@@ -694,8 +697,7 @@ export const WardenVisitorManagement = React.memo(() => {
       // 2. Send request to server
       await adminApi.checkoutVisitor(visitorId);
       
-      // 3. Refresh data to get real visitor data
-      await fetchVisitorLogs();
+      // 3. NO fetchVisitorLogs() - let optimistic updates persist!
     } catch (err) {
       // 4. Rollback on error
       setVisitorLogs(prev => 
@@ -709,7 +711,7 @@ export const WardenVisitorManagement = React.memo(() => {
       toast.error(errorMessage);
       throw err;
     }
-  }, [hasHostel, adminApi, fetchVisitorLogs]);
+  }, [hasHostel, adminApi]);
 
   // 🎯 PERFORMANCE: Optimized event handlers with useCallback
   const handleEditClick = useCallback((visitor: VisitorLog) => {

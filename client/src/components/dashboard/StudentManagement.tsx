@@ -500,17 +500,24 @@ export const StudentManagement = React.memo(() => {
     );
   }, [searchTerm, students]);
 
-  // 🎯 PERFORMANCE: Memoized stats computation
+  // 🎯 PERFORMANCE: Memoized stats computation - using actual student allocations
   const studentStats = useMemo(() => {
     const totalStudents = students.length;
-    const allocatedStudents = students.filter(student => 
-      student.allocations?.some(allocation => allocation.status === 'active')
-    ).length;
+    
+    // Calculate allocated students based on actual student allocations
+    const allocatedStudents = students.filter(student => {
+      // Check if student has active room allocations
+      const hasActiveAllocation = student.allocations && 
+        student.allocations.some(allocation => allocation.status === 'active');
+      return hasActiveAllocation;
+    }).length;
+    
+    const unallocatedStudents = totalStudents - allocatedStudents;
     
     return {
       total: totalStudents,
       allocated: allocatedStudents,
-      unallocated: totalStudents - allocatedStudents
+      unallocated: unallocatedStudents
     };
   }, [students]);
 
@@ -526,7 +533,7 @@ export const StudentManagement = React.memo(() => {
       
       const data = Array.isArray(response) ? response : response?.data || [];
       
-      setStudents(data);
+      setStudents(data as any);
       setError('');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch students';
@@ -612,7 +619,7 @@ export const StudentManagement = React.memo(() => {
       // 3. Replace temporary item with real data
       setStudents(prev => 
         prev.map(student => 
-          student.id === tempId ? createdStudent : student
+          student.id === tempId ? (createdStudent as any) : student
         )
       );
     } catch (err) {
@@ -645,10 +652,16 @@ export const StudentManagement = React.memo(() => {
       // 3. Send request to server
       const updatedStudent = await adminApi.updateStudent(selectedStudent.id, data);
       
-      // 4. Replace with server data (optional, if server returns different data)
+      // 4. Merge server data with existing student data to preserve allocations
       setStudents(prev => 
         prev.map(student => 
-          student.id === selectedStudent.id ? updatedStudent : student
+          student.id === selectedStudent.id 
+            ? { 
+                ...student,           // Keep all existing data (including allocations)
+                ...updatedStudent,    // Override with updated fields
+                allocations: student.allocations  // Explicitly preserve allocations
+              }
+            : student
         )
       );
     } catch (err) {
@@ -745,9 +758,8 @@ export const StudentManagement = React.memo(() => {
       // 2. Send request to server
       await adminApi.allocateRoom({ studentId, roomId });
       
-      // 3. Refresh data to get real allocation data
-      await fetchStudents();
-      await fetchRooms();
+      // 3. NO fetchStudents/fetchRooms - let optimistic updates persist!
+      // The optimistic updates are already correct, just let them persist
     } catch (err) {
       // 4. Rollback on error
       setStudents(prev => 
@@ -770,31 +782,79 @@ export const StudentManagement = React.memo(() => {
       notification.error('Failed to assign room', { description: errorMessage });
       throw err;
     }
-  }, [hasHostel, adminApi, students, rooms, fetchStudents, fetchRooms]);
+  }, [hasHostel, adminApi, students, rooms]);
 
   const handleRemoveFromRoom = useCallback(async (allocationId: string) => {
     if (!hasHostel) return;
     
+    // Find the student ID from the allocation ID
+    const student = students.find(s => 
+      s.allocations?.some(a => a.id === allocationId)
+    );
+    
+    if (!student) {
+      notification.error('Student not found for this allocation');
+      return;
+    }
+    
+    // Find the room to update occupancy
+    const room = rooms.find(r => r.id === student.allocations?.[0]?.room?.id);
+    
+    // 1. Update UI immediately (optimistic)
+    setStudents(prev => 
+      prev.map(s => 
+        s.id === student.id 
+          ? { ...s, allocations: [] }
+          : s
+      )
+    );
+    
+    // Update rooms occupancy optimistically
+    if (room) {
+      setRooms(prev => 
+        prev.map(r => 
+          r.id === room.id 
+            ? { ...r, occupied: Math.max(0, (r.occupied || 0) - 1) }
+            : r
+        )
+      );
+    }
+    
+    notification.success('Student removed from room successfully!');
+    
+    // Close the room assignment modal since student no longer has a room
+    setShowRoomAssignmentModal(false);
+    
     try {
-      // Find the student ID from the allocation ID
-      const student = students.find(s => 
-        s.allocations?.some(a => a.id === allocationId)
+      // 2. Send request to server
+      await adminApi.deallocateRoom(student.id);
+      
+      // 3. NO fetchStudents - let optimistic updates persist!
+    } catch (err) {
+      // 4. Rollback on error
+      setStudents(prev => 
+        prev.map(s => 
+          s.id === student.id 
+            ? { ...s, allocations: student.allocations || [] }
+            : s
+        )
       );
       
-      if (!student) {
-        notification.error('Student not found for this allocation');
-        return;
+      if (room) {
+        setRooms(prev => 
+          prev.map(r => 
+            r.id === room.id 
+              ? { ...r, occupied: (r.occupied || 0) + 1 }
+              : r
+          )
+        );
       }
       
-      await adminApi.deallocateRoom(student.id);
-      await fetchStudents(); // Refresh to get updated allocation data
-      notification.success('Student removed from room successfully!');
-    } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to remove from room';
       notification.error('Failed to remove from room', { description: errorMessage });
       throw err;
     }
-  }, [hasHostel, adminApi, fetchStudents, students]);
+  }, [hasHostel, adminApi, students, rooms]);
 
   // 🎯 PERFORMANCE: Optimized event handlers with useCallback
   const handleEditClick = useCallback((student: Student) => {
@@ -1039,7 +1099,7 @@ export const StudentManagement = React.memo(() => {
       <RoomAssignmentModal
         isOpen={showRoomAssignmentModal}
         onClose={() => setShowRoomAssignmentModal(false)}
-        student={selectedStudent}
+        student={selectedStudent ? students.find(s => s.id === selectedStudent.id) || selectedStudent : null}
         rooms={rooms}
         onAssignRoom={handleAssignRoom}
         onRemoveFromRoom={handleRemoveFromRoom}

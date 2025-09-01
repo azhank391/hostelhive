@@ -68,16 +68,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const verifyToken = useCallback(async (token: string) => {
-    console.log('🔍 DEBUG: verifyToken called with token:', token ? `${token.substring(0, 20)}...` : 'null');
+
     
     try {
       // Decode JWT token to get user data
       const payload = JSON.parse(atob(token.split('.')[1]))
-      console.log('🔍 DEBUG: verifyToken - decoded payload:', payload);
+
       
       if (payload.exp * 1000 < Date.now()) {
         // Token expired
-        console.log('🔍 DEBUG: verifyToken - token expired, logging out');
+
         // Call logout directly instead of depending on it
         setUser(null);
         localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
@@ -91,25 +91,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (typeof window !== 'undefined') {
         localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
       }
-      console.log('🔍 DEBUG: verifyToken - token set successfully');
+
       
       // Try to restore user data from localStorage first
       const storedUser = localStorage.getItem(STORAGE_KEYS.USER_DATA)
-      console.log('🔍 DEBUG: verifyToken - stored user data:', storedUser ? 'found' : 'not found');
+
       
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser)
-          console.log('🔍 DEBUG: verifyToken - parsed stored user data:', userData);
+
           
           // Verify the stored user data matches the token
           if (userData.id === payload.id) {
-            console.log('🔍 DEBUG: verifyToken - stored user data matches token, setting user');
+
             setUser(userData)
             setIsLoading(false)
             return
           } else {
-            console.log('🔍 DEBUG: verifyToken - stored user ID does not match token ID:', userData.id, 'vs', payload.id);
+
           }
         } catch (parseError) {
           console.warn('Failed to parse stored user data:', parseError)
@@ -124,13 +124,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (storedUser) {
         try {
           userData = JSON.parse(storedUser)
-          console.log('🔍 DEBUG: verifyToken - using stored user data as base');
+
           // Update with latest token data
           userData.token = token
           userData.hostelId = payload.hostelId
           userData.activeHostelId = payload.hostelId
         } catch {
-          console.log('🔍 DEBUG: verifyToken - failed to parse stored user, creating new user data');
+
                   // If parsing fails, create new user data
         userData = {
           id: payload.id,
@@ -145,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         }
       } else {
-        console.log('🔍 DEBUG: verifyToken - no stored user data, creating new user data from payload');
+
                   // Create new user data from payload
           userData = {
             id: payload.id,
@@ -160,12 +160,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
       }
       
-      console.log('🔍 DEBUG: verifyToken - Created user data from payload:', userData);
+
       setUser(userData)
       
       // Store in localStorage for future use
       localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData))
-      console.log('🔍 DEBUG: verifyToken - User data stored in localStorage');
+
       
     } catch (error) {
       console.error('❌ AuthContext: Error in verifyToken:', error);
@@ -180,32 +180,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Set up the unauthorized callback for the HTTP client
     setOnUnauthorized(() => {
-      console.log('🔍 DEBUG: AuthContext - Unauthorized callback triggered');
+
       logout();
     });
 
     // 🚀 NEW: Don't run if we're currently logging in
     if (isLoggingIn) {
-      console.log('🔍 DEBUG: AuthContext useEffect - login in progress, skipping token check');
+
       return;
     }
 
     // Don't run if we already have a user
     if (user) {
-      console.log('🔍 DEBUG: AuthContext useEffect - user already authenticated, skipping token check');
+
       setIsLoading(false);
       return;
     }
     
-    console.log('🔍 DEBUG: AuthContext useEffect - checking for stored token');
+
     const storedToken = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)
-    console.log('🔍 DEBUG: AuthContext useEffect - stored token:', storedToken ? `${storedToken.substring(0, 20)}...` : 'null');
+
     
     if (storedToken) {
-      console.log('🔍 DEBUG: AuthContext useEffect - calling verifyToken');
+
       verifyToken(storedToken)
     } else {
-      console.log('🔍 DEBUG: AuthContext useEffect - no stored token, setting loading to false');
+
       setIsLoading(false)
     }
 
@@ -217,7 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const payload = JSON.parse(atob(currentToken.split('.')[1]))
           if (payload.exp * 1000 < Date.now()) {
             // Token expired, logout automatically
-            console.log('🔍 DEBUG: AuthContext interval - token expired, logging out');
+
             // Call logout directly
             setUser(null);
             localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
@@ -227,7 +227,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } catch {
           // Invalid token, logout automatically
-          console.log('🔍 DEBUG: AuthContext interval - invalid token, logging out');
+
           // Call logout directly
           setUser(null);
           localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
@@ -273,8 +273,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Decode JWT token to get user ID and other data
         const payload = JSON.parse(atob(data.token.split('.')[1]))
-        console.log('🔍 DEBUG: Login - Token payload:', payload);
-        console.log('🔍 DEBUG: Login - Response data:', data);
+
         
         // Create user data from response with proper typing
         const userData: AuthUser = {
@@ -304,14 +303,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
         
-        console.log('🔍 DEBUG: Login - Created user data:', userData);
+
         
         // Store user data in localStorage for persistence
         localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData))
         
-        console.log('🔍 DEBUG: Login - User data stored in localStorage, setting user state');
         setUser(userData)
-        console.log('🔍 DEBUG: Login - User state set, login process complete');
         
         // 🚀 NEW: Reset flag after successful login
         setIsLoggingIn(false);

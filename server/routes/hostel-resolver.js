@@ -6,15 +6,8 @@ const { verifyToken } = require("../middleware/authMiddleware");
 // Get all hostels for the authenticated user (hostel owner)
 router.get("/hostels", verifyToken, async (req, res) => {
   try {
-    console.log('🔍 DEBUG: /hostels endpoint called');
-    console.log('🔍 DEBUG: req.user:', req.user);
-    console.log('🔍 DEBUG: User ID:', req.user?.id);
-    console.log('🔍 DEBUG: User role:', req.user?.role);
-    console.log('🔍 DEBUG: User role type:', typeof req.user?.role);
-    console.log('🔍 DEBUG: Role comparison result:', req.user?.role !== "owner");
-    
+
     if (req.user.role !== "owner") {
-      console.log('❌ DEBUG: Access denied - User role is:', req.user.role, 'Expected: owner');
       return res
         .status(403)
         .json({

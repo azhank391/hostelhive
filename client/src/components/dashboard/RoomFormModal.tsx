@@ -51,7 +51,7 @@ interface RoomFormModalProps {
   existingRooms?: Room[];
   adminApi: any; // Using regular adminApi
   hostelId: string; // Add hostelId prop
-  onSuccess?: () => void;
+  onSuccess?: (roomData?: Room) => void;
 }
 
 // Simple form field component
@@ -189,7 +189,24 @@ export const RoomFormModal = ({
     }
 
     setLoading(true);
+    
+    // Create optimistic room data for immediate UI update
+    const optimisticRoomData: any = {
+      id: mode === 'edit' && room?.id ? room.id : `temp-${Date.now()}`, // Temporary ID for new rooms
+      roomNumber: formData.roomNumber.trim(),
+      capacity: parseInt(formData.capacity),
+      block: formData.block.trim() || undefined,
+      occupied: mode === 'edit' && room ? (room as any).occupied : 0,
+      allocations: mode === 'edit' && room ? (room as any).allocations : []
+    };
+    
     try {
+      // Show success and close modal immediately
+      toast.success(mode === 'create' ? 'Room created successfully' : 'Room updated successfully');
+      onSuccess?.(optimisticRoomData);
+      onClose();
+      
+      // Make API call in background
       const submitData: Partial<Room> = {
         roomNumber: formData.roomNumber.trim(),
         capacity: parseInt(formData.capacity),
@@ -205,7 +222,6 @@ export const RoomFormModal = ({
           // adminApi pattern: createRoom(hostelId, roomData)
           await adminApi.createRoom(hostelId, submitData);
         }
-        toast.success('Room created successfully');
       } else if (mode === 'edit' && room?.id) {
         // Check if adminApi is wardenApi (no hostelId parameter) or regular adminApi
         if (adminApi.updateRoom.length === 2) {
@@ -215,14 +231,12 @@ export const RoomFormModal = ({
           // adminApi pattern: updateRoom(hostelId, roomId, updates)
           await adminApi.updateRoom(hostelId, room.id, submitData);
         }
-        toast.success('Room updated successfully');
       }
       
-      onSuccess?.();
-      onClose();
     } catch (error) {
       console.error('Form submission error:', error);
       toast.error('Failed to save room. Please try again.');
+      // Note: Parent component should handle reverting optimistic updates on error
     } finally {
       setLoading(false);
     }

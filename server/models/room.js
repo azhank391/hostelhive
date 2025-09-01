@@ -15,7 +15,7 @@ module.exports = (sequelize, DataTypes) => {
       Room.hasMany(models.RoomAllocation, {
         foreignKey: 'roomId',
         as: 'allocations',
-        onDelete: 'CASCADE'
+        onDelete: 'CASCADE'  // Only applies when room is DELETED, not when UPDATED
       });
     }
   }

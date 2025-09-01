@@ -80,7 +80,8 @@ const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({
 
   if (!room) return null;
 
-  const occupiedBeds = room.allocations ? room.allocations.length : 0;
+  // Calculate actual occupancy - prioritize room.occupied, fallback to allocations
+  const occupiedBeds = (room.occupied !== undefined && room.occupied !== null) ? room.occupied : (room.allocations ? room.allocations.length : 0);
   const capacity = room.capacity || 0;
   const occupancyPercentage = capacity > 0 ? (occupiedBeds / capacity) * 100 : 0;
 
@@ -91,9 +92,13 @@ const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({
 
     try {
       setDeallocatingStudent(studentId);
+      
+      // Call the deallocation handler (which has optimistic updates)
       await onDeallocate(studentId, studentName);
+      
     } catch (error) {
       console.error('Failed to deallocate student:', error);
+      // Don't show error toast here since onDeallocate handles it
     } finally {
       setDeallocatingStudent(null);
     }
@@ -268,15 +273,22 @@ const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
   // Get available rooms (not full)
   const availableRooms = useMemo(() => {
     return rooms.filter(room => {
-      const occupied = room.occupied || 0;
+      const occupied = (room.occupied !== undefined && room.occupied !== null) ? room.occupied : (room.allocations ? room.allocations.length : 0);
       const capacity = room.capacity || 0;
       return occupied < capacity;
     });
   }, [rooms]);
 
-  // Get students without rooms
+  // Get students without rooms - using student allocations, not room occupancy
   const studentsWithoutRooms = useMemo(() => {
-    return students.filter(student => !student.hasRoom);
+    // Filter students who don't have active room allocations
+    return students.filter(student => {
+      // Check if student has active allocations
+      const hasActiveAllocation = student.allocations && 
+        student.allocations.some(allocation => allocation.status === 'active');
+      
+      return !hasActiveAllocation;
+    });
   }, [students]);
 
   const handleAllocate = async () => {
@@ -287,11 +299,16 @@ const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
 
     try {
       setAllocating(true);
-      await onAllocate(selectedStudentId, selectedRoomId);
-      toast.success('Room allocated successfully');
+      
+      // Close modal immediately for better UX
       onClose();
+      
+      // Call the allocation handler (which has optimistic updates)
+      await onAllocate(selectedStudentId, selectedRoomId);
+      
     } catch (error) {
       console.error('Failed to allocate room:', error);
+      // Don't show error toast here since onAllocate handles it
     } finally {
       setAllocating(false);
     }
@@ -317,8 +334,12 @@ const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
               </option>
             ))}
           </select>
-          {studentsWithoutRooms.length === 0 && (
+          {studentsWithoutRooms.length === 0 ? (
             <p className="text-sm text-gray-500 mt-1">All students have been allocated rooms</p>
+          ) : (
+            <p className="text-sm text-gray-500 mt-1">
+              {studentsWithoutRooms.length} student{studentsWithoutRooms.length !== 1 ? 's' : ''} available for allocation
+            </p>
           )}
         </div>
 
@@ -408,21 +429,30 @@ export const WardenRoomManagement = React.memo(() => {
     );
   }, [searchTerm, rooms]);
 
-  // Students without rooms - now using backend data with hasRoom property
+  // Students without rooms - calculated from student allocations, not room occupancy
   const studentsWithoutRooms = useMemo(() => {
-    return students.filter(student => !student.hasRoom);
+    // Filter students who don't have active room allocations
+    return students.filter(student => {
+      // Check if student has active allocations
+      const hasActiveAllocation = student.allocations && 
+        student.allocations.some(allocation => allocation.status === 'active');
+      
+      return !hasActiveAllocation;
+    });
   }, [students]);
 
   // Room statistics
   const roomStats = useMemo(() => {
     const totalRooms = rooms.length;
-    const occupiedRooms = rooms.filter(room => 
-      room.allocations && room.allocations.length > 0
-    ).length;
+    const occupiedRooms = rooms.filter(room => {
+      const occupied = (room.occupied !== undefined && room.occupied !== null) ? room.occupied : (room.allocations ? room.allocations.length : 0);
+      return occupied > 0;
+    }).length;
     const totalCapacity = rooms.reduce((sum, room) => sum + (room.capacity || 0), 0);
-    const totalOccupied = rooms.reduce((sum, room) => 
-      sum + (room.allocations ? room.allocations.length : 0), 0
-    );
+    const totalOccupied = rooms.reduce((sum, room) => {
+      const occupied = (room.occupied !== undefined && room.occupied !== null) ? room.occupied : (room.allocations ? room.allocations.length : 0);
+      return sum + occupied;
+    }, 0);
     
     return {
       total: totalRooms,
@@ -438,10 +468,7 @@ export const WardenRoomManagement = React.memo(() => {
   const fetchRooms = useCallback(async () => {
     try {
       setError(null);
-      console.log('Fetching rooms...');
-      
       const response = await wardenApi.getRooms();
-      console.log('API Response:', response);
       
       // Handle different response formats
       let data: Room[] = [];
@@ -453,7 +480,7 @@ export const WardenRoomManagement = React.memo(() => {
         data = Array.isArray(response.rooms) ? response.rooms : [];
       }
       
-      console.log('Processed rooms data:', data);
+
       setRooms(data);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch rooms';
@@ -465,9 +492,7 @@ export const WardenRoomManagement = React.memo(() => {
   // Fetch students function
   const fetchStudents = useCallback(async () => {
     try {
-      console.log('Fetching students...');
       const response = await wardenApi.getStudents();
-      console.log('Students response:', response);
       
       let data: Student[] = [];
       if (Array.isArray(response)) {
@@ -478,7 +503,7 @@ export const WardenRoomManagement = React.memo(() => {
         data = Array.isArray(response.students) ? response.students : [];
       }
       
-      console.log('Processed students data:', data);
+
       setStudents(data);
     } catch (error) {
       console.error('Failed to fetch students:', error);
@@ -510,28 +535,51 @@ export const WardenRoomManagement = React.memo(() => {
     }
   }, [fetchAllData]);
 
-  // FIXED: Optimistic updates for create operation
-  const handleCreateSuccess = useCallback(async () => {
-    console.log('Room created successfully');
-    
-    // Fetch fresh data to get the new room
-    await fetchRooms();
-    
-    toast.success('Room created successfully');
+  // FIXED: Optimistic updates for create operation - let them persist
+  const handleCreateSuccess = useCallback((newRoom?: any) => {
+    // Modal already closed by RoomFormModal
     setShowCreateRoomModal(false);
-  }, [fetchRooms]);
+    
+    // Add new room to UI immediately if provided
+    if (newRoom) {
+      setRooms(prevRooms => [...prevRooms, newRoom]);
+    }
+    
+    // NO fetchAllData() - let optimistic updates persist!
+  }, []);
 
-  // FIXED: Optimistic updates for edit operation  
-  const handleEditSuccess = useCallback(async () => {
-    console.log('Room updated successfully');
-    
-    // Fetch fresh data to get the updated room
-    await fetchRooms();
-    
-    toast.success('Room updated successfully');
+  // FIXED: Optimistic updates for edit operation - let them persist
+  const handleEditSuccess = useCallback((updatedRoom?: any) => {
+    // Modal already closed by RoomFormModal
     setShowEditRoomModal(false);
     setSelectedRoom(null);
-  }, [fetchRooms]);
+    
+    // Update room in UI immediately if provided
+    if (updatedRoom) {
+      setRooms(prevRooms => prevRooms.map(room => 
+        room.id === updatedRoom.id 
+          ? { 
+              ...room,           // Keep all existing room data (including allocations, occupied)
+              ...updatedRoom,    // Override with updated fields
+              allocations: room.allocations,  // Explicitly preserve allocations
+              occupied: room.occupied         // Explicitly preserve occupied count
+            }
+          : room
+      ));
+      
+      // Also update viewingRoom if it's the same room
+      if (viewingRoom && viewingRoom.id === updatedRoom.id) {
+        setViewingRoom(prev => prev ? { 
+          ...prev, 
+          ...updatedRoom,
+          allocations: prev.allocations,  // Preserve allocations
+          occupied: prev.occupied         // Preserve occupied count
+        } : null);
+      }
+    }
+    
+    // NO fetchAllData() - let optimistic updates persist!
+  }, [viewingRoom]);
 
   // FIXED: Optimistic updates for delete operation
   const handleDeleteRoom = useCallback(async (roomId: string) => {
@@ -548,12 +596,12 @@ export const WardenRoomManagement = React.memo(() => {
       
       toast.success('Room deleted successfully');
       
-      // Optional: Fetch fresh data if you want to be extra sure
-      // await fetchRooms();
+      // NO fetchStudents() - let optimistic updates persist!
+      // Students page will fetch fresh data when visited
       
     } catch (error) {
-      // Revert optimistic update on error
-      await fetchRooms();
+      // Revert optimistic update on error - refresh all data
+      await fetchAllData();
       
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete room';
       toast.error(errorMessage);
@@ -561,19 +609,62 @@ export const WardenRoomManagement = React.memo(() => {
     }
   }, [fetchRooms]);
 
-  // Handle room allocation
+  // Handle room allocation - update both rooms and students state optimistically
   const handleAllocateRoom = useCallback(async (studentId: string, roomId: string) => {
     try {
-      console.log('Allocating room:', roomId, 'to student:', studentId);
-      await wardenApi.allocateRoom({ studentId, roomId });
+      // Find the room and student to update
+      const room = rooms.find(r => r.id === roomId);
+      const student = students.find(s => s.id === studentId);
       
-      // Refresh data to show updated allocations
-      await fetchAllData();
+      if (room && student) {
+        // OPTIMISTIC UPDATE: Update room occupancy immediately
+        setRooms(prevRooms => prevRooms.map(r => 
+          r.id === roomId ? { ...r, occupied: (r.occupied || 0) + 1 } : r
+        ));
+        
+        // OPTIMISTIC UPDATE: Update student allocations immediately
+        setStudents(prevStudents => prevStudents.map(s => 
+          s.id === studentId ? {
+            ...s,
+            allocations: [
+              ...(s.allocations || []),
+              {
+                id: `temp-${Date.now()}`, // Temporary ID for optimistic update
+                studentId: studentId,
+                room: room,
+                status: 'active',
+                allocatedAt: new Date().toISOString()
+              }
+            ]
+          } : s
+        ));
+        
+        // Also update viewingRoom if it's the same room
+        if (viewingRoom && viewingRoom.id === roomId) {
+          setViewingRoom(prev => prev ? { ...prev, occupied: (prev.occupied || 0) + 1 } : null);
+        }
+      }
+      
+      // Show success immediately
       toast.success('Room allocated successfully');
+      
+      // Make API call in background
+      try {
+        await wardenApi.allocateRoom({ studentId, roomId });
+        // NO fetchAllData() - let optimistic updates persist!
+      } catch (apiError) {
+        // If API fails, revert optimistic updates
+        console.error('API call failed, reverting optimistic updates:', apiError);
+        await fetchAllData();
+        throw apiError;
+      }
       
     } catch (error) {
       console.error('Room allocation failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to allocate room';
+      
+      // Revert optimistic updates on error
+      await fetchAllData();
       
       // Handle specific backend errors
       if (errorMessage.includes('already has an active room allocation')) {
@@ -584,32 +675,70 @@ export const WardenRoomManagement = React.memo(() => {
       
       throw error;
     }
-  }, [fetchAllData]);
+  }, [fetchAllData, rooms, viewingRoom, students]);
 
-  // Handle room deallocation
+  // Handle room deallocation - update both rooms and students state optimistically
   const handleDeallocateStudent = useCallback(async (studentId: string, studentName: string) => {
     try {
-      await wardenApi.deallocateRoom(studentId);
+      // Find the student and their active allocation
+      const student = students.find(s => s.id === studentId);
+      const activeAllocation = student?.allocations?.find(allocation => allocation.status === 'active');
       
-      // Update local state optimistically
-      if (viewingRoom) {
-        setRoomStudents(prev => prev.filter(student => student.id !== studentId));
-        setViewingRoom(prev => prev ? { ...prev, occupied: Math.max(0, (prev.occupied || 0) - 1) } : null);
-        setRooms(prev => prev.map(room => 
-          room.id === viewingRoom.id 
-            ? { ...room, occupied: Math.max(0, (room.occupied || 0) - 1) }
-            : room
-        ));
+      if (activeAllocation && student) {
+        // Find the room to update using the allocation's room information
+        const roomToUpdate = rooms.find(r => r.id === activeAllocation.room?.id);
+        
+        if (roomToUpdate) {
+          // OPTIMISTIC UPDATE: Update room occupancy immediately
+          setRooms(prev => prev.map(room => 
+            room.id === roomToUpdate.id 
+              ? { ...room, occupied: Math.max(0, (room.occupied || 0) - 1) }
+              : room
+          ));
+          
+          // OPTIMISTIC UPDATE: Update student allocations immediately
+          setStudents(prevStudents => prevStudents.map(s => 
+            s.id === studentId ? {
+              ...s,
+              allocations: (s.allocations || []).filter(allocation => 
+                !(allocation.room?.id === roomToUpdate.id && allocation.status === 'active')
+              )
+            } : s
+          ));
+          
+          // Also update viewingRoom if it's the same room
+          if (viewingRoom && viewingRoom.id === roomToUpdate.id) {
+            setViewingRoom(prev => prev ? { ...prev, occupied: Math.max(0, (prev.occupied || 0) - 1) } : null);
+            // Update room students list for modal display
+            setRoomStudents(prev => prev.filter(student => student.id !== studentId));
+          }
+        }
       }
       
+      // Show success immediately
       toast.success('Student removed successfully');
+      
+      // Make API call in background
+      try {
+        await wardenApi.deallocateRoom(studentId);
+        // NO fetchAllData() - let optimistic updates persist!
+      } catch (apiError) {
+        // If API fails, revert optimistic updates
+        console.error('API call failed, reverting optimistic updates:', apiError);
+        await fetchAllData();
+        throw apiError;
+      }
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to remove student';
       toast.error(errorMessage);
+      
+      // Revert optimistic updates on error
+      await fetchAllData();
+      
       throw error;
     }
-  }, [viewingRoom]);
+  }, [viewingRoom, fetchAllData, students, rooms]);
 
   // Open room details modal
   const openRoomDetailsModal = useCallback(async (room: Room) => {
@@ -618,7 +747,7 @@ export const WardenRoomManagement = React.memo(() => {
     setLoadingStudents(true);
     
     try {
-      console.log('Opening room details modal for room:', room.roomNumber);
+
       
       // Use the same endpoint as the owner dashboard to get students for this specific room
       const response = await fetch(`/api/hostels/${room.hostelId}/rooms/${room.id}/students`, {
@@ -633,7 +762,7 @@ export const WardenRoomManagement = React.memo(() => {
       }
       
       const data = await response.json();
-      console.log('Room students response:', data);
+
       
       // Set the students for this room
       setRoomStudents(data.students || []);
@@ -788,49 +917,26 @@ export const WardenRoomManagement = React.memo(() => {
         </div>
       </div>
 
-      {/* Students without rooms section */}
+      {/* Simple red indicator for students needing rooms */}
       {studentsWithoutRooms.length > 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center">
-              <UserIcon size={20} className="text-yellow-600 mr-2" />
-              <h3 className="text-lg font-medium text-yellow-800">
-                Students Without Rooms
-              </h3>
-              <span className="ml-2 bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-1 rounded-full">
-                {studentsWithoutRooms.length}
-              </span>
-            </div>
-            <Button
-              onClick={() => setShowRoomAllocationModal(true)}
+        <div className="bg-red-100 border border-red-300 rounded-md px-4 py-2 mb-4">
+          <div className="flex items-center justify-between">
+            <span className="text-red-800 text-sm font-medium">
+              ⚠️ {studentsWithoutRooms.length} student{studentsWithoutRooms.length !== 1 ? 's' : ''} need{studentsWithoutRooms.length !== 1 ? '' : 's'} room allocation
+            </span>
+            <Button 
+              onClick={() => setShowRoomAllocationModal(true)} 
               size="sm"
-              className="bg-yellow-600 hover:bg-yellow-700 text-white"
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
-              <BedIcon size={16} className="mr-2" />
-              Allocate Rooms
+              <BedIcon size={14} className="mr-2" />
+              Allocate Now
             </Button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {studentsWithoutRooms.slice(0, 6).map(student => (
-              <div key={student.id} className="bg-white rounded-md p-3 border border-yellow-200">
-                <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                <div className="text-xs text-gray-600">{student.email}</div>
-                {student.phone && (
-                  <div className="text-xs text-gray-500">{student.phone}</div>
-                )}
-              </div>
-            ))}
-            {studentsWithoutRooms.length > 6 && (
-              <div className="bg-white rounded-md p-3 border border-yellow-200 flex items-center justify-center">
-                <span className="text-sm text-gray-500">
-                  +{studentsWithoutRooms.length - 6} more students
-                </span>
-              </div>
-            )}
           </div>
         </div>
       )}
+
+
 
       {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -893,9 +999,12 @@ export const WardenRoomManagement = React.memo(() => {
           </div>
         ) : (
           filteredRooms.map((room) => {
-            const occupiedBeds = room.allocations ? room.allocations.length : 0;
+            // Calculate actual occupancy - prioritize room.occupied, fallback to allocations
+            const occupiedBeds = (room.occupied !== undefined && room.occupied !== null) ? room.occupied : (room.allocations ? room.allocations.length : 0);
             const capacity = room.capacity || 0;
             const occupancyPercentage = capacity > 0 ? (occupiedBeds / capacity) * 100 : 0;
+            
+
             
             return (
               <div key={room.id} className="bg-white rounded-lg shadow border hover:shadow-md transition-shadow">
@@ -946,10 +1055,10 @@ export const WardenRoomManagement = React.memo(() => {
                   </div>
                   
                   {/* Student details */}
-                  {room.allocations && room.allocations.length > 0 ? (
+                  {occupiedBeds > 0 ? (
                     <div className="mb-3 p-2 bg-gray-50 rounded">
                       <div className="text-xs font-medium text-gray-600 mb-1">Students:</div>
-                      {room.allocations.map((allocation: any, index: number) => (
+                      {room.allocations?.map((allocation: any, index: number) => (
                         <div key={index} className="text-xs text-gray-700 flex items-center">
                           <UsersIcon size={12} className="mr-1" />
                           {allocation.student?.name || `Student ${index + 1}`}
@@ -1028,7 +1137,7 @@ export const WardenRoomManagement = React.memo(() => {
         <RoomAllocationModal
           isOpen={showRoomAllocationModal}
           onClose={() => setShowRoomAllocationModal(false)}
-          students={studentsWithoutRooms}
+          students={students}
           rooms={rooms}
           onAllocate={handleAllocateRoom}
           loading={false}

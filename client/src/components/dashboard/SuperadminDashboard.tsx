@@ -439,20 +439,19 @@ export const SuperadminDashboard = React.memo(() => {
           </Card>
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Quick Actions */}
+        {/* Quick Actions - Full Width */}
+        <div className="mb-8">
           <Card className="p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <TrendingUpIcon className="h-5 w-5 mr-2 text-blue-600" />
               Quick Actions
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
               {quickActions.map((action) => {
                 const IconComponent = action.icon
                 return (
                   <Link key={action.id} href={action.href}>
-                    <button className={`w-full text-left p-4 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group ${
+                    <button className={`w-full h-36 text-left p-4 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group flex flex-col ${
                       action.urgent ? 'ring-2 ring-red-200 border-red-300' : ''
                     }`}>
                       <div className="flex items-center justify-between mb-2">
@@ -461,10 +460,10 @@ export const SuperadminDashboard = React.memo(() => {
                           <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
                         )}
                       </div>
-                      <div className="font-medium text-gray-900 group-hover:text-gray-700">
+                      <div className="font-medium text-gray-900 group-hover:text-gray-700 mb-1 line-clamp-1">
                         {action.title}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-500 line-clamp-2 flex-1">
                         {action.description}
                       </div>
                     </button>
@@ -473,11 +472,7 @@ export const SuperadminDashboard = React.memo(() => {
               })}
             </div>
           </Card>
-
-
         </div>
-
-
 
         {/* Revenue and Growth Overview */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

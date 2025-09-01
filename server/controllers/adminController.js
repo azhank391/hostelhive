@@ -30,6 +30,22 @@ const getHostelIdFromRequest = (req) => {
   throw new Error('Hostel ID is required');
 };
 
+// 🚀 HELPER: Extract ID parameter based on route type
+const getIdFromRequest = (req, paramName) => {
+  // For owner routes (/:hostelId/.../:roomId), use the specific parameter
+  if (req.params.hostelId && req.params[paramName]) {
+    return req.params[paramName];
+  }
+  
+  // For warden routes (/admin/.../:id), use the generic :id parameter
+  if (req.params.id) {
+    return req.params.id;
+  }
+  
+  // Fallback
+  return req.params[paramName] || req.params.id;
+};
+
 // ✅ Get Hostel Statistics (Dashboard)
 exports.getHostelStats = async (req, res) => {
   try {
@@ -221,7 +237,7 @@ exports.updateRoom = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token, roomId from URL params
     const hostelId = getHostelIdFromRequest(req);
-    const { roomId } = req.params;
+    const roomId = getIdFromRequest(req, 'roomId'); // Route-aware parameter extraction
     const { roomNumber, capacity, block } = req.body;
 
     console.log(`[updateRoom] Updating room ${roomId} in hostel ${hostelId}`);
@@ -259,7 +275,7 @@ exports.deleteRoom = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token, roomId from URL params
     const hostelId = getHostelIdFromRequest(req);
-    const { roomId } = req.params;
+    const roomId = getIdFromRequest(req, 'roomId'); // Route-aware parameter extraction
 
     const room = await Room.findOne({ where: { id: roomId, hostelId } });
     if (!room) {
@@ -279,7 +295,7 @@ exports.getRoomStudents = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token, roomId from URL params
     const hostelId = getHostelIdFromRequest(req);
-    const { roomId } = req.params;
+    const roomId = getIdFromRequest(req, 'roomId'); // Route-aware parameter extraction
 
     console.log(`[getRoomStudents] Fetching students for room ${roomId} in hostel ${hostelId}`);
 
@@ -473,7 +489,7 @@ exports.updateStudent = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token, studentId from URL params
     const hostelId = getHostelIdFromRequest(req);
-    const { studentId } = req.params;
+    const studentId = getIdFromRequest(req, 'studentId'); // Route-aware parameter extraction
     const { name, email, phone } = req.body;
 
     console.log(`[updateStudent] Updating student ${studentId} in hostel ${hostelId}`);
@@ -520,7 +536,7 @@ exports.deleteStudent = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token, studentId from URL params
     const hostelId = getHostelIdFromRequest(req);
-    const { studentId } = req.params;
+    const studentId = getIdFromRequest(req, 'studentId'); // Route-aware parameter extraction
 
     console.log(`[deleteStudent] Deleting student ${studentId} from hostel ${hostelId}`);
 
@@ -580,7 +596,7 @@ exports.deleteStudent = async (req, res) => {
     const activeVisitorLogs = await VisitorLog.findAll({
       where: {
         studentId: studentId,
-        status: 'checked-in'
+        checkOut: null // Active visitor = checked in but not checked out
       }
     });
 
@@ -1007,7 +1023,7 @@ exports.updateComplaintStatus = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token
     const hostelId = getHostelIdFromRequest(req);
-    const { complaintId } = req.params;
+    const complaintId = getIdFromRequest(req, 'complaintId'); // Route-aware parameter extraction
     const { status, priority } = req.body;
 
     console.log('🔍 Updating complaint:', { hostelId, complaintId, status, priority });
@@ -1036,7 +1052,7 @@ exports.resolveComplaint = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token
     const hostelId = getHostelIdFromRequest(req);
-    const { complaintId } = req.params;
+    const complaintId = getIdFromRequest(req, 'complaintId'); // Route-aware parameter extraction
     const { resolutionNotes } = req.body;
 
     console.log('🔍 Resolving complaint:', { hostelId, complaintId, resolutionNotes });
@@ -1179,9 +1195,19 @@ exports.getAllVisitorLogs = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token
     const hostelId = getHostelIdFromRequest(req);
+    const { status } = req.query; // Get status filter from query params
+
+    let whereClause = { hostelId };
+    
+    // Handle status filtering based on checkIn/checkOut fields
+    if (status === 'checked-in') {
+      whereClause.checkOut = null; // Active visitor = checked in but not checked out
+    } else if (status === 'checked-out') {
+      whereClause.checkOut = { [Op.ne]: null }; // Checked out visitor
+    }
 
     const visitorLogs = await VisitorLog.findAll({
-      where: { hostelId },
+      where: whereClause,
       include: [
         {
           model: User,
@@ -1192,7 +1218,14 @@ exports.getAllVisitorLogs = async (req, res) => {
       order: [["createdAt", "DESC"]],
     });
 
-    res.json(visitorLogs);
+    // Add virtual status field to each visitor log
+    const visitorLogsWithStatus = visitorLogs.map(log => {
+      const logData = log.toJSON();
+      logData.status = logData.checkOut ? 'checked-out' : 'checked-in';
+      return logData;
+    });
+
+    res.json(visitorLogsWithStatus);
   } catch (err) {
     console.error("Error fetching visitor logs:", err);
     res.status(500).json({ message: "Failed to fetch visitor logs" });
@@ -1236,7 +1269,7 @@ exports.checkoutVisitor = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token
     const hostelId = getHostelIdFromRequest(req);
-    const { visitorId } = req.params; // Route parameter is :visitorId
+    const visitorId = getIdFromRequest(req, 'visitorId'); // Route-aware parameter extraction
 
     if (!visitorId) {
       return res.status(400).json({ message: "Visitor ID is required" });
@@ -1272,7 +1305,7 @@ exports.updateVisitorLog = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token
     const hostelId = getHostelIdFromRequest(req);
-    const { visitorId } = req.params;
+    const visitorId = getIdFromRequest(req, 'visitorId'); // Route-aware parameter extraction
     const updateData = req.body;
 
     const visitor = await VisitorLog.findOne({
@@ -1296,7 +1329,7 @@ exports.deleteVisitorLog = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token, visitorId from route params
     const hostelId = getHostelIdFromRequest(req);
-    const { visitorId } = req.params; // Route parameter is :visitorId
+    const visitorId = getIdFromRequest(req, 'visitorId'); // Route-aware parameter extraction
 
     const visitorLog = await VisitorLog.findOne({
       where: {
