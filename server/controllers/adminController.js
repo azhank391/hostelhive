@@ -978,18 +978,17 @@ exports.getAllComplaints = async (req, res) => {
         {
           model: User,
           as: "user",
-          attributes: ["name", "email"],
+          attributes: ["id", "name", "email", "role"],
           include: [
             {
               model: RoomAllocation,
               as: "allocations",
-              where: { status: "active" },
               required: false,
               include: [
                 {
                   model: Room,
                   as: "room",
-                  attributes: ["roomNumber", "block"],
+                  attributes: ["id", "roomNumber", "block"],
                 },
               ],
             },
@@ -1003,6 +1002,15 @@ exports.getAllComplaints = async (req, res) => {
 
     // Calculate pagination info
     const totalPages = Math.ceil(total / parseInt(limit));
+
+    // Debug: Check what data is being returned
+    if (complaints.length > 0) {
+      console.log('🔍 Backend: First complaint user:', complaints[0].user?.name);
+      console.log('🔍 Backend: First complaint allocations:', complaints[0].user?.allocations?.length || 0);
+      if (complaints[0].user?.allocations && complaints[0].user.allocations.length > 0) {
+        console.log('🔍 Backend: First allocation room:', complaints[0].user.allocations[0].room?.roomNumber);
+      }
+    }
 
     res.json({
       data: complaints,

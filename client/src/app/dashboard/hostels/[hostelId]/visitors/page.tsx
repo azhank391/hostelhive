@@ -33,6 +33,14 @@ interface VisitorLog {
     id: string;
     name: string;
     email: string;
+    allocations?: Array<{
+      id: string;
+      status: string;
+      room: {
+        id: string;
+        roomNumber: string;
+      };
+    }>;
   };
   room?: {
     id: string;
@@ -253,8 +261,11 @@ export default function VisitorsPage() {
         
         const data = await response.json();
         
+        // Extract students from the response (backend sends { students: [...], pagination: {...} })
+        const studentsData = data.students || data;
+        
         // Filter students to only include those with active room allocations
-        const studentsWithRooms = data.filter((student: any) => {
+        const studentsWithRooms = studentsData.filter((student: any) => {
           // Check if student has roomNumber (from the transformed backend response)
           if (student.roomNumber) {
             return true;
@@ -718,10 +729,23 @@ export default function VisitorsPage() {
                   </td>
                                      <td className="px-6 py-4 whitespace-nowrap">
                      <div className="text-sm text-gray-900">
-                       {(() => {
-                         const student = students.find(s => s.id === visitor.studentId);
-                         return student?.roomNumber || 'No room allocated';
-                       })()}
+                                               {(() => {
+                          // First try to get room info from visitor data (which includes student with room allocation)
+                          if (visitor.student?.allocations && visitor.student.allocations.length > 0) {
+                            const activeAllocation = visitor.student.allocations.find(a => a.status === 'active');
+                            if (activeAllocation?.room?.roomNumber) {
+                              return `Room ${activeAllocation.room.roomNumber}`;
+                            }
+                          }
+                          
+                          // Fallback to students array lookup
+                          const student = students.find(s => s.id === visitor.studentId);
+                          if (student?.roomNumber) {
+                            return `Room ${student.roomNumber}`;
+                          }
+                          
+                          return 'No room allocated';
+                        })()}
                      </div>
                    </td>
                   <td className="px-6 py-4 whitespace-nowrap">

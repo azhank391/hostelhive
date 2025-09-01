@@ -57,21 +57,24 @@ export default function HostelDashboardPage() {
         setLoading(true);
         setError(null);
         
-        // Debug: Check authentication state
-        if (typeof window !== 'undefined') {
-          const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-          console.log('🔐 Dashboard: Auth token exists:', !!token);
-          console.log('🔐 Dashboard: Token preview:', token?.substring(0, 20) + '...');
-          console.log('🏢 Dashboard: Hostel ID:', urlHostelId);
-        }
-        
         // Use direct API calls with URL hostel ID
         const [statsData, complaintsData] = await Promise.all([
           adminApi.getDashboardStats(urlHostelId),
-          adminApi.getComplaints(urlHostelId, { page: 1, limit: 6, status: 'pending' })
+          fetch(`/api/hostels/${urlHostelId}/complaints?page=1&limit=6&status=pending`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`
+            }
+          }).then(res => res.json())
         ]);
 
         setDashboardStats(statsData);
+        
+        // Debug: Check what complaint data we're getting
+        console.log('🔍 Frontend: Complaints data received:', complaintsData);
+        if (complaintsData.data?.[0]) {
+          console.log('🔍 Frontend: First complaint room data:', complaintsData.data[0].user?.allocations?.[0]?.room?.roomNumber);
+        }
+        
         setComplaints(Array.isArray(complaintsData.data) ? complaintsData.data : []);
       } catch (err) {
         console.error('Dashboard load error:', err);
@@ -289,7 +292,22 @@ export default function HostelDashboardPage() {
                 hostel={complaint.hostel || { name: 'Current Hostel', id: urlHostelId }}
                 room={complaint.user?.allocations?.[0]?.room?.roomNumber || 'N/A'}
                 createdAt={complaint.createdAt || new Date().toISOString()}
-                onResolve={() => {}} // Will be implemented later
+                onResolve={async (complaintId: string, resolution: string) => {
+                  try {
+                    await adminApi.resolveComplaint(urlHostelId, complaintId, resolution);
+                    // Refresh complaints after resolution
+                    const updatedComplaintsResponse = await fetch(`/api/hostels/${urlHostelId}/complaints?page=1&limit=6&status=pending`, {
+                      headers: {
+                        'Authorization': `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`,
+                        'Content-Type': 'application/json'
+                      }
+                    });
+                    const updatedComplaints = await updatedComplaintsResponse.json();
+                    setComplaints(Array.isArray(updatedComplaints.data) ? updatedComplaints.data : []);
+                  } catch (error) {
+                    console.error('Failed to resolve complaint:', error);
+                  }
+                }}
               />
             ))}
           </div>

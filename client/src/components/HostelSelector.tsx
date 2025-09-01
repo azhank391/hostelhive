@@ -123,15 +123,7 @@ export function CompactHostelSelector() {
 export function MainContentHostelSelector() {
   const { currentHostel, hostels, setActiveHostel, isMultiHostelOwner } = useHostel();
 
-  // 🚀 DEBUG: Track component re-renders and context changes
-  useEffect(() => {
-    console.log('🔄 MainContentHostelSelector: Component re-rendered with currentHostel:', currentHostel?.id);
-  });
 
-  // 🚀 DEBUG: Track when currentHostel actually changes
-  useEffect(() => {
-    console.log('🎯 MainContentHostelSelector: currentHostel changed to:', currentHostel?.id);
-  }, [currentHostel?.id]);
 
   // Hide selector if user has only one hostel
   if (!isMultiHostelOwner) return null;
@@ -139,13 +131,9 @@ export function MainContentHostelSelector() {
   const handleHostelChange = useCallback(async (hostelId: string) => {
     if (!hostelId) return;
     
-    console.log('🎯 MainContentHostelSelector: Hostel change requested:', hostelId, 'Type:', typeof hostelId);
-    console.log('🎯 MainContentHostelSelector: Current hostel before change:', currentHostel?.id, 'Type:', typeof currentHostel?.id);
-    
     try {
       // Update the hostel context - this handles navigation internally
       await setActiveHostel(hostelId, true);
-      console.log('✅ MainContentHostelSelector: setActiveHostel completed');
     } catch (error) {
       console.error('Failed to switch hostel:', error);
     }
@@ -166,15 +154,7 @@ export function MainContentHostelSelector() {
   // Ensure we always have a string value for the select
   const selectedHostelId = currentHostel?.id || '';
   
-  // Debug logging to track state values
-  console.log('🔍 MainContentHostelSelector Debug:', {
-    currentHostelId: currentHostel?.id,
-    currentHostelIdType: typeof currentHostel?.id,
-    selectedHostelId,
-    selectedHostelIdType: typeof selectedHostelId,
-    hostelsCount: hostels.length,
-    hostelsIds: hostels.map(h => ({ id: h.id, type: typeof h.id }))
-  });
+
 
   return (
     <div className="flex items-center gap-4">

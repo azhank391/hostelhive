@@ -503,7 +503,7 @@ exports.getVisitors = async (req, res) => {
           include: [
             {
               model: RoomAllocation,
-              as: "roomAllocations",
+              as: "allocations",
               where: { status: "active" },
               required: false,
               include: [
@@ -551,13 +551,53 @@ exports.getStudents = async (req, res) => {
       offset: (parseInt(page) - 1) * parseInt(limit),
       order: [["createdAt", "DESC"]],
       attributes: ["id", "name", "email", "status", "createdAt"],
-      include: [{ model: Room, as: "room", attributes: ["id", "number"] }],
+      include: [
+        {
+          model: RoomAllocation,
+          as: 'allocations',
+          where: { status: 'active' },
+          required: false,
+          include: [
+            {
+              model: Room,
+              as: 'room',
+              attributes: ['id', 'roomNumber', 'capacity', 'occupied', 'block']
+            }
+          ]
+        }
+      ]
     });
 
     const total = await User.count({ where: whereClause });
 
+    // Transform the data to include room information and allocation status
+    const studentsWithRooms = students.map(student => {
+      const studentData = student.toJSON();
+      
+      // Check if student has an active room allocation
+      const hasActiveAllocation = studentData.allocations && 
+        studentData.allocations.length > 0 && 
+        studentData.allocations[0].status === 'active';
+      
+      if (hasActiveAllocation && studentData.allocations[0].room) {
+        studentData.roomNumber = studentData.allocations[0].room.roomNumber;
+        studentData.roomId = studentData.allocations[0].room.id;
+        studentData.roomBlock = studentData.allocations[0].room.block;
+        studentData.hasRoom = true;
+        studentData.allocationId = studentData.allocations[0].id;
+      } else {
+        studentData.hasRoom = false;
+        studentData.roomNumber = null;
+        studentData.roomId = null;
+        studentData.roomBlock = null;
+        studentData.allocationId = null;
+      }
+      
+      return studentData;
+    });
+
     res.json({
-      students,
+      students: studentsWithRooms,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -588,15 +628,34 @@ exports.getComplaints = async (req, res) => {
       offset: (parseInt(page) - 1) * parseInt(limit),
       order: [["createdAt", "DESC"]],
       include: [
-        { model: User, as: "reportedBy", attributes: ["id", "name"] },
-        { model: Room, as: "room", attributes: ["id", "number"] },
+        { 
+          model: User, 
+          as: "user", 
+          attributes: ["id", "name", "email", "role"],
+          include: [
+            {
+              model: RoomAllocation,
+              as: 'allocations',
+              where: { status: 'active' },
+              required: false,
+              include: [
+                {
+                  model: Room,
+                  as: 'room',
+                  attributes: ['id', 'roomNumber', 'block']
+                }
+              ]
+            }
+          ]
+        },
+        { model: Hostel, as: "hostel", attributes: ["id", "name"] }
       ],
     });
 
     const total = await Complaint.count({ where: whereClause });
 
     res.json({
-      complaints,
+      data: complaints,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),

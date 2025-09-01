@@ -22,11 +22,8 @@ export const useCurrentHostelId = () => {
   // 🚀 CRITICAL FIX: Memoize the functions to prevent infinite loops
   const getHostelId = useMemo((): (() => string) => {
     return (): string => {
-      console.log('🔍 DEBUG: getHostelId called, currentHostel:', currentHostel);
-      
       // First try to get from currentHostel directly
       if (currentHostel?.id) {
-        console.log('✅ DEBUG: getHostelId returning from currentHostel:', currentHostel.id);
         return currentHostel.id;
       }
       
@@ -35,22 +32,17 @@ export const useCurrentHostelId = () => {
       const urlHostelId = getCurrentHostelIdWithUrlFallback();
       const hostelId = contextHostelId || urlHostelId;
       
-      console.log('🔍 DEBUG: getHostelId context methods:', { contextHostelId, urlHostelId, hostelId });
-      
       if (!hostelId) {
         // Try localStorage as final fallback
         if (typeof window !== 'undefined') {
           const activeHostel = localStorage.getItem('activeHostel');
-          console.log('🔍 DEBUG: getHostelId localStorage fallback:', { activeHostel });
           if (activeHostel) {
             return activeHostel;
           }
         }
-        console.error('❌ DEBUG: getHostelId no hostel found');
         throw new Error('No active hostel selected. Please select a hostel first.');
       }
       
-      console.log('✅ DEBUG: getHostelId returning from context:', hostelId);
       return hostelId;
     };
   }, [currentHostel?.id, getCurrentHostelId, getCurrentHostelIdWithUrlFallback]);
@@ -59,14 +51,11 @@ export const useCurrentHostelId = () => {
     return (): string | null => {
       try {
         const id = getHostelId();
-        console.log('🔍 DEBUG: getHostelIdSafe returning:', { id, idType: typeof id });
         return id;
       } catch (error) {
-        console.error('❌ DEBUG: getHostelIdSafe error:', error);
         // Try localStorage as final fallback
         if (typeof window !== 'undefined') {
           const activeHostel = localStorage.getItem('activeHostel');
-          console.log('🔍 DEBUG: getHostelIdSafe localStorage fallback:', { activeHostel });
           if (activeHostel) {
             return activeHostel;
           }
