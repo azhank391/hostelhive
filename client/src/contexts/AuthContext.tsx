@@ -292,8 +292,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data.role === 'owner' && payload.ownedHostels && Array.isArray(payload.ownedHostels)) {
           userData.hostels = payload.ownedHostels;
           
-          // If only one hostel, auto-select it
-          if (payload.ownedHostels.length === 1) {
+          // 🚀 NEW: Check if we have a subdomain hostel from the login response
+          if (data.subdomainHostel) {
+            // Use the hostel from the subdomain
+            userData.hostelId = data.subdomainHostel.id;
+            userData.activeHostelId = data.subdomainHostel.id;
+            console.log('🔍 DEBUG: Using subdomain hostel:', data.subdomainHostel.name);
+            
+            // Store the selected hostel in localStorage
+            localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, data.subdomainHostel.id);
+          } else if (payload.ownedHostels.length === 1) {
+            // If only one hostel, auto-select it
             const firstHostel = payload.ownedHostels[0];
             userData.hostelId = firstHostel.id;
             userData.activeHostelId = firstHostel.id;

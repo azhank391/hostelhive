@@ -33,7 +33,16 @@ export const authApi = {
   async login(credentials: { email: string; password: string; }) {
     apiPerformance.startMeasure('auth-login');
     try {
-      const result = await apiClient.post('/auth/login', credentials, {
+      // 🚀 NEW: Include subdomain information in login request
+      const { getCurrentSubdomain } = await import('./subdomain');
+      const subdomain = getCurrentSubdomain();
+      
+      const loginData = {
+        ...credentials,
+        ...(subdomain && { subdomain }) // Include subdomain if present
+      };
+      
+      const result = await apiClient.post('/auth/login', loginData, {
         cacheTTL: 0, // Never cache auth requests
         skipCache: true
       });

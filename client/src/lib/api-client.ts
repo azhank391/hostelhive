@@ -10,6 +10,7 @@
  */
 
 import { apiConfig, STORAGE_KEYS } from './config';
+import { getCurrentSubdomain } from './subdomain';
 
 // ==========================================
 // TYPES & INTERFACES
@@ -151,7 +152,28 @@ class ApiClient {
   private buildUrl(path: string, params?: ApiRequestOptions['params']): string {
     // Fix: Use simple string concatenation to ensure correct URL structure
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    const cleanBaseUrl = this.baseUrl.endsWith('/') ? this.baseUrl.slice(0, -1) : this.baseUrl;
+    
+    // 🚀 NEW: Handle subdomain requests
+    const subdomain = getCurrentSubdomain();
+    let baseUrl = this.baseUrl;
+    
+    if (subdomain && typeof window !== 'undefined') {
+      // If we're on a subdomain, use the same subdomain for API requests
+      const currentHost = window.location.host;
+      const currentProtocol = window.location.protocol;
+      
+      // Development: abc.localhost:3000 -> abc.localhost:5000
+      if (currentHost.includes('localhost')) {
+        const port = currentHost.includes(':') ? currentHost.split(':')[1] : '';
+        const apiPort = port === '3000' ? '5000' : port; // Use port 5000 for API
+        baseUrl = `${currentProtocol}//${subdomain}.localhost:${apiPort}/api`;
+      } else {
+        // Production: abc.yourdomain.com -> abc.yourdomain.com/api
+        baseUrl = `${currentProtocol}//${subdomain}.yourdomain.com/api`;
+      }
+    }
+    
+    const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
     const fullUrl = `${cleanBaseUrl}${cleanPath}`;
     
 

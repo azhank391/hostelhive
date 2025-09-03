@@ -6,9 +6,12 @@ const { Hostel } = require("../models");
  */
 const extractSubdomain = (req, res, next) => {
   const host = req.get("host");
+  
+  console.log("🔍 DEBUG: Subdomain middleware - Host header:", host);
 
   if (!host) {
     req.subdomain = null;
+    console.log("🔍 DEBUG: No host header found, setting subdomain to null");
     return next();
   }
 
@@ -16,6 +19,7 @@ const extractSubdomain = (req, res, next) => {
   const devMatch = host.match(/^([^.]+)\.localhost(?::\d+)?$/);
   if (devMatch && devMatch[1] !== "www") {
     req.subdomain = devMatch[1];
+    console.log("🔍 DEBUG: Development subdomain detected:", req.subdomain);
     return next();
   }
 
@@ -23,11 +27,13 @@ const extractSubdomain = (req, res, next) => {
   const prodMatch = host.match(/^([^.]+)\.yourdomain\.com$/);
   if (prodMatch && prodMatch[1] !== "www") {
     req.subdomain = prodMatch[1];
+    console.log("🔍 DEBUG: Production subdomain detected:", req.subdomain);
     return next();
   }
 
   // No subdomain detected
   req.subdomain = null;
+  console.log("🔍 DEBUG: No subdomain detected, setting to null");
   next();
 };
 
@@ -36,7 +42,10 @@ const extractSubdomain = (req, res, next) => {
  * Only for public routes that need hostel context
  */
 const resolveHostelFromSubdomain = async (req, res, next) => {
+  console.log("🔍 DEBUG: Resolving hostel from subdomain:", req.subdomain);
+  
   if (!req.subdomain) {
+    console.log("🔍 DEBUG: No subdomain, skipping hostel resolution");
     return next();
   }
 
@@ -50,12 +59,14 @@ const resolveHostelFromSubdomain = async (req, res, next) => {
     });
 
     if (!hostel) {
+      console.log("🔍 DEBUG: Hostel not found for subdomain:", req.subdomain);
       return res.status(404).json({
         message: "Hostel not found",
         subdomain: req.subdomain,
       });
     }
 
+    console.log("🔍 DEBUG: Hostel found:", { id: hostel.id, name: hostel.name, subdomain: hostel.subdomain });
     req.hostel = hostel;
     req.hostelId = hostel.id;
     next();

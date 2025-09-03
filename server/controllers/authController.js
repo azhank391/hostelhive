@@ -102,7 +102,7 @@ exports.registerUser = async (req, res) => {
 
 // ✅ Login Existing User (Integrated - checks both Users and Superadmins tables)
 exports.loginUser = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, subdomain } = req.body;
 
   // Validate required fields
   if (!email || !password) {
@@ -112,6 +112,9 @@ exports.loginUser = async (req, res) => {
 
   try {
     console.log("🔍 DEBUG: Login attempt for email:", email);
+    console.log("🔍 DEBUG: Subdomain from request:", subdomain);
+    console.log("🔍 DEBUG: Subdomain from middleware:", req.subdomain);
+    console.log("🔍 DEBUG: HostelId from middleware:", req.hostelId);
     
     // Step 1: Try to find user in Users table first
     let user = await User.findOne({ where: { email } });
@@ -174,11 +177,12 @@ exports.loginUser = async (req, res) => {
     console.log(`✅ Login successful for ${userSource} user:`, user.id, "Role:", user.role);
 
     // Step 4: Subdomain validation for regular users (not superadmin)
-    if (!isSuperadmin && req.hostelId) {
+    if (!isSuperadmin && (req.hostelId || req.subdomain)) {
       // If accessed via subdomain, verify user belongs to that hostel
       // (except for owners who may own multiple hostels)
       if (user.role !== "owner" && user.hostelId !== req.hostelId) {
         console.log("❌ User does not belong to this hostel");
+        console.log("❌ User hostelId:", user.hostelId, "Request hostelId:", req.hostelId);
         return res.status(400).json({ message: "Invalid credentials" });
       }
       console.log("✅ Subdomain validation passed");
@@ -192,13 +196,30 @@ exports.loginUser = async (req, res) => {
         attributes: ["id", "name", "subdomain", "plan"],
       });
 
-      // Determine if hostel selection is needed
-      const needsHostelSelection = ownedHostels.length > 1;
-
-      // If only one hostel, auto-select it
+      // 🚀 NEW: If logging in through subdomain, prioritize that hostel
       let selectedHostelId = null;
-      if (ownedHostels.length === 1) {
-        selectedHostelId = ownedHostels[0].id;
+      let subdomainHostel = null;
+      
+      if (req.hostelId && req.hostel) {
+        // Check if the user owns the hostel from the subdomain
+        subdomainHostel = ownedHostels.find(h => h.id === req.hostelId);
+        if (subdomainHostel) {
+          selectedHostelId = req.hostelId;
+          console.log("🔍 DEBUG: Subdomain login - using hostel from subdomain:", subdomainHostel.name);
+        } else {
+          console.log("🔍 DEBUG: User does not own the hostel from subdomain:", req.hostelId);
+        }
+      }
+      
+      // If no subdomain hostel or user doesn't own it, use default logic
+      if (!selectedHostelId) {
+        // Determine if hostel selection is needed
+        const needsHostelSelection = ownedHostels.length > 1;
+
+        // If only one hostel, auto-select it
+        if (ownedHostels.length === 1) {
+          selectedHostelId = ownedHostels[0].id;
+        }
       }
 
       const tokenPayload = {
@@ -227,7 +248,8 @@ exports.loginUser = async (req, res) => {
         name: user.name,
         hostelId: selectedHostelId, // Include hostelId in response
         ownedHostels, // Frontend will show hostel selection if needed
-        needsHostelSelection,
+        needsHostelSelection: ownedHostels.length > 1 && !selectedHostelId,
+        subdomainHostel: subdomainHostel, // Include subdomain hostel info
         requiresPasswordChange: user.requiresPasswordChange,
       });
     } else if (user.role === "superadmin") {
