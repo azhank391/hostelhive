@@ -100,6 +100,7 @@ interface OptimizedHostelCardProps {
   onView?: (hostelId: string) => void;
   onWatchlist?: (hostelId: string, isWatchlisted: boolean) => void;
   onShare?: (hostelId: string) => void;
+  onStatusToggle?: (hostelId: string, newStatus: boolean) => Promise<void>;
   customActions?: Array<{
     label: string;
     icon: React.ReactNode;
@@ -109,7 +110,17 @@ interface OptimizedHostelCardProps {
 }
 
 // Memoized status badge component
-const StatusBadge = memo(({ status, priority }: { status: string; priority?: string }) => {
+const StatusBadge = memo(({ 
+  status, 
+  priority, 
+  onToggle, 
+  isProcessing = false 
+}: { 
+  status: string; 
+  priority?: string; 
+  onToggle?: () => void;
+  isProcessing?: boolean;
+}) => {
   const statusConfig = useMemo(() => {
     switch (status) {
       case 'active':
@@ -127,9 +138,36 @@ const StatusBadge = memo(({ status, priority }: { status: string; priority?: str
     }
   }, [status]);
 
+  const isClickable = onToggle && (status === 'active' || status === 'inactive');
+
   return (
     <div className="flex items-center space-x-2">
-      <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
+      {isClickable ? (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggle?.();
+          }}
+          disabled={isProcessing}
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:shadow-md transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-2 border-transparent hover:border-gray-300 ring-2 ring-transparent hover:ring-blue-200 ${statusConfig.color}`}
+          title={status === 'active' ? 'Click to deactivate' : 'Click to activate'}
+        >
+          {isProcessing ? (
+            <div className="flex items-center">
+              <RefreshCwIcon className="w-3 h-3 mr-1 animate-spin" />
+              Updating...
+            </div>
+          ) : (
+            <div className="flex items-center">
+              {statusConfig.label}
+              <span className="ml-1 text-xs opacity-70 font-bold">↻</span>
+            </div>
+          )}
+        </button>
+      ) : (
+        <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
+      )}
       {priority && priority === 'high' && (
         <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full flex items-center">
           <AlertTriangleIcon className="w-3 h-3 mr-1" />
@@ -347,6 +385,7 @@ export const HostelCard = memo<OptimizedHostelCardProps>(({
   onView,
   onWatchlist,
   onShare,
+  onStatusToggle,
   customActions = []
 }) => {
   // State management
@@ -427,6 +466,22 @@ export const HostelCard = memo<OptimizedHostelCardProps>(({
     }
   }, [onEdit, id]);
 
+  const handleStatusToggle = useCallback(async () => {
+    if (!onStatusToggle) return;
+    
+    setIsProcessing(true);
+    try {
+      const newStatus = status !== 'active';
+      await onStatusToggle(id, newStatus);
+      toast.success(newStatus ? 'Hostel activated successfully!' : 'Hostel deactivated successfully!');
+    } catch (error) {
+      console.error('Failed to toggle hostel status:', error);
+      toast.error('Failed to update hostel status');
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [onStatusToggle, id, status]);
+
   // Quick actions
   const quickActions = useMemo(() => {
     const actions = [];
@@ -471,7 +526,12 @@ export const HostelCard = memo<OptimizedHostelCardProps>(({
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2 mb-2">
               <h3 className="font-semibold text-gray-900 truncate">{name}</h3>
-              <StatusBadge status={status} priority={priority} />
+              <StatusBadge 
+                status={status} 
+                priority={priority} 
+                onToggle={onStatusToggle ? handleStatusToggle : undefined}
+                isProcessing={isProcessing}
+              />
             </div>
             <div className="flex items-center space-x-4 text-sm text-gray-600">
               <span className="flex items-center">
@@ -539,8 +599,13 @@ export const HostelCard = memo<OptimizedHostelCardProps>(({
         )}
 
         {/* Status Badge Overlay */}
-        <div className="absolute top-3 left-3">
-          <StatusBadge status={status} priority={priority} />
+        <div className="absolute top-3 left-3 z-10">
+          <StatusBadge 
+            status={status} 
+            priority={priority} 
+            onToggle={onStatusToggle ? handleStatusToggle : undefined}
+            isProcessing={isProcessing}
+          />
         </div>
 
         {/* Quick Actions Overlay */}

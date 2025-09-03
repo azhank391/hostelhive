@@ -15,7 +15,8 @@ import {
   HomeIcon,
   PhoneIcon,
   MailIcon,
-  AlertCircleIcon
+  AlertCircleIcon,
+  MessageSquareIcon
 } from 'lucide-react'
 
 interface RoomAllocation {
@@ -108,9 +109,17 @@ export const StudentRoomInfo = React.memo(() => {
       // Use context-aware API that automatically includes hostelId and studentId
       const data = await studentApi.getRoom() as any
       
+      // 🚀 NEW: Handle different response statuses
+      if (!data || data.status === 'no_allocation') {
+        setRoomDetails(null)
+        setError(data?.message || 'No room allocation found')
+        return
+      }
+      
       // If no room allocation, set to null
       if (!data || !data.allocation) {
         setRoomDetails(null)
+        setError('No room allocation found')
         return
       }
       
@@ -209,9 +218,28 @@ export const StudentRoomInfo = React.memo(() => {
         </div>
         
         <div className="text-center py-12">
-          <BedIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Room Assigned</h3>
-          <p className="text-gray-600">You haven't been assigned to a room yet. Please contact the administration.</p>
+          <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
+            <BedIcon className="h-8 w-8 text-yellow-600" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Room Allocated</h3>
+          <p className="text-gray-600 mb-6 max-w-md mx-auto">
+            {error || "You haven't been assigned to a room yet. This could mean you're on a waiting list or need to contact the hostel administration for room assignment."}
+          </p>
+          
+          <div className="space-y-3">
+            <Button 
+              onClick={() => window.location.href = '/dashboard/hostels/' + currentHostel?.id + '/complaints'}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <MessageSquareIcon className="h-4 w-4 mr-2" />
+              Submit Room Request
+            </Button>
+            
+            <div className="text-sm text-gray-500">
+              <p>Need help? Contact the hostel administration:</p>
+              <p className="font-medium">{currentHostel?.email || 'admin@hostel.com'}</p>
+            </div>
+          </div>
         </div>
       </div>
     )

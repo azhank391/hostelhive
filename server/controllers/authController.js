@@ -452,6 +452,46 @@ exports.getUserHostels = async (req, res) => {
   }
 };
 
+// 🚀 NEW: Get all hostels for owner dashboard (active and inactive)
+exports.getAllOwnerHostels = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    if (userRole !== "owner") {
+      return res.status(403).json({ message: "Only owners can access this endpoint" });
+    }
+
+    const { Hostel, TenantLocation } = require("../models");
+    const hostels = await Hostel.findAll({
+      where: { ownerId: userId }, // No isActive filter - get ALL hostels
+      attributes: [
+        "id",
+        "name",
+        "subdomain",
+        "plan",
+        "isActive",
+        "email",
+        "createdAt",
+      ],
+      include: [
+        {
+          model: TenantLocation,
+          as: "location",
+          attributes: ["country", "city", "address"],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    console.log("🔍 DEBUG: Owner accessing all hostels (active + inactive), count:", hostels.length);
+    res.json({ hostels });
+  } catch (error) {
+    console.error("Error in getAllOwnerHostels:", error);
+    res.status(500).json({ message: "Server error while fetching all hostels" });
+  }
+};
+
 // ✅ Set Active Hostel for Owner and Superadmin
 exports.setActiveHostel = async (req, res) => {
   try {

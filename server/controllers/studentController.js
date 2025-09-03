@@ -25,10 +25,14 @@ exports.getMyRoom = async (req, res) => {
       ],
     });
 
+    // 🚀 NEW: Return proper response even when no allocation exists
     if (!allocation) {
-      return res
-        .status(404)
-        .json({ message: "No active room allocation found" });
+      return res.json({
+        room: null,
+        allocation: null,
+        status: "no_allocation",
+        message: "No room allocation found. Please contact the hostel administration for room assignment."
+      });
     }
 
     res.json({
@@ -38,6 +42,7 @@ exports.getMyRoom = async (req, res) => {
         allocationDate: allocation.allocationDate,
         status: allocation.status,
       },
+      status: "allocated"
     });
   } catch (err) {
     console.error(err);
@@ -587,6 +592,11 @@ exports.getDashboardSummary = async (req, res) => {
 
     res.json({
       room: allocation ? allocation.room : null,
+      roomAllocation: allocation ? {
+        id: allocation.id,
+        allocationDate: allocation.allocationDate,
+        status: allocation.status,
+      } : null,
       complaints: {
         total: totalComplaints,
         pending: pendingComplaints,
@@ -594,6 +604,7 @@ exports.getDashboardSummary = async (req, res) => {
         recent: recentComplaints,
       },
       todaysVisitors,
+      hasRoom: !!allocation,
     });
   } catch (err) {
     console.error(err);

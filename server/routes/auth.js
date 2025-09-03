@@ -6,6 +6,7 @@ const {
   loginUser, 
   getCurrentUser,
   getUserHostels, 
+  getAllOwnerHostels,
   setActiveHostel,
   updateProfile,
   changePassword
@@ -20,6 +21,7 @@ router.post('/login', loginUser);
 
 // Protected endpoints
 router.get('/hostels', verifyToken, getUserHostels);
+router.get('/hostels/all', verifyToken, getAllOwnerHostels); // For owner dashboard
 router.post('/set-active-hostel', verifyToken, setActiveHostel);
 
 // Profile update endpoint

@@ -227,15 +227,12 @@ export const HostelManagement = React.memo(() => {
       setLoading(true)
       setError('')
       
-      // Wait for HostelContext to finish loading
-      if (loadingState === 'loading' || loadingState === 'idle') {
-        return;
-      }
+      // 🚀 NEW: Fetch ALL hostels (active and inactive) for owner dashboard
+      const { apiClient } = await import('@/lib/api-client');
+      const response = await apiClient.get<{ hostels: Hostel[] }>('/auth/hostels/all');
       
-      // Use hostels from HostelContext for better performance
-      // Handle case where availableHostels might be undefined
-      const safeHostels = Array.isArray(availableHostels) ? availableHostels : []
-      const hostelsWithStats = safeHostels.map(hostel => ({
+      const allHostels = response.hostels || [];
+      const hostelsWithStats = allHostels.map((hostel: Hostel) => ({
         ...hostel,
         stats: hostelStats[hostel.id] || undefined
       })) as Hostel[]
@@ -249,7 +246,7 @@ export const HostelManagement = React.memo(() => {
       setLoading(false)
       setIsFetching(false)
     }
-  }, [availableHostels, loadingState])
+  }, [hostelStats])
 
   // 🎯 PERFORMANCE: Optimized refresh handler
   const handleRefresh = useCallback(async () => {
@@ -302,13 +299,47 @@ export const HostelManagement = React.memo(() => {
     })
   }, [])
 
-  // Initial data fetch - wait for HostelContext to be ready
-  useEffect(() => {
-    // Only fetch hostels after HostelContext has finished loading
-    if (loadingState === 'loaded') {
-      fetchHostels()
+  // 🚀 NEW: Handle hostel status toggle with optimistic updates
+  const handleStatusToggle = useCallback(async (hostelId: string, newStatus: boolean) => {
+    try {
+      // Import the API to update hostel status
+      const { hostelApi } = await import('@/lib/api');
+      
+      // Optimistic update - update local state immediately
+      setHostels(prevHostels => 
+        prevHostels.map(hostel => 
+          hostel.id === hostelId 
+            ? { ...hostel, isActive: newStatus }
+            : hostel
+        )
+      );
+      
+      // Update the backend
+      await hostelApi.updateHostel(hostelId, { isActive: newStatus });
+      
+      // Refresh the context to ensure consistency
+      await refreshHostels();
+      
+    } catch (error) {
+      console.error('Failed to update hostel status:', error);
+      
+      // Revert optimistic update on error
+      setHostels(prevHostels => 
+        prevHostels.map(hostel => 
+          hostel.id === hostelId 
+            ? { ...hostel, isActive: !newStatus }
+            : hostel
+        )
+      );
+      
+      throw error; // Re-throw to show error in UI
     }
-  }, [fetchHostels, loadingState])
+  }, [refreshHostels])
+
+  // Initial data fetch - fetch all hostels directly
+  useEffect(() => {
+    fetchHostels()
+  }, [fetchHostels])
 
   // Fetch stats when hostels change
   useEffect(() => {
@@ -588,6 +619,7 @@ export const HostelManagement = React.memo(() => {
                     totalStudents={hostelStats[hostel.id]?.totalStudents || 0}
                     status={hostel.isActive ? 'active' : 'inactive'}
                     showQuickActions={true}
+                    onStatusToggle={handleStatusToggle}
                     customActions={[
                       {
                         label: 'View Details',

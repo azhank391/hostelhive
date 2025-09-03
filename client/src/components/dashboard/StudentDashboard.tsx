@@ -593,9 +593,18 @@ export const StudentDashboard = React.memo(() => {
               </div>
             ) : (
               <div className="text-center py-8">
-                <BedIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-600">No room assigned</p>
-                <p className="text-sm text-gray-500">Contact administration for room assignment</p>
+                <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <BedIcon className="h-6 w-6 text-yellow-600" />
+                </div>
+                <p className="text-gray-600 font-medium mb-1">No room allocated</p>
+                <p className="text-sm text-gray-500 mb-4">You haven't been assigned to a room yet</p>
+                <Button 
+                  size="sm"
+                  onClick={() => window.location.href = `/dashboard/hostels/${getHostelId()}/complaints`}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Request Room Assignment
+                </Button>
               </div>
             )}
           </Card>
