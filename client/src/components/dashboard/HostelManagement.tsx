@@ -10,6 +10,9 @@ import toast from '@/lib/toast'
 import { useHostel } from '@/context/HostelContext'
 import { superadminApi } from '@/lib/api'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
+import { usePermissions } from '@/hooks/usePermissions'
+import { PermissionGate } from '@/components/PermissionGate'
 
 interface Hostel {
   id: string;
@@ -56,6 +59,15 @@ interface FilterCriteria {
  */
 export const HostelManagement = React.memo(() => {
   const { hostels: availableHostels, refreshHostels, loadingState } = useHostel()
+  const { user, isLoading } = useAuth()
+  const { hasPermission } = usePermissions()
+  
+  // Permission checks
+  const canViewHostels = hasPermission('hostel_read') || hasPermission('hostel_read')
+  const canCreateHostels = hasPermission('hostel_create')
+  const canUpdateHostels = hasPermission('hostel_update')
+  const canDeleteHostels = hasPermission('hostel_delete')
+  const canManageHostelSettings = hasPermission('hostel_settings_update')
   
   // State management
   const [hostels, setHostels] = useState<Hostel[]>([])
@@ -338,15 +350,44 @@ export const HostelManagement = React.memo(() => {
 
   // Initial data fetch - fetch all hostels directly
   useEffect(() => {
-    fetchHostels()
-  }, [fetchHostels])
+    if (canViewHostels) {
+      fetchHostels()
+    }
+  }, [fetchHostels, canViewHostels])
 
   // Fetch stats when hostels change
   useEffect(() => {
-    if (Array.isArray(hostels) && hostels.length > 0 && Object.keys(hostelStats).length === 0) {
+    if (canViewHostels && Array.isArray(hostels) && hostels.length > 0 && Object.keys(hostelStats).length === 0) {
       fetchHostelStats()
     }
-  }, [hostels, hostelStats, fetchHostelStats])
+  }, [hostels, hostelStats, fetchHostelStats, canViewHostels])
+
+  // Show loading state while auth is loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-sm text-gray-500">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Check if user has permission to view hostels
+  if (!canViewHostels) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto h-12 w-12 text-gray-400 mb-4">
+            <BuildingIcon className="h-12 w-12" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Access Denied</h3>
+          <p className="text-sm text-gray-500">You don't have permission to view hostels.</p>
+        </div>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
@@ -489,13 +530,15 @@ export const HostelManagement = React.memo(() => {
                 {refreshing ? 'Refreshing...' : 'Refresh'}
               </Button>
               
-              <Button 
-                onClick={handleCreateHostel} 
-                className="flex items-center px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1"
-              >
-                <PlusIcon className="h-4 w-4 mr-2" />
-                Add Hostel
-              </Button>
+              <PermissionGate permission="hostel_create">
+                <Button 
+                  onClick={handleCreateHostel} 
+                  className="flex items-center px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1"
+                >
+                  <PlusIcon className="h-4 w-4 mr-2" />
+                  Add Hostel
+                </Button>
+              </PermissionGate>
             </div>
           </div>
 
@@ -589,13 +632,15 @@ export const HostelManagement = React.memo(() => {
                   : 'Get started by creating your first hostel to begin managing your properties'}
               </p>
               {!searchTerm && !Object.values(filterCriteria).some(v => v !== 'all') && (
-                <Button 
-                  onClick={handleCreateHostel}
-                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1"
-                >
-                  <PlusIcon className="h-4 w-4 mr-2" />
-                  Create Your First Hostel
-                </Button>
+                <PermissionGate permission="hostel_create">
+                  <Button 
+                    onClick={handleCreateHostel}
+                    className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1"
+                  >
+                    <PlusIcon className="h-4 w-4 mr-2" />
+                    Create Your First Hostel
+                  </Button>
+                </PermissionGate>
               )}
             </div>
           ) : (
@@ -607,46 +652,71 @@ export const HostelManagement = React.memo(() => {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredHostels.map((hostel) => (
-                  <HostelCard
-                    key={hostel.id}
-                    id={hostel.id}
-                    name={hostel.name}
-                    location={hostel.location?.city || hostel.location?.country || 'Unknown'}
-                    image="/icons/default-hostel.svg"
-                    totalRooms={hostelStats[hostel.id]?.totalRooms || 0}
-                    occupiedRooms={hostelStats[hostel.id]?.occupiedRooms || 0}
-                    totalStudents={hostelStats[hostel.id]?.totalStudents || 0}
-                    status={hostel.isActive ? 'active' : 'inactive'}
-                    showQuickActions={true}
-                    onStatusToggle={handleStatusToggle}
-                    customActions={[
-                      {
-                        label: 'View Details',
-                        icon: <EyeIcon className="w-4 h-4" />,
-                        action: (hostelId: string) => {
-                          window.location.href = `/dashboard/hostels/${hostelId}/detail`
-                        },
-                        variant: 'primary'
+                {filteredHostels.map((hostel) => {
+                  // Build custom actions based on permissions
+                  const customActions = []
+                  
+                  // View Details - always available if can view hostels
+                  if (canViewHostels) {
+                    customActions.push({
+                      label: 'View Details',
+                      icon: <EyeIcon className="w-4 h-4" />,
+                      action: (hostelId: string) => {
+                        window.location.href = `/dashboard/hostels/${hostelId}/detail`
                       },
-                      {
-                        label: 'Edit',
-                        icon: <EditIcon className="w-4 h-4" />,
-                        action: (hostelId: string) => {
-                          window.location.href = `/dashboard/hostels/${hostelId}/detail`
-                        },
-                        variant: 'outline'
-                      }
-                    ]}
-                  />
-                ))}
+                      variant: 'primary' as const
+                    })
+                  }
+                  
+                  // Edit - only if can update hostels
+                  if (canUpdateHostels) {
+                    customActions.push({
+                      label: 'Edit',
+                      icon: <EditIcon className="w-4 h-4" />,
+                      action: (hostelId: string) => {
+                        window.location.href = `/dashboard/hostels/${hostelId}/detail`
+                      },
+                      variant: 'outline' as const
+                    })
+                  }
+                  
+                  // Delete - only if can delete hostels
+                  if (canDeleteHostels) {
+                    customActions.push({
+                      label: 'Delete',
+                      icon: <TrashIcon className="w-4 h-4" />,
+                      action: (hostelId: string) => {
+                        // TODO: Implement delete confirmation modal
+                        console.log('Delete hostel:', hostelId)
+                      },
+                      variant: 'outline' as const
+                    })
+                  }
+
+                  return (
+                    <HostelCard
+                      key={hostel.id}
+                      id={hostel.id}
+                      name={hostel.name}
+                      location={hostel.location?.city || hostel.location?.country || 'Unknown'}
+                      image="/icons/default-hostel.svg"
+                      totalRooms={hostelStats[hostel.id]?.totalRooms || 0}
+                      occupiedRooms={hostelStats[hostel.id]?.occupiedRooms || 0}
+                      totalStudents={hostelStats[hostel.id]?.totalStudents || 0}
+                      status={hostel.isActive ? 'active' : 'inactive'}
+                      showQuickActions={canUpdateHostels} // Only show status toggle if can update
+                      onStatusToggle={canUpdateHostels ? handleStatusToggle : undefined}
+                      customActions={customActions}
+                    />
+                  )
+                })}
               </div>
             </>
           )}
         </div>
 
         {/* Create Hostel Modal */}
-        {showCreateModal && (
+        {showCreateModal && canCreateHostels && (
           <CreateHostelModal
             isOpen={showCreateModal}
             onClose={handleCloseCreateModal}

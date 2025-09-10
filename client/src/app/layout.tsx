@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import '@/index.css'
 
 import { AuthProvider } from '@/contexts/AuthContext'
+import { PermissionProvider } from '@/contexts/PermissionContext'
 import { ToastProvider } from '@/providers/ToastProvider'
 import { SubdomainProvider } from '@/context/SubdomainContext'
 import { HostelProvider } from '@/context/HostelContext'
@@ -26,14 +27,16 @@ export default function RootLayout({
       <body className={inter.className}>
         <SubdomainProvider>
           <AuthProvider>
-            <HostelProvider>
-              <main id="main-content">
-                {children}
-              </main>
-              <ConditionalHostelModal />
-              <PasswordChangeRequirement />
-              <ToastProvider />
-            </HostelProvider>
+            <PermissionProvider>
+              <HostelProvider>
+                <main id="main-content">
+                  {children}
+                </main>
+                <ConditionalHostelModal />
+                <PasswordChangeRequirement />
+                <ToastProvider />
+              </HostelProvider>
+            </PermissionProvider>
           </AuthProvider>
         </SubdomainProvider>
       </body>

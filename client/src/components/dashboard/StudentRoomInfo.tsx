@@ -155,7 +155,7 @@ export const StudentRoomInfo = React.memo(() => {
     } finally {
       setLoading(false)
     }
-  }, [currentHostel, user, studentApi])
+  }, []) // Remove problematic dependencies
 
   // 🎯 PERFORMANCE: Optimized refresh handler
   const handleRefresh = useCallback(async () => {

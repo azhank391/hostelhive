@@ -6,7 +6,7 @@ import { HostelSelectionModal } from './HostelSelectionModal';
 
 export function ConditionalHostelModal() {
   // 🎯 Updated to use new context architecture
-  const { hostels, isLoading, currentHostel, isMultiHostelOwner } = useHostel();
+  const { hostels, loadingState, currentHostel, isMultiHostelOwner } = useHostel();
   const { user } = useAuth();
 
   // Only render if we're in a browser environment
@@ -25,10 +25,10 @@ export function ConditionalHostelModal() {
   }
 
   // Only render the modal if:
-  // 1. Context is not loading
+  // 1. Context finished loading
   // 2. Owner has multiple hostels
   // 3. No current hostel is selected
-  if (isLoading) {
+  if (loadingState !== 'loaded') {
     return null;
   }
 

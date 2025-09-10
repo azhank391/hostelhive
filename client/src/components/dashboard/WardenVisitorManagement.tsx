@@ -510,7 +510,7 @@ export const WardenVisitorManagement = React.memo(() => {
       // Process visitor logs
       const visitorData = Array.isArray(visitorResponse) ? visitorResponse : 
                    (typeof visitorResponse === 'object' && visitorResponse !== null && 'data' in visitorResponse ? 
-                     ((visitorResponse as { data: VisitorLog[] }).data) : 
+                     ((visitorResponse as any).data) : 
                      []);
       
       // Process students
@@ -520,7 +520,7 @@ export const WardenVisitorManagement = React.memo(() => {
                             []);
       
       // Process and enrich visitor data with student information
-      const processedLogs = visitorData.map(log => ({
+      const processedLogs = visitorData.map((log: any) => ({
         ...log,
         status: log.checkOut ? 'checked_out' as const : 'active' as const,
         student: studentsData.find(s => s.id === log.studentId) || {

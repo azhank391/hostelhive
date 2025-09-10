@@ -14,11 +14,11 @@ import {
   CalendarIcon,
   ClockIcon
 } from '../ui/icons';
-import { wardenApi as wardenApiClient } from '../../lib/api';
 import { notification } from '../../lib/toast';
-import { useCurrentHostelId } from '@/lib/context-aware-api';
+import { useCurrentHostelId, useAdminApiWithHostel } from '@/lib/context-aware-api';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { generateColorClass } from '@/lib/utils';
 
 interface WardenDashboardStats {
   totalStudents: number;
@@ -69,6 +69,7 @@ interface QuickAction {
 export const WardenDashboard = React.memo(() => {
   const { user } = useAuth()
   const { hasHostel, getHostelIdSafe } = useCurrentHostelId()
+  const adminApi = useAdminApiWithHostel()
   
   // State management
   const [stats, setStats] = useState<WardenDashboardStats | null>(null)
@@ -78,60 +79,63 @@ export const WardenDashboard = React.memo(() => {
   const [error, setError] = useState<string | null>(null)
 
   // 🎯 PERFORMANCE: Memoized quick actions with dynamic counts
-  const quickActions = useMemo((): QuickAction[] => [
-    {
-      id: 'students',
-      title: 'Manage Students',
-      description: 'View and manage student records',
-      icon: UsersIcon,
-      href: '/dashboard/warden/students',
-      color: 'blue',
-      count: stats?.totalStudents
-    },
-    {
-      id: 'rooms',
-      title: 'Manage Rooms',
-      description: 'Room assignments and availability',
-      icon: HomeIcon,
-      href: '/dashboard/warden/rooms',
-      color: 'green',
-      count: stats?.totalRooms
-    },
-    {
-      id: 'complaints',
-      title: 'Handle Complaints',
-      description: 'Review and resolve issues',
-      icon: AlertCircleIcon,
-      href: '/dashboard/warden/complaints',
-      color: 'orange',
-      count: stats?.pendingComplaints
-    },
-    {
-      id: 'visitors',
-      title: 'Visitor Management',
-      description: 'Monitor visitor activity',
-      icon: UserCheckIcon,
-      href: '/dashboard/warden/visitors',
-      color: 'purple',
-      count: stats?.currentVisitors
-    },
-    {
-      id: 'analytics',
-      title: 'View Analytics',
-      description: 'Dashboard reports and insights',
-      icon: CalendarIcon,
-      href: '/dashboard/warden/analytics',
-      color: 'indigo',
-    },
-    {
-      id: 'settings',
-      title: 'Hostel Settings',
-      description: 'Configure hostel preferences',
-      icon: AlertCircleIcon,
-      href: '/dashboard/warden/settings',
-      color: 'gray',
-    }
-  ], [stats])
+  const quickActions = useMemo((): QuickAction[] => {
+    const hostelId = getHostelIdSafe();
+    return [
+      {
+        id: 'students',
+        title: 'Manage Students',
+        description: 'View and manage student records',
+        icon: UsersIcon,
+        href: `/dashboard/hostels/${hostelId}/students`,
+        color: 'blue',
+        count: stats?.totalStudents
+      },
+      {
+        id: 'rooms',
+        title: 'Manage Rooms',
+        description: 'Room assignments and availability',
+        icon: HomeIcon,
+        href: `/dashboard/hostels/${hostelId}/rooms`,
+        color: 'green',
+        count: stats?.totalRooms
+      },
+      {
+        id: 'complaints',
+        title: 'Handle Complaints',
+        description: 'Review and resolve issues',
+        icon: AlertCircleIcon,
+        href: `/dashboard/hostels/${hostelId}/complaints`,
+        color: 'orange',
+        count: stats?.pendingComplaints
+      },
+      {
+        id: 'visitors',
+        title: 'Visitor Management',
+        description: 'Monitor visitor activity',
+        icon: UserCheckIcon,
+        href: `/dashboard/hostels/${hostelId}/visitors`,
+        color: 'purple',
+        count: stats?.currentVisitors
+      },
+      {
+        id: 'analytics',
+        title: 'View Analytics',
+        description: 'Dashboard reports and insights',
+        icon: CalendarIcon,
+        href: `/dashboard/hostels/${hostelId}/analytics`,
+        color: 'indigo',
+      },
+      {
+        id: 'settings',
+        title: 'Hostel Settings',
+        description: 'Configure hostel preferences',
+        icon: AlertCircleIcon,
+        href: `/dashboard/hostels/${hostelId}/settings`,
+        color: 'gray',
+      }
+    ];
+  }, [stats, getHostelIdSafe]) // Include getHostelIdSafe in dependencies
 
   // 🎯 PERFORMANCE: Memoized priority metrics
   const priorityMetrics = useMemo(() => {
@@ -175,57 +179,69 @@ export const WardenDashboard = React.memo(() => {
       
       console.log('Fetching warden dashboard data for hostel:', currentHostelId);
       
-      // Use context-aware API for all data fetching
-      const [complaints, visitors, students, rooms] = await Promise.all([
-        wardenApiClient.getComplaints({ limit: 50 }),
-        wardenApiClient.getVisitorLogs({ limit: 20 }),
-        wardenApiClient.getStudents({ limit: 10 }),
-        wardenApiClient.getRooms({ limit: 10 })
+      // Use context-aware API for all data fetching with proper error handling
+      const [statsResponse, visitorsResponse, studentsResponse, roomsResponse] = await Promise.all([
+        adminApi.getDashboardStats().catch(error => {
+          console.warn('Dashboard stats fetch failed:', error);
+          return { data: {} }; // Return empty object instead of failing
+        }),
+        adminApi.getVisitorLogs({ limit: 20 }).catch(error => {
+          console.warn('Visitor logs fetch failed:', error);
+          return { data: [] };
+        }),
+        adminApi.getStudents({ limit: 10 }).catch(error => {
+          console.warn('Students fetch failed:', error);
+          return { data: [] };
+        }),
+        adminApi.getRooms({ limit: 10 }).catch(error => {
+          console.warn('Rooms fetch failed:', error);
+          return { data: [] };
+        })
       ])
-      
-      console.log('API Responses:', { complaints, visitors, students, rooms });
       
       // Process and calculate comprehensive stats
       const today = new Date()
       today.setHours(0, 0, 0, 0)
+
+      // Extract and validate response data with type safety
+      const extractData = function<T>(response: any, defaultValue: T): T {
+        if (!response) return defaultValue;
+        if (typeof response === 'object' && response !== null && 'data' in response) {
+          return response.data ?? defaultValue;
+        }
+        return response ?? defaultValue;
+      };
+
+      const stats = extractData(statsResponse, {} as any);
+      const visitorsData = extractData(visitorsResponse, [] as any[]);
+      const studentsData = extractData(studentsResponse, [] as any[]);
+      const roomsData = extractData(roomsResponse, [] as any[]);
+      const complaintsData = Array.isArray(stats.complaints) ? stats.complaints : [];
       
-      // Process complaints data
-      const complaintsData = Array.isArray(complaints) ? complaints : 
-                            ((complaints as any)?.data || []);
-      const pendingComplaints = complaintsData.filter((c: any) => c.status === 'pending').length
-      const totalComplaints = complaintsData.length
-      const resolvedComplaints = totalComplaints - pendingComplaints
+      // Calculate metrics
+      const currentVisitors = visitorsData.filter((v: any) => !v.checkOut).length;
+      const todayVisitors = visitorsData.filter((v: any) => 
+        new Date(v.checkIn) >= today
+      ).length;
+
+      const occupiedRooms = roomsData.filter((r: any) => r.occupied).length;
+      const pendingComplaints = complaintsData.filter((c: any) => c.status === 'pending').length;
       
-      // Process visitors data
-      const visitorsData = Array.isArray(visitors) ? visitors : 
-                          ((visitors as any)?.data || []);
-      const currentVisitors = visitorsData.filter((v: any) => !v.checkOut).length
-      const todayVisitors = visitorsData.filter((v: any) => new Date(v.checkIn) >= today).length
-      
-      // Process students and rooms data
-      const studentsData = Array.isArray(students) ? students : 
-                          ((students as any)?.data || []);
-      const roomsData = Array.isArray(rooms) ? rooms : 
-                       ((rooms as any)?.data || []);
-      
-      const totalStudents = studentsData.length
-      const totalRooms = roomsData.length
-      const occupiedRooms = roomsData.filter((r: any) => r.occupied > 0).length
-      const availableRooms = totalRooms - occupiedRooms
-      const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0
-      
-      setStats({
-        totalStudents,
-        totalRooms,
-        occupiedRooms,
-        availableRooms,
-        pendingComplaints,
-        resolvedComplaints,
-        totalComplaints,
+      // Update stats state with combined data
+      const newStats: WardenDashboardStats = {
+        totalStudents: stats.totalStudents || studentsData.length,
+        totalRooms: stats.totalRooms || roomsData.length,
+        occupiedRooms: stats.occupiedRooms || occupiedRooms,
+        availableRooms: stats.availableRooms || (roomsData.length - occupiedRooms),
+        pendingComplaints: stats.pendingComplaints || pendingComplaints,
+        resolvedComplaints: stats.resolvedComplaints || (complaintsData.length - pendingComplaints),
+        totalComplaints: stats.totalComplaints || complaintsData.length,
         currentVisitors,
         todayVisitors,
-        occupancyRate
-      })
+        occupancyRate: stats.occupancyRate || (roomsData.length > 0 ? Math.round((occupiedRooms / roomsData.length) * 100) : 0)
+      }
+      
+      setStats(newStats)
       
       // Generate recent activity from various data sources
       const activities: RecentActivity[] = []
@@ -263,17 +279,23 @@ export const WardenDashboard = React.memo(() => {
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load dashboard data'
-      setError(errorMessage)
       console.error('Failed to fetch warden dashboard data:', error)
-      notification.error('Failed to load dashboard', { description: errorMessage })
+      
+      // Handle permission errors gracefully
+      if (errorMessage.includes('Access denied') || errorMessage.includes('permission')) {
+        setError('You do not have permission to view dashboard statistics. Please contact your administrator.');
+      } else {
+        setError(errorMessage);
+        notification.error('Failed to load dashboard', { description: errorMessage });
+      }
     } finally {
       setLoading(false)
     }
-  }, [hasHostel, getHostelIdSafe])
+  }, [hasHostel, getHostelIdSafe, adminApi])
 
-  // 🎯 PERFORMANCE: Optimized refresh handler
+  // 🎯 PERFORMANCE: Optimized refresh handler with debounce
   const handleRefresh = useCallback(async () => {
-    if (!hasHostel) return
+    if (!hasHostel || refreshing) return
     
     setRefreshing(true)
     try {
@@ -282,9 +304,9 @@ export const WardenDashboard = React.memo(() => {
     } catch (err) {
       notification.error('Failed to refresh dashboard')
     } finally {
-      setRefreshing(false)
+      setTimeout(() => setRefreshing(false), 500) // Add debounce to prevent rapid refreshes
     }
-  }, [hasHostel, fetchDashboardData])
+  }, [hasHostel, fetchDashboardData, refreshing])
 
   // 🎯 PERFORMANCE: Memoized time formatting
   const formatRelativeTime = useCallback((timestamp: string) => {
@@ -320,48 +342,68 @@ export const WardenDashboard = React.memo(() => {
     return 'text-gray-600 bg-gray-50'
   }, [])
 
-  // Initial data fetch
+  // Initial data fetch with debounced loading
   useEffect(() => {
-    fetchDashboardData()
-  }, [fetchDashboardData])
+    let isSubscribed = true;
+    let loadingTimeout: NodeJS.Timeout;
 
-  // Loading state
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <LoadingSpinner className="h-12 w-12 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-600">Loading warden dashboard...</p>
-        </div>
-      </div>
-    )
-  }
+    const fetchData = async () => {
+      if (!hasHostel) return;
+      
+      // Show loading state after a small delay to prevent flashing
+      loadingTimeout = setTimeout(() => {
+        if (isSubscribed) setLoading(true);
+      }, 200);
 
-  // Error state
-  if (error && !stats) {
+      try {
+        await fetchDashboardData();
+      } catch (error) {
+        // Error handling is done inside fetchDashboardData
+      } finally {
+        if (isSubscribed) {
+          clearTimeout(loadingTimeout);
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {
+      isSubscribed = false;
+      clearTimeout(loadingTimeout);
+    };
+  }, [hasHostel]); // Remove fetchDashboardData from dependencies to prevent infinite loop
+
+  // No hostel state or loading state
+  if (!hasHostel || loading || !stats) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center max-w-md mx-auto p-6">
-          <AlertCircleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Failed to load dashboard</h3>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <Button onClick={fetchDashboardData} className="w-full">
-            <RefreshCwIcon className="w-4 h-4 mr-2" />
-            Try Again
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  // No hostel state
-  if (!hasHostel) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center max-w-md mx-auto p-6">
-          <HomeIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Hostel Assigned</h3>
-          <p className="text-gray-600">Please contact your administrator to assign you to a hostel.</p>
+          {loading ? (
+            <>
+              <LoadingSpinner className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Loading Dashboard</h3>
+              <p className="text-gray-600">Please wait while we fetch your data...</p>
+            </>
+          ) : !hasHostel ? (
+            <>
+              <HomeIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Hostel Assigned</h3>
+              <p className="text-gray-600">Please contact your administrator to assign you to a hostel.</p>
+            </>
+          ) : error ? (
+            <>
+              <AlertCircleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Failed to load dashboard</h3>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <Button onClick={fetchDashboardData} className="w-full">
+                <RefreshCwIcon className="w-4 h-4 mr-2" />
+                Try Again
+              </Button>
+            </>
+          ) : null}
         </div>
       </div>
     )
@@ -412,55 +454,73 @@ export const WardenDashboard = React.memo(() => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="p-6">
-          <div className="flex items-center space-x-3">
-            <UsersIcon className="h-8 w-8 text-blue-500" />
-            <div>
-              <p className="text-sm text-gray-600">Total Students</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.totalStudents || 0}</p>
-              <p className="text-xs text-gray-500">Registered students</p>
-            </div>
-          </div>
-        </Card>
+        {loading ? (
+          // Loading skeleton for stats cards
+          Array(4).fill(0).map((_, index) => (
+            <Card key={index} className="p-6">
+              <div className="flex items-center space-x-3">
+                <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />
+                <div className="flex-1">
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-2" />
+                  <div className="h-6 w-16 bg-gray-200 rounded animate-pulse mb-1" />
+                  <div className="h-3 w-32 bg-gray-200 rounded animate-pulse" />
+                </div>
+              </div>
+            </Card>
+          ))
+        ) : (
+          <>
+            <Card className="p-6">
+              <div className="flex items-center space-x-3">
+                <UsersIcon className="h-8 w-8 text-blue-500" />
+                <div>
+                  <p className="text-sm text-gray-600">Total Students</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats?.totalStudents || 0}</p>
+                  <p className="text-xs text-gray-500">Registered students</p>
+                </div>
+              </div>
+            </Card>
 
-        <Card className="p-6">
-          <div className="flex items-center space-x-3">
-            <HomeIcon className="h-8 w-8 text-green-500" />
-            <div>
-              <p className="text-sm text-gray-600">Room Occupancy</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.occupancyRate || 0}%</p>
-              <p className="text-xs text-gray-500">
-                {stats?.occupiedRooms || 0}/{stats?.totalRooms || 0} rooms occupied
-              </p>
-            </div>
-          </div>
-        </Card>
+            <Card className="p-6">
+              <div className="flex items-center space-x-3">
+                <HomeIcon className="h-8 w-8 text-green-500" />
+                <div>
+                  <p className="text-sm text-gray-600">Room Occupancy</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats?.occupancyRate || 0}%</p>
+                  <p className="text-xs text-gray-500">
+                    {stats?.occupiedRooms || 0}/{stats?.totalRooms || 0} rooms occupied
+                  </p>
+                </div>
+              </div>
+            </Card>
 
-        <Card className="p-6">
-          <div className="flex items-center space-x-3">
-            <AlertCircleIcon className="h-8 w-8 text-orange-500" />
-            <div>
-              <p className="text-sm text-gray-600">Pending Complaints</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.pendingComplaints || 0}</p>
-              <p className="text-xs text-gray-500">
-                {stats?.resolvedComplaints || 0} resolved
-              </p>
-            </div>
-          </div>
-        </Card>
+            <Card className="p-6">
+              <div className="flex items-center space-x-3">
+                <AlertCircleIcon className="h-8 w-8 text-orange-500" />
+                <div>
+                  <p className="text-sm text-gray-600">Pending Complaints</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats?.pendingComplaints || 0}</p>
+                  <p className="text-xs text-gray-500">
+                    {stats?.resolvedComplaints || 0} resolved
+                  </p>
+                </div>
+              </div>
+            </Card>
 
-        <Card className="p-6">
-          <div className="flex items-center space-x-3">
-            <UserCheckIcon className="h-8 w-8 text-purple-500" />
-            <div>
-              <p className="text-sm text-gray-600">Current Visitors</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.currentVisitors || 0}</p>
-              <p className="text-xs text-gray-500">
-                {stats?.todayVisitors || 0} today
-              </p>
-            </div>
-          </div>
-        </Card>
+            <Card className="p-6">
+              <div className="flex items-center space-x-3">
+                <UserCheckIcon className="h-8 w-8 text-purple-500" />
+                <div>
+                  <p className="text-sm text-gray-600">Current Visitors</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats?.currentVisitors || 0}</p>
+                  <p className="text-xs text-gray-500">
+                    {stats?.todayVisitors || 0} today
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Main Content Grid */}
@@ -472,29 +532,46 @@ export const WardenDashboard = React.memo(() => {
             Quick Actions
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {quickActions.map((action) => {
-              const IconComponent = action.icon
-              return (
-                <Link key={action.id} href={action.href}>
-                  <button className="w-full text-left p-4 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group">
-                    <div className="flex items-center justify-between mb-2">
-                      <IconComponent className={`h-5 w-5 text-${action.color}-500 group-hover:text-${action.color}-600 transition-colors`} />
-                      {action.count !== undefined && (
-                        <span className="text-sm font-medium text-gray-600">
-                          {action.count}
-                        </span>
-                      )}
-                    </div>
-                    <div className="font-medium text-gray-900 group-hover:text-gray-700">
-                      {action.title}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {action.description}
-                    </div>
-                  </button>
-                </Link>
-              )
-            })}
+            {loading ? (
+              // Loading skeleton for quick actions
+              Array(6).fill(0).map((_, index) => (
+                <div key={index} className="p-4 rounded-lg border border-gray-200 animate-pulse">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="h-5 w-5 bg-gray-200 rounded-full" />
+                    <div className="h-4 w-8 bg-gray-200 rounded" />
+                  </div>
+                  <div className="h-4 w-24 bg-gray-200 rounded mb-2" />
+                  <div className="h-3 w-32 bg-gray-200 rounded" />
+                </div>
+              ))
+            ) : (
+              quickActions.map((action) => {
+                const IconComponent = action.icon
+                const colorClass = generateColorClass(action.color)
+                const hoverColorClass = generateColorClass(action.color, 'text', '600')
+                
+                return (
+                  <Link key={action.id} href={action.href}>
+                    <button className="w-full text-left p-4 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group">
+                      <div className="flex items-center justify-between mb-2">
+                        <IconComponent className={`h-5 w-5 ${colorClass} group-hover:${hoverColorClass} transition-colors`} />
+                        {action.count !== undefined && (
+                          <span className="text-sm font-medium text-gray-600">
+                            {action.count}
+                          </span>
+                        )}
+                      </div>
+                      <div className="font-medium text-gray-900 group-hover:text-gray-700">
+                        {action.title}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {action.description}
+                      </div>
+                    </button>
+                  </Link>
+                )
+              })
+            )}
           </div>
         </Card>
 
@@ -504,7 +581,23 @@ export const WardenDashboard = React.memo(() => {
             <ClockIcon className="h-5 w-5 mr-2 text-green-600" />
             Recent Activity
           </h3>
-          {filteredRecentActivity.length > 0 ? (
+          {loading ? (
+            // Loading skeleton for recent activity
+            <div className="space-y-3">
+              {Array(5).fill(0).map((_, index) => (
+                <div key={index} className="flex items-start space-x-3 p-3 animate-pulse">
+                  <div className="p-2 rounded-full bg-gray-200">
+                    <div className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="h-4 w-3/4 bg-gray-200 rounded" />
+                    <div className="h-3 w-1/2 bg-gray-200 rounded" />
+                    <div className="h-3 w-1/3 bg-gray-200 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredRecentActivity.length > 0 ? (
             <div className="space-y-3">
               {filteredRecentActivity.map((activity) => {
                 const IconComponent = getActivityIcon(activity.type)
@@ -559,29 +652,44 @@ export const WardenDashboard = React.memo(() => {
           Performance Overview
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="text-center">
-            <div className="flex items-center justify-center mb-2">
-              <UsersIcon className="h-8 w-8 text-green-500" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">
-              {stats ? Math.round(((stats.resolvedComplaints || 0) / Math.max(stats.totalComplaints, 1)) * 100) : 0}%
-            </p>
-            <p className="text-sm text-gray-600">Complaint Resolution Rate</p>
-          </div>
-          <div className="text-center">
-            <div className="flex items-center justify-center mb-2">
-              <HomeIcon className="h-8 w-8 text-blue-500" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">{stats?.occupancyRate || 0}%</p>
-            <p className="text-sm text-gray-600">Room Occupancy Rate</p>
-          </div>
-          <div className="text-center">
-            <div className="flex items-center justify-center mb-2">
-              <UserCheckIcon className="h-8 w-8 text-purple-500" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">{stats?.todayVisitors || 0}</p>
-            <p className="text-sm text-gray-600">Today's Visitors</p>
-          </div>
+          {loading ? (
+            // Loading skeleton for performance metrics
+            Array(3).fill(0).map((_, index) => (
+              <div key={index} className="text-center animate-pulse">
+                <div className="flex items-center justify-center mb-2">
+                  <div className="h-8 w-8 rounded-full bg-gray-200" />
+                </div>
+                <div className="h-8 w-16 bg-gray-200 rounded mx-auto mb-2" />
+                <div className="h-4 w-32 bg-gray-200 rounded mx-auto" />
+              </div>
+            ))
+          ) : (
+            <>
+              <div className="text-center">
+                <div className="flex items-center justify-center mb-2">
+                  <UsersIcon className="h-8 w-8 text-green-500" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats ? Math.round(((stats.resolvedComplaints || 0) / Math.max(stats.totalComplaints, 1)) * 100) : 0}%
+                </p>
+                <p className="text-sm text-gray-600">Complaint Resolution Rate</p>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center mb-2">
+                  <HomeIcon className="h-8 w-8 text-blue-500" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">{stats?.occupancyRate || 0}%</p>
+                <p className="text-sm text-gray-600">Room Occupancy Rate</p>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center mb-2">
+                  <UserCheckIcon className="h-8 w-8 text-purple-500" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">{stats?.todayVisitors || 0}</p>
+                <p className="text-sm text-gray-600">Today's Visitors</p>
+              </div>
+            </>
+          )}
         </div>
       </Card>
     </div>

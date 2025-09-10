@@ -5,7 +5,7 @@ import { MenuIcon, BellIcon, BuildingIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHostel } from '@/context/HostelContext';
-import { MainContentHostelSelector } from '../HostelSelector';
+import { CompactHostelSelector } from '../HostelSelector';
 
 interface DashboardHeaderProps {
   onMenuClick?: () => void;
@@ -68,7 +68,7 @@ export const DashboardHeader = memo(({
           {/* Hostel Selector - Replace static name with interactive selector */}
           {displayHostel && (
             <div className="ml-6">
-              <MainContentHostelSelector />
+              <CompactHostelSelector />
             </div>
           )}
         </div>

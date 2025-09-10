@@ -15,19 +15,19 @@ const getHostelIdFromRequest = (req) => {
   if (req.params.hostelId) {
     return req.params.hostelId;
   }
-  
+
   // Check if middleware already set hostelId (for warden endpoints)
   if (req.hostelId) {
     return req.hostelId;
   }
-  
+
   // Fallback to JWT token (for warden endpoints)
   if (req.user && req.user.hostelId) {
     return req.user.hostelId;
   }
-  
+
   // If neither exists, throw error
-  throw new Error('Hostel ID is required');
+  throw new Error("Hostel ID is required");
 };
 
 // 🚀 HELPER: Extract ID parameter based on route type
@@ -36,12 +36,12 @@ const getIdFromRequest = (req, paramName) => {
   if (req.params.hostelId && req.params[paramName]) {
     return req.params[paramName];
   }
-  
+
   // For warden routes (/admin/.../:id), use the generic :id parameter
   if (req.params.id) {
     return req.params.id;
   }
-  
+
   // Fallback
   return req.params[paramName] || req.params.id;
 };
@@ -106,90 +106,102 @@ exports.getAllRooms = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token
     const hostelId = getHostelIdFromRequest(req);
-    
+
     // Extract pagination parameters
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50; // Increased default limit to get more rooms
     const offset = (page - 1) * limit;
-    
+
     // Extract search parameter
     const search = req.query.search;
-    
+
     // Build where clause
     let whereClause = { hostelId };
-    
+
     // Add search functionality if needed
     if (search) {
       whereClause.roomNumber = { [Op.like]: `%${search}%` };
     }
 
     console.log(`[getAllRooms] Fetching rooms for hostel: ${hostelId}`);
-    console.log(`[getAllRooms] Pagination: page=${page}, limit=${limit}, offset=${offset}`);
+    console.log(
+      `[getAllRooms] Pagination: page=${page}, limit=${limit}, offset=${offset}`
+    );
     console.log(`[getAllRooms] Where clause:`, whereClause);
 
     // Get total count for pagination
     const total = await Room.count({ where: whereClause });
     console.log(`[getAllRooms] Total rooms found: ${total}`);
-    
 
-    
     // Get ALL rooms first (without includes to ensure we get all rooms)
     const allRooms = await Room.findAll({
       where: whereClause,
       limit: limit,
       offset: offset,
-      order: [['createdAt', 'DESC']]
+      order: [["createdAt", "DESC"]],
     });
-    
-    console.log(`[getAllRooms] All rooms query returned: ${allRooms.length} rooms`);
-    
+
+    console.log(
+      `[getAllRooms] All rooms query returned: ${allRooms.length} rooms`
+    );
+
     // Now get allocations for these rooms separately
-    const roomIds = allRooms.map(r => r.id);
+    const roomIds = allRooms.map((r) => r.id);
     const allocations = await RoomAllocation.findAll({
       where: {
         roomId: { [Op.in]: roomIds },
-        status: 'active'
+        status: "active",
       },
       include: [
         {
           model: User,
-          as: 'user',
-          attributes: ['id', 'name', 'email'],
-          where: { role: 'student' }
-        }
-      ]
+          as: "user",
+          attributes: ["id", "name", "email"],
+          where: { role: "student" },
+        },
+      ],
     });
-    
+
     // Group allocations by roomId
     const allocationsByRoom = {};
-    allocations.forEach(allocation => {
+    allocations.forEach((allocation) => {
       if (!allocationsByRoom[allocation.roomId]) {
         allocationsByRoom[allocation.roomId] = [];
       }
       allocationsByRoom[allocation.roomId].push(allocation);
     });
-    
+
     // Attach allocations to rooms
-    allRooms.forEach(room => {
+    allRooms.forEach((room) => {
       room.dataValues.allocations = allocationsByRoom[room.id] || [];
     });
-    
+
     // Use the result with manually attached allocations
     const rooms = allRooms;
 
     console.log(`[getAllRooms] Rooms returned: ${rooms.length}`);
-    console.log(`[getAllRooms] Room IDs:`, rooms.map(r => r.id));
-    
+    console.log(
+      `[getAllRooms] Room IDs:`,
+      rooms.map((r) => r.id)
+    );
+
     // Log rooms without allocations to verify they're included
-    const roomsWithoutAllocations = rooms.filter(r => !r.allocations || r.allocations.length === 0);
-    console.log(`[getAllRooms] Rooms without allocations: ${roomsWithoutAllocations.length}`);
+    const roomsWithoutAllocations = rooms.filter(
+      (r) => !r.allocations || r.allocations.length === 0
+    );
+    console.log(
+      `[getAllRooms] Rooms without allocations: ${roomsWithoutAllocations.length}`
+    );
     if (roomsWithoutAllocations.length > 0) {
-      console.log(`[getAllRooms] Rooms without allocations IDs:`, roomsWithoutAllocations.map(r => r.id));
+      console.log(
+        `[getAllRooms] Rooms without allocations IDs:`,
+        roomsWithoutAllocations.map((r) => r.id)
+      );
     }
 
     // Calculate pagination info
     const pages = Math.ceil(total / limit);
-    
+
     // Return paginated response
     res.json({
       data: rooms,
@@ -199,8 +211,8 @@ exports.getAllRooms = async (req, res) => {
         total,
         pages,
         hasNext: page < pages,
-        hasPrev: page > 1
-      }
+        hasPrev: page > 1,
+      },
     });
   } catch (err) {
     console.error("Error fetching rooms:", err);
@@ -233,11 +245,11 @@ exports.updateRoom = async (req, res) => {
   console.log(`[updateRoom] Function called with params:`, req.params);
   console.log(`[updateRoom] Request body:`, req.body);
   console.log(`[updateRoom] User:`, req.user);
-  
+
   try {
     // Extract hostelId from URL parameters or JWT token, roomId from URL params
     const hostelId = getHostelIdFromRequest(req);
-    const roomId = getIdFromRequest(req, 'roomId'); // Route-aware parameter extraction
+    const roomId = getIdFromRequest(req, "roomId"); // Route-aware parameter extraction
     const { roomNumber, capacity, block } = req.body;
 
     console.log(`[updateRoom] Updating room ${roomId} in hostel ${hostelId}`);
@@ -245,14 +257,16 @@ exports.updateRoom = async (req, res) => {
 
     const room = await Room.findOne({ where: { id: roomId, hostelId } });
     if (!room) {
-      console.log(`[updateRoom] Room ${roomId} not found in hostel ${hostelId}`);
+      console.log(
+        `[updateRoom] Room ${roomId} not found in hostel ${hostelId}`
+      );
       return res.status(404).json({ message: "Room not found" });
     }
 
     console.log(`[updateRoom] Found room:`, room.toJSON());
 
     await room.update({ roomNumber, capacity, block });
-    
+
     console.log(`[updateRoom] Room updated successfully`);
     res.json(room);
   } catch (err) {
@@ -261,12 +275,12 @@ exports.updateRoom = async (req, res) => {
     console.error("Error details:", {
       message: err.message,
       name: err.name,
-      code: err.code
+      code: err.code,
     });
-    res.status(500).json({ 
+    res.status(500).json({
       message: "Failed to update room",
       error: err.message,
-      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+      details: process.env.NODE_ENV === "development" ? err.stack : undefined,
     });
   }
 };
@@ -275,7 +289,7 @@ exports.deleteRoom = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token, roomId from URL params
     const hostelId = getHostelIdFromRequest(req);
-    const roomId = getIdFromRequest(req, 'roomId'); // Route-aware parameter extraction
+    const roomId = getIdFromRequest(req, "roomId"); // Route-aware parameter extraction
 
     const room = await Room.findOne({ where: { id: roomId, hostelId } });
     if (!room) {
@@ -295,59 +309,60 @@ exports.getRoomStudents = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token, roomId from URL params
     const hostelId = getHostelIdFromRequest(req);
-    const roomId = getIdFromRequest(req, 'roomId'); // Route-aware parameter extraction
+    const roomId = getIdFromRequest(req, "roomId"); // Route-aware parameter extraction
 
-    console.log(`[getRoomStudents] Fetching students for room ${roomId} in hostel ${hostelId}`);
+    console.log(
+      `[getRoomStudents] Fetching students for room ${roomId} in hostel ${hostelId}`
+    );
 
     // Verify room exists and belongs to the hostel
-    const room = await Room.findOne({ 
+    const room = await Room.findOne({
       where: { id: roomId, hostelId },
-      attributes: ['id', 'roomNumber', 'capacity', 'occupied']
+      attributes: ["id", "roomNumber", "capacity", "occupied"],
     });
 
     if (!room) {
-      console.log(`[getRoomStudents] Room ${roomId} not found in hostel ${hostelId}`);
+      console.log(
+        `[getRoomStudents] Room ${roomId} not found in hostel ${hostelId}`
+      );
       return res.status(404).json({ message: "Room not found" });
     }
 
     // Get all students allocated to this specific room
     const students = await User.findAll({
-      where: { 
-        hostelId, 
-        role: "student" 
+      where: {
+        hostelId,
+        role: "student",
       },
-      include: [{
-        model: RoomAllocation,
-        as: "allocations",
-        where: { 
-          roomId, 
-          status: "active" 
+      include: [
+        {
+          model: RoomAllocation,
+          as: "allocations",
+          where: {
+            roomId,
+            status: "active",
+          },
+          required: true,
         },
-        required: true
-      }],
-      attributes: [
-        'id', 
-        'name', 
-        'email', 
-        'role', 
-        'hostelId'
       ],
-      order: [['name', 'ASC']]
+      attributes: ["id", "name", "email", "role", "hostelId"],
+      order: [["name", "ASC"]],
     });
 
-    console.log(`[getRoomStudents] Found ${students.length} students in room ${roomId}`);
+    console.log(
+      `[getRoomStudents] Found ${students.length} students in room ${roomId}`
+    );
 
     res.json({
       room: {
         id: room.id,
         roomNumber: room.roomNumber,
         capacity: room.capacity,
-        occupied: room.occupied
+        occupied: room.occupied,
       },
       students,
-      totalStudents: students.length
+      totalStudents: students.length,
     });
-
   } catch (err) {
     console.error("Error fetching room students:", err);
     res.status(500).json({ message: "Failed to fetch room students" });
@@ -371,31 +386,32 @@ exports.getAllStudents = async (req, res) => {
       include: [
         {
           model: RoomAllocation,
-          as: 'allocations',
-          where: { status: 'active' },
+          as: "allocations",
+          where: { status: "active" },
           required: false,
           include: [
             {
               model: Room,
-              as: 'room',
-              attributes: ['id', 'roomNumber', 'capacity', 'occupied', 'block']
-            }
-          ]
-        }
-      ]
+              as: "room",
+              attributes: ["id", "roomNumber", "capacity", "occupied", "block"],
+            },
+          ],
+        },
+      ],
     });
 
     console.log(`[getAllStudents] Found ${students.length} students`);
 
     // Transform the data to include room information and allocation status
-    const studentsWithRooms = students.map(student => {
+    const studentsWithRooms = students.map((student) => {
       const studentData = student.toJSON();
-      
+
       // Check if student has an active room allocation
-      const hasActiveAllocation = studentData.allocations && 
-        studentData.allocations.length > 0 && 
-        studentData.allocations[0].status === 'active';
-      
+      const hasActiveAllocation =
+        studentData.allocations &&
+        studentData.allocations.length > 0 &&
+        studentData.allocations[0].status === "active";
+
       if (hasActiveAllocation && studentData.allocations[0].room) {
         studentData.roomNumber = studentData.allocations[0].room.roomNumber;
         studentData.roomId = studentData.allocations[0].room.id;
@@ -409,16 +425,26 @@ exports.getAllStudents = async (req, res) => {
         studentData.roomBlock = null;
         studentData.allocationId = null;
       }
-      
+
       // Keep the allocations data for frontend use
       // studentData.allocations will contain the room allocation information
-      
+
       return studentData;
     });
 
-    console.log(`[getAllStudents] Returning ${studentsWithRooms.length} students with room allocation data`);
-    console.log(`[getAllStudents] Students with rooms: ${studentsWithRooms.filter(s => s.hasRoom).length}`);
-    console.log(`[getAllStudents] Students without rooms: ${studentsWithRooms.filter(s => !s.hasRoom).length}`);
+    console.log(
+      `[getAllStudents] Returning ${studentsWithRooms.length} students with room allocation data`
+    );
+    console.log(
+      `[getAllStudents] Students with rooms: ${
+        studentsWithRooms.filter((s) => s.hasRoom).length
+      }`
+    );
+    console.log(
+      `[getAllStudents] Students without rooms: ${
+        studentsWithRooms.filter((s) => !s.hasRoom).length
+      }`
+    );
 
     res.json(studentsWithRooms);
   } catch (err) {
@@ -437,15 +463,15 @@ exports.createStudent = async (req, res) => {
     console.log(`[createStudent] Request body:`, { name, email, phone });
 
     if (!name || !email) {
-      return res
-        .status(400)
-        .json({ message: "Name and email are required" });
+      return res.status(400).json({ message: "Name and email are required" });
     }
 
     // Check if email already exists WITHIN THE SAME HOSTEL (not globally)
     const existingUser = await User.findOne({ where: { email, hostelId } });
     if (existingUser) {
-      console.log(`[createStudent] Email ${email} already exists in hostel ${hostelId}`);
+      console.log(
+        `[createStudent] Email ${email} already exists in hostel ${hostelId}`
+      );
       return res
         .status(400)
         .json({ message: "Email already exists in this hostel" });
@@ -453,10 +479,21 @@ exports.createStudent = async (req, res) => {
 
     // Set default password for new students
     const defaultPassword = "123456";
-    
+
     // Hash the default password
-    const bcrypt = require('bcrypt');
+    const bcrypt = require("bcrypt");
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+    // Find the student system role
+    const { Role } = require("../models");
+    const studentRole = await Role.findOne({
+      where: { name: "student", isSystemRole: true },
+    });
+
+    if (!studentRole) {
+      console.error("❌ Student system role not found in database");
+      return res.status(500).json({ message: "System configuration error" });
+    }
 
     const student = await User.create({
       name,
@@ -464,20 +501,21 @@ exports.createStudent = async (req, res) => {
       password: hashedPassword,
       phone: phone || null,
       role: "student",
+      role_id: studentRole.id, // Set the RBAC role ID (snake_case for database)
       hostelId,
       isActive: true,
       // Only students need to change their default password
-      requiresPasswordChange: true
+      requiresPasswordChange: true,
     });
 
     console.log(`[createStudent] Student created successfully:`, student.id);
 
     const { password: _, ...studentData } = student.toJSON();
-    
+
     // Add a note about the default password in the response
     res.status(201).json({
       ...studentData,
-      message: "Student created successfully with default password: 123456"
+      message: "Student created successfully with default password: 123456",
     });
   } catch (err) {
     console.error("Error creating student:", err);
@@ -489,10 +527,12 @@ exports.updateStudent = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token, studentId from URL params
     const hostelId = getHostelIdFromRequest(req);
-    const studentId = getIdFromRequest(req, 'studentId'); // Route-aware parameter extraction
+    const studentId = getIdFromRequest(req, "studentId"); // Route-aware parameter extraction
     const { name, email, phone } = req.body;
 
-    console.log(`[updateStudent] Updating student ${studentId} in hostel ${hostelId}`);
+    console.log(
+      `[updateStudent] Updating student ${studentId} in hostel ${hostelId}`
+    );
     console.log(`[updateStudent] Request body:`, { name, email, phone });
 
     if (!studentId) {
@@ -508,7 +548,9 @@ exports.updateStudent = async (req, res) => {
     });
 
     if (!student) {
-      console.log(`[updateStudent] Student ${studentId} not found in hostel ${hostelId}`);
+      console.log(
+        `[updateStudent] Student ${studentId} not found in hostel ${hostelId}`
+      );
       return res.status(404).json({ message: "Student not found" });
     }
 
@@ -536,9 +578,11 @@ exports.deleteStudent = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token, studentId from URL params
     const hostelId = getHostelIdFromRequest(req);
-    const studentId = getIdFromRequest(req, 'studentId'); // Route-aware parameter extraction
+    const studentId = getIdFromRequest(req, "studentId"); // Route-aware parameter extraction
 
-    console.log(`[deleteStudent] Deleting student ${studentId} from hostel ${hostelId}`);
+    console.log(
+      `[deleteStudent] Deleting student ${studentId} from hostel ${hostelId}`
+    );
 
     if (!studentId) {
       return res.status(400).json({ message: "Student ID is required" });
@@ -549,71 +593,82 @@ exports.deleteStudent = async (req, res) => {
     });
 
     if (!student) {
-      console.log(`[deleteStudent] Student ${studentId} not found in hostel ${hostelId}`);
+      console.log(
+        `[deleteStudent] Student ${studentId} not found in hostel ${hostelId}`
+      );
       return res.status(404).json({ message: "Student not found" });
     }
 
     console.log(`[deleteStudent] Found student:`, student.toJSON());
 
     // Check if student has active room allocations
-    const { RoomAllocation } = require('../models');
+    const { RoomAllocation } = require("../models");
     const activeAllocations = await RoomAllocation.findAll({
       where: {
         userId: studentId,
-        status: 'active'
-      }
+        status: "active",
+      },
     });
 
     if (activeAllocations.length > 0) {
-      console.log(`[deleteStudent] Student ${studentId} has ${activeAllocations.length} active room allocation(s)`);
-      return res.status(400).json({ 
-        message: "Cannot delete student with active room allocation. Please remove the student from their room first.",
+      console.log(
+        `[deleteStudent] Student ${studentId} has ${activeAllocations.length} active room allocation(s)`
+      );
+      return res.status(400).json({
+        message:
+          "Cannot delete student with active room allocation. Please remove the student from their room first.",
         hasActiveAllocation: true,
-        allocationCount: activeAllocations.length
+        allocationCount: activeAllocations.length,
       });
     }
 
     // Check if student has any pending complaints
-    const { Complaint } = require('../models');
+    const { Complaint } = require("../models");
     const pendingComplaints = await Complaint.findAll({
       where: {
         userId: studentId,
-        status: ['pending', 'in_progress']
-      }
+        status: ["pending", "in_progress"],
+      },
     });
 
     if (pendingComplaints.length > 0) {
-      console.log(`[deleteStudent] Student ${studentId} has ${pendingComplaints.length} pending complaint(s)`);
-      return res.status(400).json({ 
-        message: "Cannot delete student with pending complaints. Please resolve all complaints first.",
+      console.log(
+        `[deleteStudent] Student ${studentId} has ${pendingComplaints.length} pending complaint(s)`
+      );
+      return res.status(400).json({
+        message:
+          "Cannot delete student with pending complaints. Please resolve all complaints first.",
         hasPendingComplaints: true,
-        complaintCount: pendingComplaints.length
+        complaintCount: pendingComplaints.length,
       });
     }
 
     // Check if student has any active visitor logs
-    const { VisitorLog } = require('../models');
+    const { VisitorLog } = require("../models");
     const activeVisitorLogs = await VisitorLog.findAll({
       where: {
         studentId: studentId,
-        checkOut: null // Active visitor = checked in but not checked out
-      }
+        checkOut: null, // Active visitor = checked in but not checked out
+      },
     });
 
     if (activeVisitorLogs.length > 0) {
-      console.log(`[deleteStudent] Student ${studentId} has ${activeVisitorLogs.length} active visitor log(s)`);
-      return res.status(400).json({ 
-        message: "Cannot delete student with active visitor logs. Please check out all visitors first.",
+      console.log(
+        `[deleteStudent] Student ${studentId} has ${activeVisitorLogs.length} active visitor log(s)`
+      );
+      return res.status(400).json({
+        message:
+          "Cannot delete student with active visitor logs. Please check out all visitors first.",
         hasActiveVisitors: true,
-        visitorCount: activeVisitorLogs.length
+        visitorCount: activeVisitorLogs.length,
       });
     }
 
     // Safe to delete - no active allocations, complaints, or visitor logs
     await student.destroy();
-    
+
     console.log(`[deleteStudent] Student deleted successfully`);
-    
+
     res.json({ message: "Student deleted successfully" });
   } catch (err) {
     console.error("Error deleting student:", err);
@@ -663,8 +718,19 @@ exports.createWarden = async (req, res) => {
         .json({ message: "Email already exists in this hostel" });
     }
 
+    // Find the warden system role
+    const { Role } = require("../models");
+    const wardenRole = await Role.findOne({
+      where: { name: "warden", isSystemRole: true },
+    });
+
+    if (!wardenRole) {
+      console.error("❌ Warden system role not found in database");
+      return res.status(500).json({ message: "System configuration error" });
+    }
+
     // Hash the password
-    const bcrypt = require('bcrypt');
+    const bcrypt = require("bcrypt");
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const warden = await User.create({
@@ -673,6 +739,7 @@ exports.createWarden = async (req, res) => {
       password: hashedPassword,
       phone,
       role: "warden", // Always set to "warden"
+      role_id: wardenRole.id, // Set the RBAC role ID (snake_case for database)
       hostelId,
       requiresPasswordChange: true, // Force password change on first login
     });
@@ -789,7 +856,9 @@ exports.allocateRoom = async (req, res) => {
     const hostelId = getHostelIdFromRequest(req);
     const { studentId, roomId } = req.body;
 
-    console.log(`[allocateRoom] Allocating room ${roomId} to student ${studentId} in hostel ${hostelId}`);
+    console.log(
+      `[allocateRoom] Allocating room ${roomId} to student ${studentId} in hostel ${hostelId}`
+    );
 
     if (!studentId || !roomId) {
       return res
@@ -804,11 +873,15 @@ exports.allocateRoom = async (req, res) => {
     const room = await Room.findOne({ where: { id: roomId, hostelId } });
 
     if (!student) {
-      console.log(`[allocateRoom] Student ${studentId} not found in hostel ${hostelId}`);
+      console.log(
+        `[allocateRoom] Student ${studentId} not found in hostel ${hostelId}`
+      );
       return res.status(404).json({ message: "Student not found" });
     }
     if (!room) {
-      console.log(`[allocateRoom] Room ${roomId} not found in hostel ${hostelId}`);
+      console.log(
+        `[allocateRoom] Room ${roomId} not found in hostel ${hostelId}`
+      );
       return res.status(404).json({ message: "Room not found" });
     }
 
@@ -821,7 +894,9 @@ exports.allocateRoom = async (req, res) => {
     });
 
     if (existingAllocation) {
-      console.log(`[allocateRoom] Student ${studentId} already has active allocation`);
+      console.log(
+        `[allocateRoom] Student ${studentId} already has active allocation`
+      );
       return res
         .status(400)
         .json({ message: "Student already has an active room allocation" });
@@ -862,24 +937,32 @@ exports.deallocateRoom = async (req, res) => {
     const hostelId = getHostelIdFromRequest(req);
     const { allocationId: studentId } = req.params; // Accept studentId instead of allocationId
 
-    console.log(`[deallocateRoom] Deallocating student ${studentId} from hostel ${hostelId}`);
+    console.log(
+      `[deallocateRoom] Deallocating student ${studentId} from hostel ${hostelId}`
+    );
 
     // Find the active allocation for this student in this hostel
     const allocation = await RoomAllocation.findOne({
-      where: { 
-        userId: studentId, 
-        hostelId, 
-        status: "active" 
+      where: {
+        userId: studentId,
+        hostelId,
+        status: "active",
       },
       include: [{ model: Room, as: "room" }],
     });
 
     if (!allocation) {
-      console.log(`[deallocateRoom] No active allocation found for student ${studentId} in hostel ${hostelId}`);
-      return res.status(404).json({ message: "Active allocation not found for this student" });
+      console.log(
+        `[deallocateRoom] No active allocation found for student ${studentId} in hostel ${hostelId}`
+      );
+      return res
+        .status(404)
+        .json({ message: "Active allocation not found for this student" });
     }
 
-    console.log(`[deallocateRoom] Found allocation ${allocation.id} for student ${studentId} in room ${allocation.room.roomNumber}`);
+    console.log(
+      `[deallocateRoom] Found allocation ${allocation.id} for student ${studentId} in room ${allocation.room.roomNumber}`
+    );
 
     // Update allocation status
     await allocation.update({ status: "left" });
@@ -887,7 +970,9 @@ exports.deallocateRoom = async (req, res) => {
     // Update room occupancy
     await allocation.room.update({ occupied: allocation.room.occupied - 1 });
 
-    console.log(`[deallocateRoom] Successfully deallocated student ${studentId} from room ${allocation.room.roomNumber}`);
+    console.log(
+      `[deallocateRoom] Successfully deallocated student ${studentId} from room ${allocation.room.roomNumber}`
+    );
 
     res.json({ message: "Room deallocated successfully" });
   } catch (err) {
@@ -964,7 +1049,7 @@ exports.getAllComplaints = async (req, res) => {
     if (search) {
       whereClause[Op.or] = [
         { title: { [Op.iLike]: `%${search}%` } },
-        { description: { [Op.iLike]: `%${search}%` } }
+        { description: { [Op.iLike]: `%${search}%` } },
       ];
     }
 
@@ -1005,10 +1090,22 @@ exports.getAllComplaints = async (req, res) => {
 
     // Debug: Check what data is being returned
     if (complaints.length > 0) {
-      console.log('🔍 Backend: First complaint user:', complaints[0].user?.name);
-      console.log('🔍 Backend: First complaint allocations:', complaints[0].user?.allocations?.length || 0);
-      if (complaints[0].user?.allocations && complaints[0].user.allocations.length > 0) {
-        console.log('🔍 Backend: First allocation room:', complaints[0].user.allocations[0].room?.roomNumber);
+      console.log(
+        "🔍 Backend: First complaint user:",
+        complaints[0].user?.name
+      );
+      console.log(
+        "🔍 Backend: First complaint allocations:",
+        complaints[0].user?.allocations?.length || 0
+      );
+      if (
+        complaints[0].user?.allocations &&
+        complaints[0].user.allocations.length > 0
+      ) {
+        console.log(
+          "🔍 Backend: First allocation room:",
+          complaints[0].user.allocations[0].room?.roomNumber
+        );
       }
     }
 
@@ -1018,8 +1115,8 @@ exports.getAllComplaints = async (req, res) => {
         page: parseInt(page),
         limit: parseInt(limit),
         total,
-        pages: totalPages
-      }
+        pages: totalPages,
+      },
     });
   } catch (err) {
     console.error("Error fetching complaints:", err);
@@ -1031,10 +1128,15 @@ exports.updateComplaintStatus = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token
     const hostelId = getHostelIdFromRequest(req);
-    const complaintId = getIdFromRequest(req, 'complaintId'); // Route-aware parameter extraction
+    const complaintId = getIdFromRequest(req, "complaintId"); // Route-aware parameter extraction
     const { status, priority } = req.body;
 
-    console.log('🔍 Updating complaint:', { hostelId, complaintId, status, priority });
+    console.log("🔍 Updating complaint:", {
+      hostelId,
+      complaintId,
+      status,
+      priority,
+    });
 
     const complaint = await Complaint.findOne({
       where: { id: complaintId, hostelId },
@@ -1060,10 +1162,14 @@ exports.resolveComplaint = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token
     const hostelId = getHostelIdFromRequest(req);
-    const complaintId = getIdFromRequest(req, 'complaintId'); // Route-aware parameter extraction
+    const complaintId = getIdFromRequest(req, "complaintId"); // Route-aware parameter extraction
     const { resolutionNotes } = req.body;
 
-    console.log('🔍 Resolving complaint:', { hostelId, complaintId, resolutionNotes });
+    console.log("🔍 Resolving complaint:", {
+      hostelId,
+      complaintId,
+      resolutionNotes,
+    });
 
     const complaint = await Complaint.findOne({
       where: { id: complaintId, hostelId },
@@ -1102,11 +1208,11 @@ exports.deleteComplaint = async (req, res) => {
     }
 
     // Only allow deletion of pending or in_progress complaints
-    if (complaint.status === "resolved" || complaint.status === "rejected") {
-      return res.status(403).json({ 
-        message: "Cannot delete resolved or rejected complaints" 
-      });
-    }
+    // if (complaint.status === "resolved" || complaint.status === "rejected") {
+    //   return res.status(403).json({
+    //     message: "Cannot delete resolved or rejected complaints",
+    //   });
+    // }
 
     await complaint.destroy();
     res.json({ message: "Complaint deleted successfully" });
@@ -1130,6 +1236,11 @@ exports.getAllVisitors = async (req, res) => {
           as: "student",
           attributes: ["name", "email"],
         },
+        {
+          model: Room,
+          as: "room",
+          attributes: ["roomNumber"],
+        }
       ],
       order: [["createdAt", "DESC"]],
     });
@@ -1206,11 +1317,11 @@ exports.getAllVisitorLogs = async (req, res) => {
     const { status } = req.query; // Get status filter from query params
 
     let whereClause = { hostelId };
-    
+
     // Handle status filtering based on checkIn/checkOut fields
-    if (status === 'checked-in') {
+    if (status === "checked-in") {
       whereClause.checkOut = null; // Active visitor = checked in but not checked out
-    } else if (status === 'checked-out') {
+    } else if (status === "checked-out") {
       whereClause.checkOut = { [Op.ne]: null }; // Checked out visitor
     }
 
@@ -1227,9 +1338,9 @@ exports.getAllVisitorLogs = async (req, res) => {
     });
 
     // Add virtual status field to each visitor log
-    const visitorLogsWithStatus = visitorLogs.map(log => {
+    const visitorLogsWithStatus = visitorLogs.map((log) => {
       const logData = log.toJSON();
-      logData.status = logData.checkOut ? 'checked-out' : 'checked-in';
+      logData.status = logData.checkOut ? "checked-out" : "checked-in";
       return logData;
     });
 
@@ -1263,7 +1374,7 @@ exports.createVisitorLog = async (req, res) => {
       relation,
       studentId,
       checkIn: checkIn || new Date(),
-      hostelId
+      hostelId,
     });
 
     res.status(201).json(visitorLog);
@@ -1277,7 +1388,7 @@ exports.checkoutVisitor = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token
     const hostelId = getHostelIdFromRequest(req);
-    const visitorId = getIdFromRequest(req, 'visitorId'); // Route-aware parameter extraction
+    const visitorId = getIdFromRequest(req, "visitorId"); // Route-aware parameter extraction
 
     if (!visitorId) {
       return res.status(400).json({ message: "Visitor ID is required" });
@@ -1298,10 +1409,10 @@ exports.checkoutVisitor = async (req, res) => {
     }
 
     // Update checkOut time
-    await visitor.update({ 
-      checkOut: new Date()
+    await visitor.update({
+      checkOut: new Date(),
     });
-    
+
     res.json({ message: "Visitor checked out successfully", visitor });
   } catch (err) {
     console.error("Error checking out visitor:", err);
@@ -1313,7 +1424,7 @@ exports.updateVisitorLog = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token
     const hostelId = getHostelIdFromRequest(req);
-    const visitorId = getIdFromRequest(req, 'visitorId'); // Route-aware parameter extraction
+    const visitorId = getIdFromRequest(req, "visitorId"); // Route-aware parameter extraction
     const updateData = req.body;
 
     const visitor = await VisitorLog.findOne({
@@ -1337,7 +1448,7 @@ exports.deleteVisitorLog = async (req, res) => {
   try {
     // Extract hostelId from URL parameters or JWT token, visitorId from route params
     const hostelId = getHostelIdFromRequest(req);
-    const visitorId = getIdFromRequest(req, 'visitorId'); // Route-aware parameter extraction
+    const visitorId = getIdFromRequest(req, "visitorId"); // Route-aware parameter extraction
 
     const visitorLog = await VisitorLog.findOne({
       where: {
@@ -1524,5 +1635,583 @@ exports.getDashboardAnalytics = async (req, res) => {
   } catch (err) {
     console.error("Error fetching dashboard analytics:", err);
     res.status(500).json({ message: "Failed to fetch analytics" });
+  }
+};
+
+// ========================================
+// STAFF MANAGEMENT METHODS
+// ========================================
+
+/**
+ * Get all staff members for a hostel
+ */
+exports.getAllStaff = async (req, res) => {
+  try {
+    const hostelId = getHostelIdFromRequest(req);
+
+    // Get all users with custom roles (non-system roles) for this hostel
+    const staff = await User.findAll({
+      where: {
+        hostelId,
+        role: {
+          [Op.ne]: "student", // Exclude students
+        },
+      },
+      include: [
+        {
+          model: require("../models").Role,
+          as: "rbacRole",
+          attributes: ["id", "name", "displayName", "isSystemRole"],
+          required: false, // LEFT JOIN to include users even if they don't have a role_id
+        },
+      ],
+      attributes: [
+        "id",
+        "name",
+        "email",
+        "phone",
+        "role",
+        "role_id",
+        "isActive",
+        "createdAt",
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    // Transform the data to include role information and permissions
+    const staffWithRoles = await Promise.all(
+      staff.map(async (member) => {
+        let roleData = null;
+        let permissions = [];
+
+        if (member.rbacRole) {
+          roleData = {
+            id: member.rbacRole.id,
+            name: member.rbacRole.name,
+            displayName: member.rbacRole.displayName,
+            isSystemRole: member.rbacRole.isSystemRole,
+          };
+
+          // Get permissions for this role
+          if (!member.rbacRole.isSystemRole) {
+            const rolePermissions =
+              await require("../models").RolePermission.findAll({
+                where: { roleId: member.rbacRole.id },
+                include: [
+                  {
+                    model: require("../models").Permission,
+                    as: "permission",
+                    attributes: ["id", "name", "displayName", "category"],
+                  },
+                ],
+              });
+            permissions = rolePermissions.map((rp) => rp.permission);
+          } else {
+            // For system roles, get permissions from the system role
+            const systemRolePermissions =
+              await require("../models").RolePermission.findAll({
+                where: { roleId: member.rbacRole.id },
+                include: [
+                  {
+                    model: require("../models").Permission,
+                    as: "permission",
+                    attributes: ["id", "name", "displayName", "category"],
+                  },
+                ],
+              });
+            permissions = systemRolePermissions.map((rp) => rp.permission);
+          }
+        } else if (member.role) {
+          // Fallback: if no rbacRole but has legacy role, try to find the role (system or custom)
+          const role = await require("../models").Role.findOne({
+            where: {
+              name: member.role,
+            },
+          });
+
+          if (role) {
+            roleData = {
+              id: role.id,
+              name: role.name,
+              displayName: role.displayName,
+              isSystemRole: role.isSystemRole,
+            };
+
+            // Get permissions for the role (both system and custom roles)
+            const rolePermissions =
+              await require("../models").RolePermission.findAll({
+                where: { roleId: role.id },
+                include: [
+                  {
+                    model: require("../models").Permission,
+                    as: "permission",
+                    attributes: ["id", "name", "displayName", "category"],
+                  },
+                ],
+              });
+            permissions = rolePermissions.map((rp) => rp.permission);
+          } else {
+            // If no role found, create a fallback role data
+            roleData = {
+              id: null,
+              name: member.role,
+              displayName:
+                member.role.charAt(0).toUpperCase() + member.role.slice(1),
+              isSystemRole: false,
+            };
+          }
+        }
+
+        return {
+          id: member.id,
+          name: member.name,
+          email: member.email,
+          phone: member.phone,
+          role: roleData,
+          permissions,
+          isActive: member.isActive,
+          createdAt: member.createdAt,
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      data: staffWithRoles,
+    });
+  } catch (error) {
+    console.error("Error fetching staff:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch staff members",
+    });
+  }
+};
+
+/**
+ * Create a new staff member
+ */
+exports.createStaff = async (req, res) => {
+  try {
+    const hostelId = getHostelIdFromRequest(req);
+    const { name, email, phone, roleId, password } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !roleId || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, email, role, and password are required",
+      });
+    }
+
+    // Check if email already exists WITHIN THE SAME HOSTEL (not globally)
+    const existingUser = await User.findOne({ where: { email, hostelId } });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already exists in this hostel",
+      });
+    }
+
+    // Verify the role exists and belongs to this hostel (or is a system role)
+    const role = await require("../models").Role.findOne({
+      where: {
+        id: roleId,
+        [require("sequelize").Op.or]: [
+          { hostelId: hostelId }, // Custom role for this hostel
+          { isSystemRole: true }, // System role (owner, student, warden)
+        ],
+      },
+    });
+
+    if (!role) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid role selected or role does not belong to this hostel",
+      });
+    }
+
+    // Hash the password
+    const bcrypt = require("bcrypt");
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create the staff member
+    const staffMember = await User.create({
+      name,
+      email,
+      phone,
+      password: hashedPassword, // Use hashed password
+      role: role.name,
+      roleId: roleId, // Use camelCase field name as defined in the model
+      hostelId,
+      isActive: true,
+      requiresPasswordChange: true, // Force password change on first login
+    });
+
+    // Get the created staff member with role information and permissions
+    const createdStaff = await User.findByPk(staffMember.id, {
+      include: [
+        {
+          model: require("../models").Role,
+          as: "rbacRole",
+          attributes: ["id", "name", "displayName", "isSystemRole"],
+        },
+      ],
+      attributes: [
+        "id",
+        "name",
+        "email",
+        "phone",
+        "role",
+        "isActive",
+        "createdAt",
+      ],
+    });
+
+    // Get permissions for the role
+    let permissions = [];
+    if (createdStaff.rbacRole) {
+      const rolePermissions = await require("../models").RolePermission.findAll(
+        {
+          where: { roleId: createdStaff.rbacRole.id },
+          include: [
+            {
+              model: require("../models").Permission,
+              as: "permission",
+              attributes: ["id", "name", "displayName", "category"],
+            },
+          ],
+        }
+      );
+      permissions = rolePermissions.map((rp) => rp.permission);
+    }
+
+    // Transform the data to match the format expected by the frontend
+    const staffWithPermissions = {
+      id: createdStaff.id,
+      name: createdStaff.name,
+      email: createdStaff.email,
+      phone: createdStaff.phone,
+      role: createdStaff.rbacRole
+        ? {
+            id: createdStaff.rbacRole.id,
+            name: createdStaff.rbacRole.name,
+            displayName: createdStaff.rbacRole.displayName,
+            isSystemRole: createdStaff.rbacRole.isSystemRole,
+          }
+        : null,
+      permissions,
+      isActive: createdStaff.isActive,
+      createdAt: createdStaff.createdAt,
+    };
+
+    res.status(201).json({
+      success: true,
+      message: "Staff member created successfully",
+      data: staffWithPermissions,
+    });
+  } catch (error) {
+    console.error("Error creating staff member:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create staff member",
+    });
+  }
+};
+
+/**
+ * Update a staff member
+ */
+exports.updateStaff = async (req, res) => {
+  try {
+    const hostelId = getHostelIdFromRequest(req);
+    const staffId = getIdFromRequest(req, "staffId");
+    const { name, email, phone, roleId } = req.body;
+
+    // Find the staff member
+    const staffMember = await User.findOne({
+      where: { id: staffId, hostelId },
+      include: [
+        {
+          model: require("../models").Role,
+          as: "rbacRole",
+          attributes: ["id", "name", "displayName", "isSystemRole"],
+        },
+      ],
+    });
+
+    if (!staffMember) {
+      return res.status(404).json({
+        success: false,
+        message: "Staff member not found",
+      });
+    }
+
+    // Check if email is being changed and if it already exists
+    if (email && email !== staffMember.email) {
+      const existingUser = await User.findOne({
+        where: { email, id: { [Op.ne]: staffId } },
+      });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: "Email already exists",
+        });
+      }
+    }
+
+    // Verify the role exists if being changed
+    if (roleId && roleId !== staffMember.roleId) {
+      const role = await require("../models").Role.findOne({
+        where: { id: roleId },
+      });
+
+      if (!role) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid role selected",
+        });
+      }
+    }
+
+    // Update the staff member
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (email) updateData.email = email;
+    if (phone !== undefined) updateData.phone = phone;
+    if (roleId) {
+      updateData.role_id = roleId; // Use snake_case for database
+      updateData.role = (await require("../models").Role.findByPk(roleId)).name;
+    }
+
+    await staffMember.update(updateData);
+
+    // Get the updated staff member
+    const updatedStaff = await User.findByPk(staffId, {
+      include: [
+        {
+          model: require("../models").Role,
+          as: "rbacRole",
+          attributes: ["id", "name", "displayName", "isSystemRole"],
+        },
+      ],
+      attributes: [
+        "id",
+        "name",
+        "email",
+        "phone",
+        "role",
+        "isActive",
+        "createdAt",
+      ],
+    });
+
+    res.json({
+      success: true,
+      message: "Staff member updated successfully",
+      data: updatedStaff,
+    });
+  } catch (error) {
+    console.error("Error updating staff member:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update staff member",
+    });
+  }
+};
+
+/**
+ * Delete a staff member with cascading deletion
+ */
+exports.deleteStaff = async (req, res) => {
+  const transaction = await require("../models").sequelize.transaction();
+
+  try {
+    const hostelId = getHostelIdFromRequest(req);
+    const staffId = getIdFromRequest(req, "staffId");
+
+    // Find the staff member with their role information
+    const staffMember = await User.findOne({
+      where: { id: staffId, hostelId },
+      include: [
+        {
+          model: require("../models").Role,
+          as: "rbacRole",
+          attributes: ["id", "name", "isSystemRole"],
+        },
+      ],
+      transaction,
+    });
+
+    if (!staffMember) {
+      await transaction.rollback();
+      return res.status(404).json({
+        success: false,
+        message: "Staff member not found",
+      });
+    }
+
+    // Don't allow deleting the owner
+    if (staffMember.role === "owner") {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "Cannot delete the hostel owner",
+      });
+    }
+
+    console.log("🗑️ Starting cascading deletion for staff member:", {
+      staffId,
+      name: staffMember.name,
+      role: staffMember.role,
+      roleId: staffMember.roleId,
+      isSystemRole: staffMember.rbacRole?.isSystemRole,
+    });
+
+    // 🚀 CASCADE DELETE: Handle all related records
+
+    // 1. Check if this staff member created any custom roles
+    const createdRoles = await require("../models").Role.findAll({
+      where: {
+        createdBy: staffId,
+        hostelId: hostelId,
+      },
+      transaction,
+    });
+
+    console.log(
+      "🗑️ Found custom roles created by staff member:",
+      createdRoles.length
+    );
+
+    // 2. For each custom role created by this staff member:
+    // ✅ PRESERVE ROLES: Don't delete the roles, just unassign users from them
+    let usersReassigned = 0;
+    for (const role of createdRoles) {
+      console.log("� Preserving custom role but unassigning users:", role.name);
+
+      // Update any users assigned to this role to remove the role assignment
+      const updatedUsers = await User.update(
+        { roleId: null, role: "student" }, // Reset to default student role
+        {
+          where: { roleId: role.id },
+          transaction,
+        }
+      );
+
+      usersReassigned += updatedUsers[0] || 0;
+
+      // ✅ PRESERVE: Keep the role and its permissions intact
+      // The role can be reassigned to other staff members later
+      console.log(`🔄 Role "${role.name}" preserved for future assignment`);
+    }
+
+    // 3. Delete any complaints filed by this staff member
+    const complaintsDeleted = await require("../models").Complaint.destroy({
+      where: { userId: staffId },
+      transaction,
+    });
+    console.log(
+      "🗑️ Deleted complaints filed by staff member:",
+      complaintsDeleted
+    );
+
+    // 4. Delete any room allocations for this staff member (if they were a student)
+    const allocationsDeleted =
+      await require("../models").RoomAllocation.destroy({
+        where: { userId: staffId },
+        transaction,
+      });
+    console.log("🗑️ Deleted room allocations:", allocationsDeleted);
+
+    // 5. Delete any visitor logs where this staff member was the student
+    const visitorLogsDeleted = await require("../models").VisitorLog.destroy({
+      where: { studentId: staffId },
+      transaction,
+    });
+    console.log("🗑️ Deleted visitor logs:", visitorLogsDeleted);
+
+    // 6. Finally, delete the staff member themselves
+    await staffMember.destroy({ transaction });
+
+    // 7. Commit the transaction
+    await transaction.commit();
+
+    console.log(
+      "✅ Successfully deleted staff member and handled related records"
+    );
+
+    res.json({
+      success: true,
+      message:
+        "Staff member deleted successfully. Custom roles preserved for reassignment.",
+      deletedRecords: {
+        customRoles: 0, // Roles were preserved, not deleted
+        rolesPreserved: createdRoles.length, // New field to indicate preserved roles
+        usersReassigned: usersReassigned, // Users unassigned from preserved roles
+        complaints: complaintsDeleted,
+        roomAllocations: allocationsDeleted,
+        visitorLogs: visitorLogsDeleted,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error during cascading deletion:", error);
+    await transaction.rollback();
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete staff member and related records",
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Internal server error",
+    });
+  }
+};
+
+/**
+ * Toggle staff member active status
+ */
+exports.toggleStaffStatus = async (req, res) => {
+  try {
+    const hostelId = getHostelIdFromRequest(req);
+    const staffId = getIdFromRequest(req, "staffId");
+    const { isActive } = req.body;
+
+    // Find the staff member
+    const staffMember = await User.findOne({
+      where: { id: staffId, hostelId },
+    });
+
+    if (!staffMember) {
+      return res.status(404).json({
+        success: false,
+        message: "Staff member not found",
+      });
+    }
+
+    // Don't allow deactivating the owner
+    if (staffMember.role === "owner" && !isActive) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot deactivate the hostel owner",
+      });
+    }
+
+    // Update the status
+    await staffMember.update({ isActive });
+
+    res.json({
+      success: true,
+      message: `Staff member ${
+        isActive ? "activated" : "deactivated"
+      } successfully`,
+    });
+  } catch (error) {
+    console.error("Error toggling staff status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update staff status",
+    });
   }
 };

@@ -3,7 +3,11 @@
 import React, { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PasswordChangeModal } from './PasswordChangeModal';
-import { api } from '@/lib/http';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import httpClient from '@/lib/http';
 import { notification } from '@/lib/toast';
 
 export function PasswordChangeRequirement() {
@@ -13,7 +17,8 @@ export function PasswordChangeRequirement() {
 
   // Check if user needs to change password
   const needsPasswordChange = user?.requiresPasswordChange && 
-    (user.role === 'warden' || user.role === 'student');
+    (user.role === 'warden' || user.role === 'student' || 
+     (user.role && !['owner', 'superadmin', 'admin'].includes(user.role)));
 
   // Show modal if user needs password change
   React.useEffect(() => {
@@ -22,13 +27,22 @@ export function PasswordChangeRequirement() {
       const reminderTime = localStorage.getItem('passwordChangeReminder');
       const now = Date.now();
       
+      console.log('🔍 Password Change Check:', {
+        reminderTime,
+        now,
+        reminderValid: reminderTime ? parseInt(reminderTime) > now : false
+      });
+      
       if (!reminderTime || parseInt(reminderTime) <= now) {
+        console.log('🔍 Opening password change modal...');
         // Add a small delay to ensure login is complete
         const timer = setTimeout(() => {
           setIsModalOpen(true);
         }, 500);
         
         return () => clearTimeout(timer);
+      } else {
+        console.log('🔍 Password change modal blocked by reminder');
       }
     }
   }, [needsPasswordChange]);
@@ -37,12 +51,12 @@ export function PasswordChangeRequirement() {
     try {
       setIsLoading(true);
       
-      const response = await api.put('/auth/change-password', {
+      const response = await httpClient.put('/auth/change-password', {
         currentPassword: currentPassword,
         newPassword: newPassword
       });
 
-      if (response.data.success) {
+      if ((response as any)?.data?.success) {
         // Update user state to remove password change requirement
         updateUser({ requiresPasswordChange: false });
         setIsModalOpen(false);

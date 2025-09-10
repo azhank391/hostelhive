@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams } from 'next/navigation';
 import { useCurrentHostelId } from '@/lib/context-aware-api';
+import { usePermissions, PermissionGate } from '@/contexts/PermissionContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -77,6 +79,29 @@ export default function VisitorsPage() {
   const params = useParams<{ hostelId: string }>();
   const hostelId = params?.hostelId || '';
   const { hasHostel, getHostelId } = useCurrentHostelId();
+  
+  // Get user role from auth context
+  const { user, isLoading } = useAuth();
+  
+  // Permission checks
+  const { hasPermission, permissions } = usePermissions();
+  const canViewVisitors = hasPermission('visitor_read');
+  const canCreateVisitors = hasPermission('visitor_create');
+  const canManageVisitors = hasPermission('visitor_update');
+  const canCheckoutVisitors = hasPermission('visitor_checkout');
+  const canViewVisitorStats = hasPermission('view_visitor_stats');
+  const canExportVisitorData = hasPermission('export_visitor_data');
+  
+  // Debug logging
+  console.log('🔍 Visitors Page Debug:', {
+    user: user ? { role: user.role, hostelId: user.hostelId } : null,
+    hasHostel,
+    hostelId,
+    permissions: permissions.map(p => p.name),
+    canViewVisitors,
+    canCreateVisitors,
+    canManageVisitors
+  });
   
   // Utility function for debouncing
   const debounce = (func: Function, delay: number) => {
@@ -248,6 +273,15 @@ export default function VisitorsPage() {
   useEffect(() => {
     async function fetchStudents() {
       if (!hasHostel || !hostelId) return;
+      
+      // Only fetch students if user has view_students permission
+      if (!hasPermission('student_read')) {
+        console.log('🔍 Visitors: Skipping students fetch - no view_students permission');
+        // Set empty students array so forms can still work
+        setStudents([]);
+        return;
+      }
+      
       try {
         const response = await fetch(`/api/hostels/${hostelId}/students`, {
           headers: {
@@ -288,7 +322,7 @@ export default function VisitorsPage() {
       }
     }
     fetchStudents();
-  }, [hasHostel, hostelId]);
+  }, [hasHostel, hostelId, hasPermission]);
 
   // Debounced search handler
   const debouncedSearch = useCallback(
@@ -525,6 +559,26 @@ export default function VisitorsPage() {
     setFormData(prev => ({ ...prev, [name]: value }));
   }, []);
 
+  // Check if user has permission to view visitors
+  if (!canViewVisitors) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto h-16 w-16 text-gray-400 mb-4">
+            <UsersIcon size={64} />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
+          <p className="text-gray-600 mb-4">
+            You don't have permission to view visitor management.
+          </p>
+          <p className="text-sm text-gray-500">
+            Contact your administrator to get access to visitor management features.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -552,18 +606,26 @@ export default function VisitorsPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Visitor Management</h1>
           <p className="mt-2 text-gray-600">
-            Manage and track all visitors to your hostel
+            {canCreateVisitors 
+              ? 'Manage and track all visitors to your hostel'
+              : canManageVisitors 
+                ? 'View and manage visitor records'
+                : 'View visitor records'
+            }
           </p>
         </div>
         
-        <Button variant="primary" className="flex items-center" onClick={() => setIsCreateModalOpen(true)}>
-          <PlusIcon size={16} className="mr-2" />
-          Add New Visitor
-        </Button>
+        <PermissionGate permission="visitor_create">
+          <Button variant="primary" className="flex items-center" onClick={() => setIsCreateModalOpen(true)}>
+            <PlusIcon size={16} className="mr-2" />
+            Add New Visitor
+          </Button>
+        </PermissionGate>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <PermissionGate permission="view_visitor_stats">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="p-6">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-blue-100 text-blue-600">
@@ -628,10 +690,12 @@ export default function VisitorsPage() {
             </div>
           </div>
         </Card>
-      </div>
+        </div>
+      </PermissionGate>
 
       {/* Filters and Search */}
-      <Card className="p-6">
+      <PermissionGate permission="visitor_read">
+        <Card className="p-6">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
           <div className="flex-1 relative">
@@ -674,10 +738,12 @@ export default function VisitorsPage() {
             )}
           </div>
         </div>
-      </Card>
+        </Card>
+      </PermissionGate>
 
       {/* Visitors Table */}
-      <Card className="p-6">
+      <PermissionGate permission="visitor_read">
+        <Card className="p-6">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -698,7 +764,7 @@ export default function VisitorsPage() {
                   Check In
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  {canManageVisitors ? 'Actions' : 'View'}
                 </th>
               </tr>
             </thead>
@@ -769,27 +835,33 @@ export default function VisitorsPage() {
                       <Button variant="outline" size="sm" onClick={() => handleViewVisitor(visitor)}>
                         <EyeIcon size={14} />
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => openEditModal(visitor)}>
-                        <EditIcon size={14} />
-                      </Button>
-                      {getVisitorStatus(visitor) === 'checked_in' && (
-                        <Button 
-                          variant="primary" 
-                          size="sm" 
-                          onClick={() => handleCheckOutVisitor(visitor)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                          <LogOutIcon size={14} />
+                      <PermissionGate permission="visitor_update">
+                        <Button variant="outline" size="sm" onClick={() => openEditModal(visitor)}>
+                          <EditIcon size={14} />
                         </Button>
-                      )}
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleViewVisitor(visitor)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <TrashIcon size={14} />
-                      </Button>
+                      </PermissionGate>
+                      <PermissionGate permission="visitor_checkout">
+                        {getVisitorStatus(visitor) === 'checked_in' && (
+                          <Button 
+                            variant="primary" 
+                            size="sm" 
+                            onClick={() => handleCheckOutVisitor(visitor)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            <LogOutIcon size={14} />
+                          </Button>
+                        )}
+                      </PermissionGate>
+                      <PermissionGate permission="visitor_update">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleViewVisitor(visitor)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <TrashIcon size={14} />
+                        </Button>
+                      </PermissionGate>
                     </div>
                   </td>
                 </tr>
@@ -814,10 +886,12 @@ export default function VisitorsPage() {
             </div>
           </div>
         )}
-      </Card>
+        </Card>
+      </PermissionGate>
 
       {/* Create Visitor Modal */}
-      <Modal
+      <PermissionGate permission="visitor_create">
+        <Modal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         title="Create New Visitor"
@@ -835,9 +909,10 @@ export default function VisitorsPage() {
                 onChange={handleCreateFormChange}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-transparent"
+                disabled={students.length === 0}
               >
                 <option value="">
-                  {students.length === 0 ? 'No students with room allocations found' : 'Select a Host Student'}
+                  {students.length === 0 ? 'No students available - insufficient permissions' : 'Select a Host Student'}
                 </option>
                 {students.map((student) => (
                   <option key={student.id} value={student.id}>
@@ -847,7 +922,10 @@ export default function VisitorsPage() {
               </select>
               {students.length === 0 && (
                 <p className="mt-1 text-sm text-amber-600">
-                  Note: Only students with active room allocations can host visitors.
+                  {!hasPermission('student_read') 
+                    ? 'You need view_students permission to create visitors. Contact your administrator.'
+                    : 'No students with room allocations found. Only students with active room allocations can host visitors.'
+                  }
                 </p>
               )}
             </div>
@@ -898,10 +976,12 @@ export default function VisitorsPage() {
             </div>
           </div>
         </form>
-      </Modal>
+        </Modal>
+      </PermissionGate>
 
       {/* Edit Visitor Modal */}
-      <Modal
+      <PermissionGate permission="visitor_update">
+        <Modal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         title="Edit Visitor"
@@ -919,9 +999,10 @@ export default function VisitorsPage() {
                 onChange={handleEditFormChange}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-transparent"
+                disabled={students.length === 0}
               >
                 <option value="">
-                  {students.length === 0 ? 'No students with room allocations found' : 'Select a Host Student'}
+                  {students.length === 0 ? 'No students available - insufficient permissions' : 'Select a Host Student'}
                 </option>
                 {students.map((student) => (
                   <option key={student.id} value={student.id}>
@@ -931,7 +1012,10 @@ export default function VisitorsPage() {
               </select>
               {students.length === 0 && (
                 <p className="mt-1 text-sm text-amber-600">
-                  Note: Only students with active room allocations can host visitors.
+                  {!hasPermission('student_read') 
+                    ? 'You need view_students permission to edit visitors. Contact your administrator.'
+                    : 'No students with room allocations found. Only students with active room allocations can host visitors.'
+                  }
                 </p>
               )}
             </div>
@@ -982,10 +1066,12 @@ export default function VisitorsPage() {
             </div>
           </div>
         </form>
-      </Modal>
+        </Modal>
+      </PermissionGate>
 
       {/* View Visitor Modal */}
-      <Modal
+      <PermissionGate permission="visitor_read">
+        <Modal
         isOpen={isViewModalOpen}
         onClose={() => setIsViewModalOpen(false)}
         title={`Visitor Details - ${selectedVisitor?.visitorName || 'Unknown'}`}
@@ -1129,17 +1215,22 @@ export default function VisitorsPage() {
             <Button variant="outline" onClick={() => setIsViewModalOpen(false)}>
               Close
             </Button>
-            {selectedVisitor && getVisitorStatus(selectedVisitor) === 'checked_in' && (
-              <Button variant="primary" onClick={() => handleCheckOutVisitor(selectedVisitor)} disabled={isSubmitting}>
-                {isSubmitting ? 'Checking Out...' : 'Check Out Visitor'}
+            <PermissionGate permission="visitor_checkout">
+              {selectedVisitor && getVisitorStatus(selectedVisitor) === 'checked_in' && (
+                <Button variant="primary" onClick={() => handleCheckOutVisitor(selectedVisitor)} disabled={isSubmitting}>
+                  {isSubmitting ? 'Checking Out...' : 'Check Out Visitor'}
+                </Button>
+              )}
+            </PermissionGate>
+            <PermissionGate permission="visitor_update">
+              <Button variant="outline" onClick={() => handleDeleteVisitor()} disabled={isSubmitting} className="text-red-600 hover:text-red-700">
+                {isSubmitting ? 'Deleting...' : 'Delete Visitor'}
               </Button>
-            )}
-            <Button variant="outline" onClick={() => handleDeleteVisitor()} disabled={isSubmitting} className="text-red-600 hover:text-red-700">
-              {isSubmitting ? 'Deleting...' : 'Delete Visitor'}
-            </Button>
+            </PermissionGate>
           </div>
         </div>
-      </Modal>
+        </Modal>
+      </PermissionGate>
     </div>
   );
 }

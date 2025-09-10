@@ -151,7 +151,7 @@ export const hostelApi = {
     city?: string;
     address?: string;
   }) {
-    const result = await apiClient.post<Hostel>('/hostels', hostelData, {
+    const result = await apiClient.post<{ message: string; hostel: Hostel }>('/hostels', hostelData, {
       skipCache: true
     });
     
@@ -459,21 +459,37 @@ export const hostelApi = {
   },
 
   async checkoutVisitor(hostelId: string, visitorId: string) {
-    const result = await apiClient.put(`/admin/visitor-logs/${visitorId}/checkout`, {}, {
+  const result = await apiClient.post(`/hostels/${hostelId}/visitors/${visitorId}/checkout`, {}, {
       skipCache: true
     });
     
     // Invalidate visitor logs cache
-    apiClient.invalidateCache(`/admin/visitor-logs`);
+  apiClient.invalidateCache(`/hostels/${hostelId}/visitors`);
     return result;
   }
 };
+
+// Student's limited view of hostel data
+interface StudentHostel {
+  id: string;
+  name: string;
+  subdomain: string;
+  isActive: boolean;
+  plan: string;
+  email: string;
+}
 
 // ==========================================
 // STUDENT API (Token-based: /student/*)
 // ==========================================
 
 export const studentApi = {
+  async getMyHostel() {
+    return apiClient.get<StudentHostel>('/student/my-hostel', {
+      cacheTTL: 300000 // Cache for 5 minutes - students' hostel info rarely changes
+    });
+  },
+
   async getDashboard() {
     return apiClient.get('/student/dashboard', {
       cacheTTL: 30000 // Cache for 30 seconds
@@ -815,32 +831,11 @@ export const adminApi = {
   resolveComplaint: (hostelId: string, complaintId: string, resolution?: string) => hostelApi.resolveComplaint(hostelId, complaintId, resolution),
 
   // Visitor Management
-  getVisitorLogs: (hostelId: string, params?: any) => {
-    return apiClient.get(`/admin/visitor-logs`, {
-      params,
-      cacheTTL: 30000 // Cache for 30 seconds
-    });
-  },
-  createVisitorLog: (hostelId: string, visitorData: any) => {
-    return apiClient.post(`/admin/visitor-logs`, visitorData, {
-      skipCache: true
-    });
-  },
-  updateVisitorLog: (hostelId: string, visitorId: string, updates: any) => {
-    return apiClient.put(`/admin/visitor-logs/${visitorId}`, updates, {
-      skipCache: true
-    });
-  },
-  deleteVisitorLog: (hostelId: string, visitorId: string) => {
-    return apiClient.delete(`/admin/visitor-logs/${visitorId}`, {
-      skipCache: true
-    });
-  },
-  checkoutVisitor: (hostelId: string, visitorId: string) => {
-    return apiClient.put(`/admin/visitor-logs/${visitorId}/checkout`, {}, {
-      skipCache: true
-    });
-  }
+  getVisitorLogs: (hostelId: string, params?: any) => hostelApi.getVisitors(hostelId, params),
+  createVisitorLog: (hostelId: string, visitorData: any) => hostelApi.createVisitor(hostelId, visitorData),
+  updateVisitorLog: (hostelId: string, visitorId: string, updates: any) => hostelApi.updateVisitor(hostelId, visitorId, updates),
+  deleteVisitorLog: (hostelId: string, visitorId: string) => hostelApi.deleteVisitor(hostelId, visitorId),
+  checkoutVisitor: (hostelId: string, visitorId: string) => hostelApi.checkoutVisitor(hostelId, visitorId)
 };
 
 // ==========================================

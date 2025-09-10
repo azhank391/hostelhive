@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useCurrentHostelId } from '@/lib/context-aware-api';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
+import { PermissionGate } from '@/components/PermissionGate';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -36,7 +38,16 @@ export default function HostelComplaintsPage() {
   const { hasHostel, getHostelId, isReady } = useCurrentHostelId();
   
   // Get user role from auth context
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  const { hasPermission } = usePermissions();
+  
+  // Permission checks
+  const canViewComplaints = hasPermission('complaint_read');
+  const canCreateComplaints = hasPermission('complaint_create');
+  const canHandleComplaints = hasPermission('complaint_handle');
+  const canDeleteComplaints = hasPermission('complaint_delete');
+  const canViewComplaintStats = hasPermission('complaint_stats_read');
+  
   
   // Debug counter to track effect runs and prevent infinite loops
   const effectRunCount = useRef(0);
@@ -62,15 +73,10 @@ export default function HostelComplaintsPage() {
 
   // Load all complaints function - FIXED: Simplified and direct
   const loadAllComplaints = useCallback(async () => {
-    console.log('🔍 loadAllComplaints called for hostel:', hostelId);
-    
     try {
       console.log('📡 Setting loading to true');
       setLoading(true);
       setError(null);
-      
-      console.log('📡 Loading complaints for hostel:', hostelId);
-      
       // Fetch all complaints without pagination for local filtering
       const response = await fetch(`/api/hostels/${hostelId}/complaints?limit=1000`, {
         headers: {
@@ -255,6 +261,38 @@ export default function HostelComplaintsPage() {
     );
   }
 
+  // Show loading spinner while authentication is loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user has permission to view complaints
+  if (!canViewComplaints) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto h-16 w-16 text-gray-400 mb-4">
+            <AlertCircleIcon size={64} />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
+          <p className="text-gray-600 mb-4">
+            You don't have permission to view complaints.
+          </p>
+          <p className="text-sm text-gray-500">
+            Contact your administrator to get access to complaint management features.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const pendingCount = complaints.filter(c => c.status === 'pending').length;
   const resolvedCount = complaints.filter(c => c.status === 'resolved').length;
   const urgentCount = complaints.filter(c => c.priority === 'urgent').length;
@@ -266,23 +304,28 @@ export default function HostelComplaintsPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Complaint Management</h1>
           <p className="mt-2 text-gray-600">
-            {user?.role === 'student' 
-              ? 'Submit and track your complaints' 
-              : 'View and manage complaints from students'
+            {canHandleComplaints 
+              ? 'View and manage complaints from students'
+              : canCreateComplaints 
+                ? 'Submit and track your complaints' 
+                : 'View complaints'
             }
           </p>
         </div>
         
-        {user?.role === 'student' && (
-          <Button variant="primary" className="flex items-center">
-            <PlusIcon size={16} className="mr-2" />
-            Add New Complaint
-          </Button>
-        )}
+        <PermissionGate permission="complaint_create">
+          {user?.role === 'student' && (
+            <Button variant="primary" className="flex items-center">
+              <PlusIcon size={16} className="mr-2" />
+              Add New Complaint
+            </Button>
+          )}
+        </PermissionGate>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <PermissionGate permission="complaint_stats_read">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="p-6">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-blue-100 text-blue-600">
@@ -340,10 +383,12 @@ export default function HostelComplaintsPage() {
             </div>
           </div>
         </Card>
-      </div>
+        </div>
+      </PermissionGate>
 
       {/* Filters and Search */}
-      <Card className="p-6">
+      <PermissionGate permission="complaint_read">
+        <Card className="p-6">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
           <div className="flex-1 relative">
@@ -402,10 +447,12 @@ export default function HostelComplaintsPage() {
              </Button>
            )}
         </div>
-      </Card>
+        </Card>
+      </PermissionGate>
 
       {/* Complaints Table */}
-      <Card className="p-6">
+      <PermissionGate permission="complaint_read">
+        <Card className="p-6">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -414,7 +461,7 @@ export default function HostelComplaintsPage() {
                   Complaint
                 </th>
                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                   {user?.role === 'student' ? 'Status' : 'Student'}
+                   {canHandleComplaints ? 'Student' : 'Status'}
                  </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Priority
@@ -426,7 +473,7 @@ export default function HostelComplaintsPage() {
                   Created
                 </th>
                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                   {user?.role === 'student' ? 'Actions' : 'Manage'}
+                   {canHandleComplaints ? 'Manage' : 'Actions'}
                  </th>
               </tr>
             </thead>
@@ -444,15 +491,8 @@ export default function HostelComplaintsPage() {
                     </div>
                   </td>
                                      <td className="px-6 py-4 whitespace-nowrap">
-                     {user?.role === 'student' ? (
-                       // For students, show status prominently
-                       <div className="text-sm text-gray-900">
-                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(complaint.status)}`}>
-                           {complaint.status?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                         </span>
-                       </div>
-                                           ) : (
-                        // For owners, show student info
+                     {canHandleComplaints ? (
+                        // For users who can handle complaints, show student info
                         <div>
                           <div className="text-sm font-medium text-gray-900">
                             {complaint.user?.name || 'Unknown'}
@@ -468,6 +508,13 @@ export default function HostelComplaintsPage() {
                             </div>
                           )}
                         </div>
+                                           ) : (
+                       // For users who can only create/view, show status prominently
+                       <div className="text-sm text-gray-900">
+                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(complaint.status)}`}>
+                           {complaint.status?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                         </span>
+                       </div>
                       )}
                    </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -485,13 +532,8 @@ export default function HostelComplaintsPage() {
                    </td>
                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                      <div className="flex space-x-2">
-                       {user?.role === 'student' ? (
-                         // Students can only view their complaints
-                         <Button variant="outline" size="sm">
-                           <EyeIcon size={14} />
-                         </Button>
-                       ) : (user?.role === 'owner' || user?.role === 'warden') ? (
-                         // Owners and Wardens can update status and priority
+                       {canHandleComplaints ? (
+                         // Users who can handle complaints can update status and priority
                          <>
                            {/* Status Update Dropdown */}
                            <div className="relative inline-block text-left">
@@ -520,9 +562,68 @@ export default function HostelComplaintsPage() {
                                <option value="urgent">Urgent</option>
                              </select>
                            </div>
+                           
+                           {/* Delete Button */}
+                           <PermissionGate permission="complaint_delete">
+                             <Button 
+                               variant="outline" 
+                               size="sm"
+                               className="text-red-600 hover:text-red-800 hover:border-red-300"
+                               onClick={async () => {
+                                 // Debug: Check if user actually has the permission
+                                 console.log('User permissions:', user?.permissions);
+                                 console.log('Has complaint_delete permission:', hasPermission('complaint_delete'));
+                                 console.log('canDeleteComplaints variable:', canDeleteComplaints);
+                                 
+                                 if (confirm('Are you sure you want to delete this complaint?')) {
+                                   try {
+                                     const token = localStorage.getItem('authToken');
+                                     
+                                     // Log token information (only first few chars for security)
+                                     if (token) {
+                                       const tokenStart = token.substring(0, 15) + '...';
+                                       console.log('Using token:', tokenStart);
+                                     } else {
+                                       console.warn('No auth token found!');
+                                     }
+                                     
+                                     const response = await fetch(`/api/hostels/${hostelId}/complaints/${complaint.id}`, {
+                                       method: 'DELETE',
+                                       headers: {
+                                         'Authorization': `Bearer ${token}`,
+                                         'X-Debug-Permissions': user?.permissions?.join(',') || ''
+                                       }
+                                     });
+                                     
+                                     if (!response.ok) {
+                                       // Handle different error statuses
+                                       if (response.status === 403) {
+                                         notification.error('Permission denied: You do not have the required permission to delete complaints');
+                                         throw new Error('Permission denied: complaint_delete permission required');
+                                       } else if (response.status === 404) {
+                                         notification.error('Complaint not found');
+                                         throw new Error('Complaint not found');
+                                       } else {
+                                         throw new Error(`Failed to delete complaint: ${response.status}`);
+                                       }
+                                     }
+                                     
+                                     // Success - remove complaint from local state
+                                     setAllComplaints(prev => prev.filter(c => c.id !== complaint.id));
+                                     notification.success('Complaint deleted successfully');
+                                   } catch (error) {
+                                     console.error('Error deleting complaint:', error);
+                                     // Don't show a generic error message here since we've already shown specific ones above
+                                   }
+                                 }
+                               }}
+                             >
+                               <XCircleIcon size={14} />
+                             </Button>
+                           </PermissionGate>
                          </>
                        ) : (
-                         // Other roles can only view
+                         // Other users can only view
                          <Button variant="outline" size="sm">
                            <EyeIcon size={14} />
                          </Button>
@@ -551,7 +652,8 @@ export default function HostelComplaintsPage() {
             </div>
           </div>
         )}
-      </Card>
+        </Card>
+      </PermissionGate>
     </div>
   );
 }

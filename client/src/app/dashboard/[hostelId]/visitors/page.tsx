@@ -27,14 +27,14 @@ export default function VisitorsPage() {
   
   // Context-aware API hooks
   const admin = useAdminApiWithHostel();
-  const { hasHostel, getHostelId, isReady } = useCurrentHostelId();
+  const { hasHostel, getHostelId } = useCurrentHostelId();
   
   // Fetch visitor data
   React.useEffect(() => {
     async function fetchVisitors() {
-      // Wait for hostel context to be properly synced and ready
-      if (!hasHostel || !hostelId || !isReady) {
-        console.log('⏳ Visitors: Waiting for hostel context to sync...', { hasHostel, hostelId, isReady });
+      // Wait for hostel context to be properly synced
+      if (!hasHostel || !hostelId) {
+        console.log('⏳ Visitors: Waiting for hostel context to sync...', { hasHostel, hostelId });
         return;
       }
       
@@ -49,7 +49,7 @@ export default function VisitorsPage() {
         setLoading(true);
         setError(null);
         
-    
+        console.log('🚀 Visitors: Loading data for hostel:', hostelId);
         
         // Context-aware API call - hostelId automatically injected
         const result = await admin.getVisitorLogs({
@@ -90,7 +90,7 @@ export default function VisitorsPage() {
     }
     
     fetchVisitors();
-  }, [hasHostel, hostelId, getHostelId, admin, page, statusFilter, searchQuery, isReady]); // Added hostelId and getHostelId
+  }, [hasHostel, hostelId, getHostelId, admin, page, statusFilter, searchQuery]); // Added hostelId and getHostelId
   
   const handleStatusFilterChange = (status: string) => {
     setStatusFilter(status === statusFilter ? '' : status);

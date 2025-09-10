@@ -86,6 +86,7 @@ export const StudentVisitorLogs = React.memo(() => {
   
   // State management
   const [visitorLogs, setVisitorLogs] = useState<VisitorLog[]>([])
+  const [dashboardData, setDashboardData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -214,17 +215,20 @@ export const StudentVisitorLogs = React.memo(() => {
     return Array.from(new Set(visitorLogs.map(log => log.relation))).sort()
   }, [visitorLogs])
 
-  // 🚀 PERFORMANCE: Optimized visitor data fetching
-  const fetchVisitorLogs = useCallback(async () => {
+  // 🚀 PERFORMANCE: Optimized data fetching (visitor logs + dashboard data)
+  const fetchAllData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
       
-      // Use context-aware API that automatically includes hostelId and studentId
-      const data = await studentApi.getVisitorLogs()
+      // Fetch both visitor logs and dashboard data in parallel
+      const [visitorData, dashboardResponse] = await Promise.all([
+        studentApi.getVisitorLogs(),
+        studentApi.getDashboard()
+      ])
       
-      // Transform backend data to frontend format
-      const transformedLogs: VisitorLog[] = (data || []).map((log: any) => ({
+      // Transform visitor data
+      const transformedLogs: VisitorLog[] = (visitorData || []).map((log: any) => ({
         id: log.id,
         visitorName: log.visitorName,
         relation: log.relation,
@@ -240,28 +244,32 @@ export const StudentVisitorLogs = React.memo(() => {
       }))
       
       setVisitorLogs(transformedLogs)
+      setDashboardData(dashboardResponse)
       
     } catch (err) {
-      console.error('Failed to fetch visitor logs:', err)
-      setError('Failed to load visitor logs')
-      toast.error('Failed to load visitor logs')
+      console.error('Failed to fetch data:', err)
+      setError('Failed to load data')
+      toast.error('Failed to load data')
     } finally {
       setLoading(false)
     }
-  }, [studentApi])
+  }, []) // Remove studentApi dependency
+
+  // Alias for backward compatibility
+  const fetchVisitorLogs = fetchAllData
 
   // 🎯 PERFORMANCE: Optimized refresh handler
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
     try {
-      await fetchVisitorLogs()
-      toast.success('Visitor logs refreshed!')
+      await fetchAllData()
+      toast.success('Data refreshed!')
     } catch (err) {
-      toast.error('Failed to refresh visitor logs')
+      toast.error('Failed to refresh data')
     } finally {
       setRefreshing(false)
     }
-  }, [fetchVisitorLogs])
+  }, [fetchAllData])
 
   // 🎯 PERFORMANCE: Optimized visitor check-out
   const handleCheckOut = useCallback(async (logId: string) => {
@@ -390,8 +398,8 @@ export const StudentVisitorLogs = React.memo(() => {
 
   // Initial data fetch
   useEffect(() => {
-    fetchVisitorLogs()
-  }, [fetchVisitorLogs])
+    fetchAllData()
+  }, [fetchAllData])
 
   if (loading) {
     return (
@@ -409,9 +417,47 @@ export const StudentVisitorLogs = React.memo(() => {
       <div className="bg-red-50 border border-red-200 rounded-md p-6 max-w-md mx-auto">
         <h3 className="text-sm font-medium text-red-800 mb-2">Error loading visitor logs</h3>
         <p className="text-sm text-red-700 mb-4">{error}</p>
-        <Button onClick={fetchVisitorLogs} variant="outline" size="sm" className="w-full">
+        <Button onClick={fetchAllData} variant="outline" size="sm" className="w-full">
           Try Again
         </Button>
+      </div>
+    )
+  }
+
+  // Check if student has room allocation
+  if (!dashboardData?.room) {
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+          <div>
+            <div className="flex items-center space-x-2 mb-2">
+              <Link href="/dashboard/student" className="text-blue-600 hover:text-blue-700">
+                <ArrowLeftIcon className="h-5 w-5" />
+              </Link>
+              <h1 className="text-2xl font-bold text-gray-900">My Visitors</h1>
+            </div>
+            <p className="text-gray-600">Manage your visitor registrations</p>
+          </div>
+        </div>
+
+        {/* No Room Allocation Message */}
+        <div className="text-center py-12">
+          <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <UsersIcon className="h-6 w-6 text-yellow-600" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-1">No Room Allocation</h3>
+          <p className="text-sm text-gray-500 mb-4">
+            You can't add visitors because you don't have room allocation yet
+          </p>
+          <Button 
+            size="sm"
+            onClick={() => window.location.href = `/dashboard/student/complaints`}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            Request Room Assignment
+          </Button>
+        </div>
       </div>
     )
   }
@@ -441,7 +487,11 @@ export const StudentVisitorLogs = React.memo(() => {
             <RefreshCwIcon className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             {refreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
-                     <Button onClick={() => setIsAddModalOpen(true)} className="flex items-center justify-center">
+                     <Button 
+             onClick={() => setIsAddModalOpen(true)} 
+             className="flex items-center justify-center"
+             disabled={!dashboardData?.room}
+           >
              <PlusIcon className="h-4 w-4 mr-2" />
              Register Visitor
            </Button>
@@ -596,7 +646,10 @@ export const StudentVisitorLogs = React.memo(() => {
              </p>
              {!searchTerm && !Object.values(filterCriteria).some(v => v !== 'all') && (
                <div className="mt-6">
-                 <Button onClick={() => setIsAddModalOpen(true)}>
+                 <Button 
+                   onClick={() => setIsAddModalOpen(true)}
+                   disabled={!dashboardData?.room}
+                 >
                    <PlusIcon className="h-4 w-4 mr-2" />
                    Register Visitor
                  </Button>
@@ -741,7 +794,7 @@ export const StudentVisitorLogs = React.memo(() => {
            title="Register New Visitor"
          >
            <VisitorForm
-             hasRoom={true}
+             hasRoom={!!dashboardData?.room}
              onSubmit={async (data) => {
                // Handle visitor registration
                try {
@@ -795,7 +848,7 @@ export const StudentVisitorLogs = React.memo(() => {
            title="Edit Visitor Information"
          >
            <VisitorForm
-             hasRoom={true}
+             hasRoom={!!dashboardData?.room}
              initialData={editingLog}
              onSubmit={async (data) => {
                // Handle visitor update

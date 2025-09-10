@@ -1,7 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const { Hostel, User } = require("../models");
-const { verifyToken, requireOwner } = require("../middleware/authMiddleware");
+const { verifyToken } = require("../middleware/authMiddleware");
+const { 
+  requirePermission
+} = require("../middleware/permissionMiddleware");
 
 /**
  * Get hostel by subdomain (public endpoint for frontend)
@@ -41,7 +44,7 @@ router.get("/by-subdomain/:subdomain", async (req, res) => {
  * Get all hostels owned by the authenticated owner
  * Used for multi-hostel owner dropdown
  */
-router.get("/hostels", verifyToken, requireOwner, async (req, res) => {
+router.get("/hostels", verifyToken, requirePermission('hostel_read'), async (req, res) => {
   try {
     // Find all hostels where the owner is associated
     const hostels = await Hostel.findAll({

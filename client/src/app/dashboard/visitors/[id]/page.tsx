@@ -1,4 +1,6 @@
-import { VisitorDetail } from '@/components/dashboard/VisitorDetail'
+// Fallback to dynamic import to avoid type issues if the module isn't exporting named export
+import React, { Suspense } from 'react';
+const VisitorDetail = React.lazy(() => import('@/components/dashboard/VisitorDetail'));
 
 export default async function VisitorDetailPage({
   params,
@@ -6,5 +8,9 @@ export default async function VisitorDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params;
-  return <VisitorDetail id={id} />
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <VisitorDetail id={id} />
+    </Suspense>
+  );
 }

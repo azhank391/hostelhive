@@ -38,6 +38,20 @@ module.exports = (sequelize, DataTypes) => {
         as: "visitorLogs",
         onDelete: "CASCADE",
       });
+
+      // 🧩 RBAC: User belongs to a Role (new RBAC system)
+      User.belongsTo(models.Role, {
+        foreignKey: "roleId",
+        as: "rbacRole",
+        onDelete: "SET NULL",
+      });
+
+      // 🧩 RBAC: User can create many Roles (for owners creating custom roles)
+      User.hasMany(models.Role, {
+        foreignKey: "createdBy",
+        as: "createdRoles",
+        onDelete: "SET NULL",
+      });
     }
   }
 
@@ -59,7 +73,11 @@ module.exports = (sequelize, DataTypes) => {
         // Note: Unique constraint is composite (email + hostelId) at database level
       },
       password: DataTypes.STRING,
-      role: DataTypes.ENUM("owner", "student", "warden"), // Fixed: owner instead of admin
+      role: {
+        type: DataTypes.STRING(100),
+        allowNull: false,
+        comment: 'Role name: can be system roles (owner, student, warden, superadmin) or custom role names'
+      },
       phone: {
         type: DataTypes.STRING,
         allowNull: true,
@@ -76,6 +94,13 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: false,
         comment: 'Whether the user needs to change their password on next login (only for students/wardens)'
+      },
+      // 🧩 RBAC: New role system (keeps existing 'role' column for backward compatibility)
+      roleId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        field: "role_id",
+        comment: "Reference to the new RBAC role system",
       }
     },
     {
@@ -92,6 +117,19 @@ module.exports = (sequelize, DataTypes) => {
           unique: true,
           fields: ["email", "hostelId"],
           name: "users_email_hostel_id_unique",
+        },
+        // 🧩 RBAC: New indexes for role system
+        {
+          fields: ["roleId"],
+          name: "idx_users_role_id",
+        },
+        {
+          fields: ["roleId", "hostelId"],
+          name: "idx_users_role_hostel",
+        },
+        {
+          fields: ["role", "roleId"],
+          name: "idx_users_legacy_new_role",
         },
       ],
     }

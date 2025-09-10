@@ -1,59 +1,91 @@
-export type Permission = 
-  | 'manage_hostel'
-  | 'manage_students'
-  | 'manage_rooms'
-  | 'manage_wardens'
-  | 'view_reports'
-  | 'manage_complaints'
-  | 'manage_visitors'
-  | 'manage_billing'
-  | 'super_admin';
+// Re-export from permissionUtils for new permission system
+export { type Permission, checkPermission, checkAllPermissions, checkAnyPermission } from './permissionUtils';
 
 export type Role = 'owner' | 'warden' | 'student' | 'superadmin';
 
-// Define permissions for each role
-export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
+// Legacy role-based permissions (deprecated - use direct permission checking instead)
+const LEGACY_ROLE_PERMISSIONS: Record<Role, string[]> = {
   owner: [
-    'manage_hostel',
-    'manage_students',
-    'manage_rooms',
-    'manage_wardens',
+    'view_dashboard',
+    'hostel_create',
+    'hostel_read',
+    'hostel_update',
+    'hostel_stats_read',
+    'student_create',
+    'student_read',
+    'student_update',
+    'student_delete',
+    'room_create',
+    'room_read',
+    'room_update',
+    'room_delete',
+    'room_allocate',
+    'room_deallocate',
+    'room_allocation_read',
+    'warden_create',
+    'warden_read',
+    'warden_update',
+    'warden_delete',
+    'complaint_create',
+    'complaint_read',
+    'complaint_update',
+    'complaint_delete',
+    'visitor_create',
+    'visitor_read',
+    'visitor_update',
+    'visitor_delete',
+    'visitor_checkout',
+    'role_create',
+    'role_read',
+    'role_update',
+    'role_delete',
+    'role_assign',
     'view_reports',
-    'manage_complaints',
-    'manage_visitors',
-    'manage_billing'
+    'analytics_read',
+    'view_settings'
   ],
   warden: [
-    'manage_students',
-    'manage_rooms',
+    'hostel_stats_read',
+    'student_update',
+    'room_update',
+    'room_allocation_read',
     'view_reports',
     'manage_complaints',
-    'manage_visitors'
+    'visitor_update',
+    'complaint_read',
+    'complaint_delete',
+    'complaint_handle',
+    'complaint_update'
   ],
   student: [
-    'view_reports'
+    'view_reports',
+    'student_room_read',
+    'complaint_create', 
+    'complaint_read',
+    'view_dashboard'
   ],
   superadmin: [
     'super_admin'
   ]
 };
 
-// Check if user has specific permission
-export const hasPermission = (userRole: Role, permission: Permission): boolean => {
-  return ROLE_PERMISSIONS[userRole]?.includes(permission) || false;
+// Legacy function - use checkPermission from permissionUtils instead
+export const hasPermission = (role: Role | string, permission: string): boolean => {
+  if (role === 'superadmin') return true;
+  return LEGACY_ROLE_PERMISSIONS[role as Role]?.includes(permission) || false;
 };
 
-// Check if user has any of the required permissions
-export const hasAnyPermission = (userRole: Role, permissions: Permission[]): boolean => {
-  return permissions.some(permission => hasPermission(userRole, permission));
+// Legacy function - use checkAnyPermission from permissionUtils instead
+export const hasAnyPermission = (userPermissions: string[], permissions: string[]): boolean => {
+  return permissions.some(permission => userPermissions.includes(permission));
 };
 
-// Check if user has all required permissions
-export const hasAllPermissions = (userRole: Role, permissions: Permission[]): boolean => {
-  return permissions.every(permission => hasPermission(userRole, permission));
+// Legacy function - use checkAllPermissions from permissionUtils instead  
+export const hasAllPermissions = (userPermissions: string[], permissions: string[]): boolean => {
+  return permissions.every(permission => userPermissions.includes(permission));
 };
 
-// Get all permissions for a role
-export const getRolePermissions = (role: Role): Permission[] => {
-  return ROLE_PERMISSIONS[role] || [];
+// Legacy function
+export const getRolePermissions = (role: Role): string[] => {
+  return LEGACY_ROLE_PERMISSIONS[role] || [];
 };

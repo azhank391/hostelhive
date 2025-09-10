@@ -132,14 +132,19 @@ export const CreateHostelForm = React.memo(({
        
       console.log('Hostel created successfully:', response);
        
+      // The context-aware API returns the hostel object directly (from HostelContext.createHostel)
+      const hostel = (response as any).hostel || response;
+      const hostelName = hostel.name || 'Hostel';
+      const subdomain = hostel.subdomain || 'unknown';
+       
       // Dismiss loading toast and show success
       notification.dismiss(loadingToast);
       notification.success('Hostel Created Successfully!', {
-        description: `"${response.name}" has been created with subdomain: ${response.subdomain}.hostelhive.com`
+        description: `"${hostelName}" has been created with subdomain: ${subdomain}.hostelhive.com`
       });
        
       // Show success message in form
-      setSuccessMessage(`Hostel "${response.name}" created successfully! Subdomain: ${response.subdomain}.hostelhive.com`);
+      setSuccessMessage(`Hostel "${hostelName}" created successfully! Subdomain: ${subdomain}.hostelhive.com`);
       
       // Wait a moment for the user to see the success message
       setTimeout(async () => {

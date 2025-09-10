@@ -69,6 +69,7 @@ router.get("/resolve/:subdomain", async (req, res) => {
 });
 
 // Get hostel context for authenticated user
+// Get hostel context for authenticated user
 router.get("/context", verifyToken, async (req, res) => {
   try {
     let hostel = null;
@@ -96,22 +97,63 @@ router.get("/context", verifyToken, async (req, res) => {
       });
     }
 
-    // If user is admin/student, get their associated hostel
-    if (req.user.hostelId) {
+    // If user is student → allow if they have "view_dashboard"
+    if (req.user.role === "student") {
+      if (!req.user.permissions?.includes("view_dashboard")) {
+        return res.status(403).json({
+          message: "Access denied. Students need 'view_dashboard' permission.",
+        });
+      }
+
       hostel = await Hostel.findByPk(req.user.hostelId, {
         attributes: ["id", "name", "subdomain", "isActive", "plan", "email"],
       });
+
+      return res.json({
+        type: "student",
+        hostel,
+        canManageMultiple: false,
+      });
     }
 
-    res.json({
-      type: "user",
-      hostel,
-      canManageMultiple: false,
-    });
+    // If user is warden → always allow based on hostelId
+    if (req.user.role === "warden") {
+      hostel = await Hostel.findByPk(req.user.hostelId, {
+        attributes: ["id", "name", "subdomain", "isActive", "plan", "email"],
+      });
+
+      return res.json({
+        type: "warden",
+        hostel,
+        canManageMultiple: false,
+      });
+    }
+
+    // If custom role → must have hostel_read
+    if (req.user.hostelId) {
+      if (!req.user.permissions?.includes("hostel_read")) {
+        return res.status(403).json({
+          message: "Access denied. Required permission: hostel_read",
+        });
+      }
+
+      hostel = await Hostel.findByPk(req.user.hostelId, {
+        attributes: ["id", "name", "subdomain", "isActive", "plan", "email"],
+      });
+
+      return res.json({
+        type: "custom-role",
+        hostel,
+        canManageMultiple: false,
+      });
+    }
+
+    res.status(404).json({ message: "No hostel found for user." });
   } catch (error) {
     console.error("Error fetching hostel context:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 
 module.exports = router;

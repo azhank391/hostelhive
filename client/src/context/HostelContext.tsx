@@ -1,10 +1,10 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
-import { api } from '../lib/http';
-import { notification } from '../lib/toast';
+import { authApi, hostelApi, adminApi, studentApi } from '../lib/api';
+import { notification, apiNotification } from '../lib/toast';
 import { STORAGE_KEYS } from '../lib/config';
 import type { 
   Hostel, 
@@ -32,195 +32,205 @@ interface HostelContextType {
   updateHostel: (hostelId: string, updates: Partial<Hostel>) => Promise<Hostel>;
   isMultiHostelOwner: boolean;
   getCurrentHostelId: () => string | null;
-  getCurrentHostelIdWithUrlFallback: () => string | null;
 }
 
 const HostelContext = createContext<HostelContextType | null>(null);
 
 export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [hostels, setHostels] = useState<Hostel[]>([]);
   const [currentHostel, setCurrentHostel] = useState<Hostel | null>(null);
   const [loadingState, setLoadingState] = useState<LoadingState>(LoadingState.IDLE);
   const [error, setError] = useState<string | null>(null);
-  const didFetchOnce = useRef(false);
-  const isChangingHostel = useRef(false); // 🚀 NEW: Flag to prevent URL sync conflicts
-
-
-
-  const setCurrentHostelWithLog = useCallback((hostel: Hostel | null) => {
-    setCurrentHostel(hostel);
-  }, []);
 
   // Fetch owner hostels using optimized API
   const fetchOwnerHostels = useCallback(async (): Promise<Hostel[]> => {
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
     try {
-      const response = await api.get<{ hostels: Hostel[] }>('/auth/hostels');
-      // Handle both array and object response formats
-      if (Array.isArray(response.data)) {
-        return response.data;
-      } else if (response.data && typeof response.data === 'object' && 'hostels' in response.data) {
-        return (response.data as any).hostels || [];
+      const response = await authApi.getUserHostels();
+      
+      // Handle response format (could be direct array or wrapped in object)
+      let hostelArray: Hostel[];
+      if (Array.isArray(response)) {
+        hostelArray = response;
+      } else if ((response as any)?.hostels && Array.isArray((response as any).hostels)) {
+        hostelArray = (response as any).hostels;
+      } else {
+        console.error('Unexpected hostel data format:', response);
+        throw new Error('Invalid hostel data format');
       }
-      return [];
+
+      return hostelArray;
     } catch (error) {
       console.error('Failed to fetch owner hostels:', error);
-      return [];
+      throw error;
     }
-  }, []);
+  }, [user]);
 
   // Fetch student/warden hostel using optimized API
   const fetchStudentWardenHostel = useCallback(async () => {
-    if (!user || (user.role !== 'student' && user.role !== 'warden') || !user.hostelId) {
-
-      return null;
-    }
+    if (!user || !user.hostelId) return null;
     
     try {
-
+      // Students use their own endpoint that doesn't require hostel_read permission
+      if (user.role === 'student') {
+        const studentHostel = await studentApi.getMyHostel();
+        // Convert student hostel to full hostel type with defaults
+        return {
+          id: studentHostel.id,
+          name: studentHostel.name,
+          subdomain: studentHostel.subdomain,
+          isActive: studentHostel.isActive,
+          plan: studentHostel.plan,
+          ownerId: '', // Students don't need owner info
+          email: '',
+          isPaid: true,
+          location: {
+            country: '',
+            city: '',
+            address: ''
+          },
+          createdAt: '',
+          updatedAt: ''
+        } as Hostel;
+      }
       
-      // For students/wardens, use the getUserHostels endpoint which returns their assigned hostel
-      const response = await api.get<{ hostels: Hostel[], userRole: string }>('/hostels');
-
-      
-      // The response contains an array of hostels, but wardens/students only have one
-      return response.data.hostels[0] || null;
+      // For wardens and other roles with hostel_read permission
+      const hostel = await hostelApi.getHostelDetails(user.hostelId);
+      return hostel;
     } catch (error) {
-      console.error('❌ DEBUG: fetchStudentWardenHostel - Error details:', {
-        error,
-        message: error instanceof Error ? error.message : 'Unknown error',
-        status: (error as any)?.response?.status,
-        data: (error as any)?.response?.data,
-        userHostelId: user.hostelId,
-        requestUrl: '/hostels'
-      });
-      
-      // Fallback: Create a minimal hostel object from user data to prevent dashboard from breaking
-
-      const fallbackHostel: Hostel = {
-        id: user.hostelId,
-        name: 'Your Hostel', // Generic name since we don't have the actual data
-        subdomain: '',
-        plan: 'basic',
-        isActive: true,
-        ownerId: '', // We don't know the owner ID
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      
-
-      return fallbackHostel;
+      console.error('Failed to fetch student/warden/custom role hostel:', error);
+      throw error;
     }
-  }, [user?.id, user?.role, user?.hostelId]); // Only depend on specific user properties, not the entire user object
+  }, [user]);
 
-  // Fetch hostels once when authenticated
+  // Initial data loading effect
   useEffect(() => {
-    if (!isAuthenticated) {
-      // if logged_out, allow future fetch after re-login
-      didFetchOnce.current = false;
-      return;
-    }
-    
-    // 🚀 NEW: Skip hostel fetching for superadmin users
-    if (user?.role === 'superadmin') {
-
-      setLoadingState(LoadingState.LOADED);
-      setHostels([]);
+    if (!user) {
+      console.log('🔄 HostelContext: No user, setting IDLE state');
+      setLoadingState(LoadingState.IDLE);
       setCurrentHostel(null);
+      setHostels([]);
       return;
     }
-    
-    if (didFetchOnce.current) return;
-    didFetchOnce.current = true;
 
-    (async () => {
+    let isMounted = true;
+    console.log('🔄 HostelContext: Starting fetch for user role:', user.role);
+    
+    const fetchHostels = async () => {
+      setLoadingState(LoadingState.LOADING);
+      setError(null);
+      
       try {
-        setLoadingState(LoadingState.LOADING);
-        setError(null);
-        
         let hostelList: Hostel[] = [];
         
-        if (user?.role === 'owner') {
+        if (user.role === 'owner') {
+          console.log('🔄 HostelContext: Fetching owner hostels');
           hostelList = await fetchOwnerHostels();
-        } else if (user?.role === 'warden' || user?.role === 'student') {
+        } else if (user.role === 'student' || user.role === 'warden') {
+          console.log('🔄 HostelContext: Fetching student/warden hostel');
           const hostel = await fetchStudentWardenHostel();
+          if (hostel) {
+            hostelList = [hostel];
+          }
+        } else if (user.hostelId && user.role !== 'superadmin') {
+          // Handle custom roles (custom_manager, admin, etc.) that have a hostelId
+          console.log('🔄 HostelContext: Fetching hostel for custom role:', user.role);
+          const hostel = await fetchStudentWardenHostel(); // Reuse the same logic
           if (hostel) {
             hostelList = [hostel];
           }
         }
         
-        setHostels(hostelList);
-        setLoadingState(LoadingState.LOADED);
-        
-        // 🚀 ENHANCED: Owner-specific hostel selection logic
-        if (user?.role === 'owner') {
-          if (hostelList.length === 0) {
-            // No hostels - redirect to create hostel page
-            setCurrentHostel(null);
-            localStorage.removeItem(STORAGE_KEYS.ACTIVE_HOSTEL);
-            router.replace('/dashboard/create-hostel');
-          } else if (hostelList.length === 1) {
-            // Single hostel - auto-select and redirect
-            const singleHostel = hostelList[0];
-            setCurrentHostel(singleHostel);
-            localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, singleHostel.id);
-            router.replace(`/dashboard/hostels/${singleHostel.id}`);
-          } else {
-            // Multiple hostels - check for previously selected hostel
-            const savedHostelId = localStorage.getItem(STORAGE_KEYS.ACTIVE_HOSTEL);
-            const savedHostel = savedHostelId ? hostelList.find(h => h.id === savedHostelId) : null;
-            
-            if (savedHostel) {
-              // Use previously selected hostel
-              setCurrentHostel(savedHostel);
-              router.replace(`/dashboard/hostels/${savedHostel.id}`);
-            } else {
-              // Default to first hostel and show selector
-              const firstHostel = hostelList[0];
-              setCurrentHostel(firstHostel);
-              localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, firstHostel.id);
-              router.replace(`/dashboard/hostels/${firstHostel.id}`);
-            }
+        if (isMounted) {
+          console.log('🔄 HostelContext: Setting hostels:', hostelList.length);
+          setHostels(hostelList);
+          
+          // Check for user's activeHostelId first (from token/userData)
+          let targetHostelId = user.activeHostelId || user.hostelId;
+          
+          // Then check for saved hostel ID in localStorage
+          const savedHostelId = localStorage.getItem(STORAGE_KEYS.ACTIVE_HOSTEL);
+          if (!targetHostelId && savedHostelId) {
+            targetHostelId = savedHostelId;
           }
-        } else {
-          // For wardens/students - single hostel auto-selection
-          const chosen = hostelList[0]?.id ?? null;
-          if (chosen) {
-            const chosenHostel = hostelList.find(h => h.id === chosen);
-            if (chosenHostel) {
-              setCurrentHostel(chosenHostel);
-              localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, chosen);
+          
+          if (targetHostelId) {
+            const targetHostel = hostelList.find(h => h.id === targetHostelId);
+            if (targetHostel) {
+              console.log('🔄 HostelContext: Setting target hostel as current:', targetHostel.id);
+              setCurrentHostel(targetHostel);
+              localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, targetHostel.id);
+            } else if (hostelList.length > 0) {
+              // Fallback to first hostel if target not found
+              console.log('🔄 HostelContext: Target hostel not found, setting first hostel as current:', hostelList[0].id);
+              setCurrentHostel(hostelList[0]);
+              localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, hostelList[0].id);
             }
+          } else if (hostelList.length > 0) {
+            console.log('🔄 HostelContext: Setting first hostel as current:', hostelList[0].id);
+            setCurrentHostel(hostelList[0]);
+            localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, hostelList[0].id);
           }
+          
+          setLoadingState(LoadingState.LOADED);
         }
-      } catch (e) {
-        // Do not mutate auth here; just surface/log
-        console.error('Failed to fetch hostels:', e);
-        setError(e instanceof Error ? e.message : 'Failed to fetch hostels');
-        setLoadingState(LoadingState.ERROR);
+      } catch (err) {
+        if (isMounted) {
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+          console.error('❌ HostelContext: Failed to fetch hostels:', err);
+          setError(errorMessage);
+          setLoadingState(LoadingState.ERROR);
+          notification.error('Failed to load hostels');
+        }
       }
-    })();
-  }, [isAuthenticated, user?.role, user?.hostelId, fetchOwnerHostels, router]); // Removed fetchStudentWardenHostel from dependencies
+    };
+
+    fetchHostels();
+    
+    return () => { isMounted = false; };
+  }, [user, fetchOwnerHostels, fetchStudentWardenHostel]);
+
+  // Handle routing after hostel context is ready
+  useEffect(() => {
+    if (loadingState === LoadingState.LOADED) {
+      console.log('🛣️ HostelContext: Handling routing, hostels:', hostels.length, 'currentHostel:', currentHostel?.id);
+      
+      const currentPath = window.location.pathname;
+      
+      if (hostels.length === 0) {
+        // Redirect to create hostel if user has no hostels
+        console.log('🛣️ HostelContext: No hostels, redirecting to create-hostel');
+        if (currentPath !== '/dashboard/create-hostel') {
+          router.push('/dashboard/create-hostel');
+        }
+      } else if (currentHostel) {
+        // We have a current hostel selected
+        const targetPath = `/dashboard/hostels/${currentHostel.id}`;
+        console.log('🛣️ HostelContext: Current hostel exists, target path:', targetPath);
+        
+        // Only redirect if we're on the dashboard root or an incorrect hostel path
+        if (currentPath === '/dashboard' || 
+            (currentPath.includes('/dashboard/hostels/') && !currentPath.includes(currentHostel.id))) {
+          console.log('🛣️ HostelContext: Redirecting to target path');
+          router.push(targetPath);
+        }
+      }
+    }
+  }, [loadingState, hostels, currentHostel, router]);
 
   // Implementation of HostelContextValue methods
   const setActiveHostel = useCallback(async (hostelId: string, syncToServer: boolean = true) => {
-
-    
     const hostel = hostels.find(h => h.id === hostelId);
     if (hostel) {
-      // 🚀 NEW: Set flag to prevent URL sync conflicts
-      isChangingHostel.current = true;
-      setCurrentHostelWithLog(hostel);
+      setCurrentHostel(hostel);
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, hostel.id);
       
-      // 🚀 NEW: Reset flag after a short delay to allow navigation to complete
-      setTimeout(() => {
-        isChangingHostel.current = false;
-      }, 100);
-      
-
-      
-      // 🚀 CRITICAL: Navigate to hostel-specific URL (matches backend structure)
+      // 🚀 CRITICAL: Navigate to hostel-specific URL
       if (typeof window !== 'undefined') {
         const currentPath = window.location.pathname;
         
@@ -236,10 +246,6 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             router.push(newPath);
           }
         }
-        // If we're on any other dashboard route, redirect to hostel dashboard
-        else if (currentPath.includes('/dashboard/')) {
-          router.push(`/dashboard/hostels/${hostelId}`);
-        }
       }
       
       // Call API to set active hostel on server (only if explicitly requested and user is authenticated)
@@ -247,20 +253,14 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         try {
           // Only call API if user is authenticated, has a token, and is an owner
           if (typeof window !== 'undefined' && user?.role === 'owner') {
-                          const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-              if (token) {
-
-                // Include hostelId in both query params and body for backend compatibility
-              const response = await api.post(`/auth/set-active-hostel?hostelId=${hostelId}`, { 
-                hostelId,
-                userId: user.id 
-              });
+            const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+            if (token) {
+              const response = await authApi.setActiveHostel(hostelId);
               
-                              // If the API returns a new token, update it
-                if (response.data?.token) {
-                  localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.data.token);
-                }
-
+              // If the API returns a new token, update it
+              if (response?.token) {
+                localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.token);
+              }
             }
           }
         } catch (error) {
@@ -277,51 +277,10 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [hostels, user, router]);
 
-  // 🚀 NEW: Effect to sync localStorage when currentHostel changes
-  useEffect(() => {
-    if (currentHostel?.id && typeof window !== 'undefined') {
-
-      localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, currentHostel.id);
-    }
-  }, [currentHostel?.id]);
-
-  // 🚀 URL Sync: Ensure context matches URL when navigating directly
-  useEffect(() => {
-    if (typeof window !== 'undefined' && isAuthenticated && user && hostels.length > 0 && loadingState === LoadingState.LOADED) {
-      const currentPath = window.location.pathname;
-      const hostelMatch = currentPath.match(/\/dashboard\/hostels\/([^\/]+)/);
-      
-      if (hostelMatch) {
-        const urlHostelId = hostelMatch[1];
-        const isValidHostel = hostels.some(h => h.id === urlHostelId);
-        
-        if (isValidHostel && currentHostel?.id !== urlHostelId && !isChangingHostel.current) {
-          // Sync context with valid URL hostel ID (no navigation needed)
-          // Only run if we're not actively changing hostels
-
-          const hostel = hostels.find(h => h.id === urlHostelId);
-          if (hostel) {
-            setCurrentHostelWithLog(hostel);
-          }
-        } else if (!isValidHostel && hostels.length > 0) {
-          // Invalid hostel in URL, redirect to first available hostel
-          const firstHostel = hostels[0];
-          setCurrentHostelWithLog(firstHostel);
-          router.replace(`/dashboard/hostels/${firstHostel.id}`);
-        }
-      } else if (currentPath === '/dashboard' && hostels.length > 0 && !currentHostel) {
-        // On main dashboard without hostel selected, auto-select first hostel
-        const firstHostel = hostels[0];
-        setCurrentHostelWithLog(firstHostel);
-        router.replace(`/dashboard/hostels/${firstHostel.id}`);
-      }
-    }
-  }, [isAuthenticated, user, hostels, currentHostel, loadingState, router]);
-
   const createHostel = useCallback(async (hostelData: CreateHostelData): Promise<Hostel> => {
     try {
-      const response = await api.post<Hostel>('/hostels', hostelData);
-      const newHostel = response.data;
+      const response = await hostelApi.createHostel(hostelData);
+      const newHostel = (response as any).hostel || response;
       
       // Update local state
       setHostels(prev => [...prev, newHostel]);
@@ -341,8 +300,7 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const updateHostel = useCallback(async (hostelId: string, updates: Partial<Hostel>): Promise<Hostel> => {
     try {
-      const response = await api.put<Hostel>(`/hostels/${hostelId}`, updates);
-      const updatedHostel = response.data;
+      const updatedHostel = await hostelApi.updateHostel(hostelId, updates);
       
       // Update local state
       setHostels(prev => prev.map(h => h.id === hostelId ? updatedHostel : h));
@@ -368,6 +326,12 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (hostel) {
         setHostels([hostel]);
       }
+    } else if (user?.hostelId && user?.role !== 'superadmin') {
+      // Handle custom roles (custom_manager, admin, etc.) that have a hostelId
+      const hostel = await fetchStudentWardenHostel(); // Reuse the same logic
+      if (hostel) {
+        setHostels([hostel]);
+      }
     }
   }, [user, fetchOwnerHostels, fetchStudentWardenHostel]);
 
@@ -383,53 +347,21 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return null;
   }, [currentHostel]);
 
-  // 🚀 NEW: Enhanced method to get hostel ID with URL fallback
-  const getCurrentHostelIdWithUrlFallback = useCallback((): string | null => {
-    // First try to get from context
-    const contextId = getCurrentHostelId();
-    if (contextId) return contextId;
-    
-    // Only fallback to URL if hostels are loaded and we have a valid context
-    if (loadingState === LoadingState.LOADED && hostels.length > 0) {
-      if (typeof window !== 'undefined') {
-        const currentPath = window.location.pathname;
-        const hostelMatch = currentPath.match(/\/dashboard\/hostels\/([^\/]+)/);
-        if (hostelMatch) {
-          const urlHostelId = hostelMatch[1];
-          // Only return URL hostel ID if it exists in the user's hostels
-          const isValidHostel = hostels.some(h => h.id === urlHostelId);
-          if (isValidHostel) {
-            return urlHostelId;
-          }
-        }
-      }
-    }
-    
-    return null;
-  }, [getCurrentHostelId, hostels, loadingState]);
-
   // Memoized context value to prevent unnecessary re-renders
-  const contextValue = useMemo(() => {
-    const computedIsReady = loadingState === LoadingState.LOADED && (user?.role === 'superadmin' || currentHostel !== null);
-    
-
-    
-    return {
+  const contextValue = useMemo(() => ({
     hostels,
     currentHostel,
     loadingState,
     error,
-    setCurrentHostel: setCurrentHostelWithLog,
-    isReady: computedIsReady,
+    setCurrentHostel,
+    isReady: loadingState === LoadingState.LOADED && currentHostel !== null,
     setActiveHostel,
     refreshHostels,
     createHostel,
     updateHostel,
-    isMultiHostelOwner: hostels.length > 1,
+    isMultiHostelOwner: user?.role === 'owner' && hostels.length > 1,
     getCurrentHostelId,
-    getCurrentHostelIdWithUrlFallback,
-    };
-  }, [hostels, currentHostel, loadingState, error, setActiveHostel, refreshHostels, createHostel, updateHostel, getCurrentHostelId, getCurrentHostelIdWithUrlFallback, user?.role]);
+  }), [hostels, currentHostel, loadingState, error, setActiveHostel, refreshHostels, createHostel, updateHostel, getCurrentHostelId, user?.role]);
 
   return (
     <HostelContext.Provider value={contextValue}>
@@ -448,11 +380,8 @@ export const useHostel = () => {
 
 // Custom hook for components that need to wait for hostel to be ready
 export const useCurrentHostelId = () => {
-  const { currentHostel, isReady, getCurrentHostelIdWithUrlFallback } = useHostel();
+  const { currentHostel, isReady } = useHostel();
   
-  if (!isReady) {
-    // Even if not ready, try to get hostel ID from URL as fallback
-    return getCurrentHostelIdWithUrlFallback();
-  }
+  if (!isReady) return null;
   return currentHostel?.id || null;
 };

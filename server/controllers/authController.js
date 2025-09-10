@@ -18,6 +18,17 @@ exports.registerOwner = async (req, res) => {
     if (existing)
       return res.status(400).json({ message: "User already exists" });
 
+    // Find the owner system role
+    const { Role } = require("../models");
+    const ownerRole = await Role.findOne({
+      where: { name: "owner", isSystemRole: true }
+    });
+
+    if (!ownerRole) {
+      console.error("❌ Owner system role not found in database");
+      return res.status(500).json({ message: "System configuration error" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newOwner = await User.create({
@@ -25,8 +36,11 @@ exports.registerOwner = async (req, res) => {
       email,
       password: hashedPassword,
       role: "owner", // Fixed role for owners
+      role_id: ownerRole.id, // Set the RBAC role ID (snake_case for database)
       hostelId: null, // Will be set when they create a hostel
     });
+
+    console.log(`✅ New owner registered with roleId: ${ownerRole.id}`);
 
     res.status(201).json({
       message: "Owner registered successfully",
@@ -53,12 +67,12 @@ exports.registerUser = async (req, res) => {
       });
     }
 
-    // Validate role - only students and wardens can be created
-    if (!["student", "warden"].includes(role)) {
-      return res.status(400).json({
-        message: "Invalid role. Only students and wardens can be created",
-      });
-    }
+    // // Validate role - only students and wardens can be created
+    // if (!["student", "warden"].includes(role)) {
+    //   return res.status(400).json({
+    //     message: "Invalid role. Only students and wardens can be created",
+    //   });
+    // }
 
     // Only owners can create wardens
     if (role === "warden" && req.user.role !== "owner") {
@@ -78,6 +92,17 @@ exports.registerUser = async (req, res) => {
       });
     }
 
+    // Find the system role for the user
+    const { Role } = require("../models");
+    const systemRole = await Role.findOne({
+      where: { name: role, isSystemRole: true }
+    });
+
+    if (!systemRole) {
+      console.error(`❌ System role '${role}' not found in database`);
+      return res.status(500).json({ message: "System configuration error" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = await User.create({
@@ -85,8 +110,11 @@ exports.registerUser = async (req, res) => {
       email,
       password: hashedPassword,
       role,
+      role_id: systemRole.id, // Set the RBAC role ID (snake_case for database)
       hostelId,
     });
+
+    console.log(`✅ New ${role} registered with roleId: ${systemRole.id}`);
 
     res.status(201).json({
       message: "User registered successfully",
@@ -222,6 +250,19 @@ exports.loginUser = async (req, res) => {
         }
       }
 
+      // Fetch user permissions for JWT
+      const rbacService = require('../services/rbacService');
+      let userPermissions = [];
+      try {
+        const userRoleData = await rbacService.getUserRoleAndPermissions(user.id);
+        userPermissions = userRoleData.permissions.map(p => p.name);
+        console.log("🔍 DEBUG: User permissions fetched for JWT:", userPermissions);
+      } catch (error) {
+        console.error("❌ DEBUG: Failed to fetch permissions for JWT:", error);
+        // For legacy users, set empty permissions array
+        userPermissions = [];
+      }
+
       const tokenPayload = {
         id: user.id,
         name: user.name,
@@ -233,6 +274,7 @@ exports.loginUser = async (req, res) => {
           subdomain: h.subdomain,
         })),
         requiresPasswordChange: user.requiresPasswordChange,
+        permissions: userPermissions, // Include permissions in JWT
       };
 
       console.log("🔍 DEBUG: Creating JWT token with payload:", tokenPayload);
@@ -254,6 +296,18 @@ exports.loginUser = async (req, res) => {
       });
     } else if (user.role === "superadmin") {
       // Superadmin - no hostel association, global access
+      // Fetch permissions for superadmin
+      const rbacService = require('../services/rbacService');
+      let userPermissions = [];
+      try {
+        const userRoleData = await rbacService.getUserRoleAndPermissions(user.id);
+        userPermissions = userRoleData.permissions.map(p => p.name);
+        console.log("🔍 DEBUG: Superadmin permissions fetched for JWT:", userPermissions);
+      } catch (error) {
+        console.error("❌ DEBUG: Failed to fetch superadmin permissions for JWT:", error);
+        userPermissions = [];
+      }
+
       const token = jwt.sign(
         {
           id: user.id,
@@ -261,6 +315,7 @@ exports.loginUser = async (req, res) => {
           role: user.role,
           hostelId: null, // Superadmin has no hostel
           requiresPasswordChange: user.requiresPasswordChange,
+          permissions: userPermissions, // Include permissions in JWT
         },
         process.env.JWT_SECRET,
         { expiresIn: "1d" }
@@ -284,6 +339,18 @@ exports.loginUser = async (req, res) => {
       });
     } else {
       // Warden/Student - they have a specific hostelId
+      // Fetch permissions for warden/student
+      const rbacService = require('../services/rbacService');
+      let userPermissions = [];
+      try {
+        const userRoleData = await rbacService.getUserRoleAndPermissions(user.id);
+        userPermissions = userRoleData.permissions.map(p => p.name);
+        console.log("🔍 DEBUG: Warden/Student permissions fetched for JWT:", userPermissions);
+      } catch (error) {
+        console.error("❌ DEBUG: Failed to fetch warden/student permissions for JWT:", error);
+        userPermissions = [];
+      }
+
       const token = jwt.sign(
         {
           id: user.id,
@@ -291,10 +358,18 @@ exports.loginUser = async (req, res) => {
           role: user.role,
           hostelId: user.hostelId,
           requiresPasswordChange: user.requiresPasswordChange,
+          permissions: userPermissions, // Include permissions in JWT
         },
         process.env.JWT_SECRET,
         { expiresIn: "1d" }
       );
+
+      console.log(`🔍 DEBUG: Login response for user ${user.id}:`, {
+        role: user.role,
+        name: user.name,
+        hostelId: user.hostelId,
+        role_id: user.role_id
+      });
 
       res.json({
         message: "Login successful",
@@ -512,6 +587,18 @@ exports.setActiveHostel = async (req, res) => {
           .json({ message: "Hostel not found or inactive" });
       }
 
+      // Fetch user permissions for JWT
+      const rbacService = require('../services/rbacService');
+      let userPermissions = [];
+      try {
+        const userRoleData = await rbacService.getUserRoleAndPermissions(req.user.id);
+        userPermissions = userRoleData.permissions.map(p => p.name);
+        console.log("🔍 DEBUG: Superadmin permissions fetched for hostel selection:", userPermissions);
+      } catch (error) {
+        console.error("❌ DEBUG: Failed to fetch superadmin permissions for hostel selection:", error);
+        userPermissions = [];
+      }
+
       // Generate new token with selected hostelId for superadmin
       const newToken = jwt.sign(
         {
@@ -519,6 +606,7 @@ exports.setActiveHostel = async (req, res) => {
           name: req.user.name,
           role: req.user.role,
           hostelId: hostelId, // Set the hostel for viewing
+          permissions: userPermissions, // Include permissions in JWT
         },
         process.env.JWT_SECRET,
         { expiresIn: "1d" }
@@ -548,6 +636,18 @@ exports.setActiveHostel = async (req, res) => {
           .json({ message: "Access denied to this hostel" });
       }
 
+      // Fetch user permissions for JWT
+      const rbacService = require('../services/rbacService');
+      let userPermissions = [];
+      try {
+        const userRoleData = await rbacService.getUserRoleAndPermissions(req.user.id);
+        userPermissions = userRoleData.permissions.map(p => p.name);
+        console.log("🔍 DEBUG: Owner permissions fetched for hostel selection:", userPermissions);
+      } catch (error) {
+        console.error("❌ DEBUG: Failed to fetch owner permissions for hostel selection:", error);
+        userPermissions = [];
+      }
+
       // Generate new token with selected hostelId
       const newToken = jwt.sign(
         {
@@ -555,6 +655,7 @@ exports.setActiveHostel = async (req, res) => {
           name: req.user.name,
           role: req.user.role,
           hostelId: hostelId, // Now set the active hostel
+          permissions: userPermissions, // Include permissions in JWT
         },
         process.env.JWT_SECRET,
         { expiresIn: "1d" }
@@ -569,8 +670,66 @@ exports.setActiveHostel = async (req, res) => {
           subdomain: hostel.subdomain,
         },
       });
+    } else if (req.user.hostelId) {
+      // Handle custom roles (custom_manager, admin, etc.) that have a hostelId
+      // Verify user belongs to this hostel
+      const { Hostel } = require("../models");
+      const hostel = await Hostel.findOne({
+        where: { id: hostelId, isActive: true },
+      });
+
+      if (!hostel) {
+        return res
+          .status(404)
+          .json({ message: "Hostel not found or inactive" });
+      }
+
+      // Verify user belongs to this hostel
+      if (req.user.hostelId !== hostelId) {
+        return res
+          .status(403)
+          .json({ message: "Access denied to this hostel" });
+      }
+
+      // Fetch user permissions for JWT
+      const rbacService = require('../services/rbacService');
+      let userPermissions = [];
+      try {
+        const userRoleData = await rbacService.getUserRoleAndPermissions(req.user.id);
+        userPermissions = userRoleData.permissions.map(p => p.name);
+        console.log("🔍 DEBUG: Custom role permissions fetched for hostel selection:", userPermissions);
+      } catch (error) {
+        console.error("❌ DEBUG: Failed to fetch custom role permissions for hostel selection:", error);
+        userPermissions = [];
+      }
+
+      // Generate new token with selected hostelId
+      const newToken = jwt.sign(
+        {
+          id: req.user.id,
+          name: req.user.name,
+          role: req.user.role,
+          hostelId: hostelId,
+          requiresPasswordChange: req.user.requiresPasswordChange,
+          permissions: userPermissions, // Include permissions from RBAC service
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "1d" }
+      );
+
+      console.log("🔍 DEBUG: Custom role user selected hostel:", hostel.name);
+
+      res.json({
+        message: "Hostel selected successfully",
+        token: newToken,
+        hostel: {
+          id: hostel.id,
+          name: hostel.name,
+          subdomain: hostel.subdomain,
+        },
+      });
     } else {
-      res.status(400).json({ message: "Only owners and superadmins can switch hostels" });
+      res.status(400).json({ message: "Only owners, superadmins, and staff with hostel access can switch hostels" });
     }
   } catch (error) {
     console.error("Error setting active hostel:", error);

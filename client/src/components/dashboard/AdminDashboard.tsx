@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'reac
 import { useAuth } from '@/contexts/AuthContext';
 import { useHostel } from '@/context/HostelContext';
 import { useCurrentHostelId } from '@/lib/context-aware-api';
-import { api } from '@/lib/http';
+import { httpClient as api } from '@/lib/http';
 import StatCard from '@/components/dashboard/StatCard';
 import { Button } from '@/components/ui/Button';
 import toast from '@/lib/toast';
@@ -52,6 +52,23 @@ interface RecentActivity {
     role: string;
   };
 }
+
+// Typed API response helpers
+type PageResp<T = any> = { data: T[]; pagination?: { total?: number } };
+type DashboardApiResponse = {
+  stats: {
+    totalStudents: number;
+    totalRooms: number;
+    totalComplaints: number;
+    pendingComplaints: number;
+    occupiedRooms: number;
+    availableRooms: number;
+    activeVisitors?: number;
+  };
+  recentComplaints?: any[];
+  recentVisitors?: any[];
+  recentAllocations?: any[];
+};
 
 /**
  * 🚀 OPTIMIZED AdminDashboard Component
@@ -152,40 +169,62 @@ export const AdminDashboard = React.memo(() => {
       setError(null);
       
       // Get dashboard stats using the API - this follows the backend structure
-      const dashboardData = await api.get(`/admin/dashboard-stats?hostelId=${contextHostelId}`).catch((err: any) => {
+      const dashboardData = await api
+        .get<DashboardApiResponse>(`/hostels/${contextHostelId}/stats`)
+        .catch((err: any) => {
         console.error("Error fetching dashboard stats:", err);
-        return null;
-      });
+          return null as unknown as DashboardApiResponse | null;
+        });
       
       // If we can't get the main dashboard stats, try to fetch individual pieces
       if (!dashboardData) {
-        const [studentData, roomData, complaintData, visitorDataRaw] = await Promise.all([
-          api.get(`/admin/students?hostelId=${contextHostelId}&limit=1`).catch(() => ({ data: { data: [], total: 0 } })),
-          api.get(`/admin/rooms?hostelId=${contextHostelId}&limit=1`).catch(() => ({ data: { data: [], total: 0 } })),
-          api.get(`/admin/complaints?hostelId=${contextHostelId}&limit=1`).catch(() => ({ data: { data: [], total: 0 } })),
-          api.get(`/admin/visitor-logs?hostelId=${contextHostelId}&limit=1`).catch(() => ({ data: { data: [], total: 0 } }))
+        const [
+          studentData,
+          roomData,
+          complaintData,
+          visitorData
+        ] = await Promise.all([
+          api
+            .get<PageResp<any>>(`/hostels/${contextHostelId}/students?limit=1`)
+            .catch(() => ({ data: [], pagination: { total: 0 } } as PageResp<any>)),
+          api
+            .get<PageResp<any>>(`/hostels/${contextHostelId}/rooms?limit=1`)
+            .catch(() => ({ data: [], pagination: { total: 0 } } as PageResp<any>)),
+          api
+            .get<PageResp<any>>(`/hostels/${contextHostelId}/complaints?limit=1`)
+            .catch(() => ({ data: [], pagination: { total: 0 } } as PageResp<any>)),
+          api
+            .get<PageResp<any>>(`/hostels/${contextHostelId}/visitors?limit=1`)
+            .catch(() => ({ data: [], pagination: { total: 0 } } as PageResp<any>))
         ]);
-        // Ensure visitorData always has a data array
-        const visitorData = visitorDataRaw && Array.isArray((visitorDataRaw as any).data?.data)
-          ? visitorDataRaw as { data: { data: any[]; total: number } }
-          : { data: { data: [], total: 0 } };
 
         // Create a fallback stats object from individual API calls
         const processedStats: DashboardStats = {
-          totalStudents: (studentData as any)?.data?.total || studentData?.data?.data?.length || 0,
-          totalRooms: (roomData as any)?.data?.total || roomData?.data?.data?.length || 0,
-          totalComplaints: (complaintData as any)?.data?.total || complaintData?.data?.data?.length || 0,
-          pendingComplaints: complaintData?.data?.data?.filter?.((c: any) => c.status === 'Open' || c.status === 'pending').length || 0,
-          occupiedRooms: roomData?.data?.data?.filter?.((r: any) => r.allocations?.length > 0 || r.status === 'occupied').length || 0,
-          availableRooms: ((roomData as any)?.data?.total || 0) - (roomData?.data?.data?.filter?.((r: any) => r.allocations?.length > 0 || r.status === 'occupied').length || 0),
-          activeVisitors: visitorData?.data?.data?.filter?.((v: any) => v.status === 'checked-in').length || 0
+          totalStudents: studentData.pagination?.total || studentData.data.length || 0,
+          totalRooms: roomData.pagination?.total || roomData.data.length || 0,
+          totalComplaints: complaintData.pagination?.total || complaintData.data.length || 0,
+          pendingComplaints:
+            complaintData.data.filter?.(
+              (c: any) => c.status === 'Open' || c.status === 'pending'
+            ).length || 0,
+          occupiedRooms:
+            roomData.data.filter?.(
+              (r: any) => r.allocations?.length > 0 || r.status === 'occupied'
+            ).length || 0,
+          availableRooms:
+            (roomData.pagination?.total || 0) -
+            (roomData.data.filter?.(
+              (r: any) => r.allocations?.length > 0 || r.status === 'occupied'
+            ).length || 0),
+          activeVisitors:
+            visitorData.data.filter?.((v: any) => v.status === 'checked-in').length || 0,
         };
         
         setStats(processedStats);
         
         // Generate recent activity from individual API data
         const activities: RecentActivity[] = [
-          ...(complaintData?.data?.data?.slice(0, 3).map((complaint: any) => ({
+          ...(complaintData.data.slice(0, 3).map((complaint: any) => ({
             id: complaint.id,
             type: 'complaint' as const,
             title: 'New Complaint',
@@ -193,7 +232,7 @@ export const AdminDashboard = React.memo(() => {
             timestamp: complaint.createdAt || new Date().toISOString(),
             user: complaint.reportedBy || complaint.student
           })) || []),
-          ...(studentData?.data?.data?.slice(0, 2).map((student: any) => ({
+          ...(studentData.data.slice(0, 2).map((student: any) => ({
             id: student.id,
             type: 'student_registration' as const,
             title: 'New Student',
@@ -207,7 +246,7 @@ export const AdminDashboard = React.memo(() => {
       } else {
         // Use the structured dashboard stats from the API
         // Extract relevant stats from the backend response
-        const backendStats = dashboardData.data.stats;
+  const backendStats = (dashboardData as DashboardApiResponse).stats;
         
         // Map the backend stats to our component's expected format
         const processedStats: DashboardStats = {
@@ -224,7 +263,7 @@ export const AdminDashboard = React.memo(() => {
         
         // Generate activity from the recent data provided by the backend
         const activities: RecentActivity[] = [
-          ...(dashboardData.data.recentComplaints?.map((complaint: any) => ({
+          ...((dashboardData as DashboardApiResponse).recentComplaints?.map((complaint: any) => ({
             id: complaint.id,
             type: 'complaint' as const,
             title: 'New Complaint',
@@ -232,7 +271,7 @@ export const AdminDashboard = React.memo(() => {
             timestamp: complaint.createdAt || new Date().toISOString(), // Ensure we always have a timestamp
             user: complaint.student
           })) || []),
-          ...(dashboardData.data.recentVisitors?.map((visitor: any) => ({
+          ...((dashboardData as DashboardApiResponse).recentVisitors?.map((visitor: any) => ({
             id: visitor.id,
             type: 'visitor' as const,
             title: 'Visitor Check-in',
@@ -240,7 +279,7 @@ export const AdminDashboard = React.memo(() => {
             timestamp: visitor.entryTime || visitor.createdAt || new Date().toISOString(),
             user: visitor.student
           })) || []),
-          ...(dashboardData.data.recentAllocations?.map((allocation: any) => ({
+          ...((dashboardData as DashboardApiResponse).recentAllocations?.map((allocation: any) => ({
             id: allocation.id,
             type: 'room_allocation' as const,
             title: 'Room Allocation',

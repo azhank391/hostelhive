@@ -18,6 +18,7 @@ const {
   deallocateRoom,
   getAllComplaints,
   resolveComplaint,
+  deleteComplaint,
   updateComplaintStatus,
   getAllVisitorLogs,
   createVisitorLog,
@@ -28,15 +29,11 @@ const {
   exportVisitorLogs, // ✅ NEW
 } = require("../controllers/adminController");
 const { getUserHostels } = require("../controllers/authController");
-const {
-  verifyToken,
-  requireOwnerOrWarden,
-  requireOwner,
-} = require("../middleware/authMiddleware");
+const { verifyToken } = require("../middleware/authMiddleware");
 const {
   validateHostelAccess,
-  requireHostelOwner,
 } = require("../middleware/hostelAccessMiddleware");
+const { requirePermission } = require("../middleware/permissionMiddleware");
 
 // 🔧 SIMPLE MIDDLEWARE: Handle both URL-based and JWT-based hostelId
 const flexibleHostelAccess = (req, res, next) => {
@@ -45,15 +42,15 @@ const flexibleHostelAccess = (req, res, next) => {
   if (req.params.hostelId) {
     return next();
   }
-  
+
   // If no hostelId in URL (warden routes), validate JWT has hostelId
   if (!req.user || !req.user.hostelId) {
-    return res.status(400).json({ 
+    return res.status(400).json({
       success: false,
-      message: 'Hostel ID is required (either in URL or JWT)' 
+      message: "Hostel ID is required (either in URL or JWT)",
     });
   }
-  
+
   // Set hostelId from JWT for warden routes
   req.hostelId = req.user.hostelId;
   next();
@@ -71,50 +68,177 @@ router.use((req, res, next) => {
   next();
 });
 
-// Dashboard & Analytics (Owner or Warden)
-router.get("/stats", requireOwnerOrWarden, getHostelStats);
+// Dashboard & Analytics
+router.get(
+  "/stats",
+  verifyToken,
+  requirePermission("hostel_stats_read"),
+  getHostelStats
+);
 
-// Hostel Management (Owner or Warden)
-router.get("/hostels", requireOwnerOrWarden, getUserHostels);
+// Hostel Management
+router.get(
+  "/hostels",
+  verifyToken,
+  requirePermission("hostel_read"),
+  getUserHostels
+);
 
-// Room Management (Owner or Warden)
-router.get("/rooms", requireOwnerOrWarden, getAllRooms);
-router.post("/rooms", requireOwnerOrWarden, createRoom);
-router.put("/rooms/:id", requireOwnerOrWarden, updateRoom);
-router.delete("/rooms/:id", requireOwnerOrWarden, deleteRoom);
+// Room Management
+router.get("/rooms", verifyToken, requirePermission("room_read"), getAllRooms);
+router.post(
+  "/rooms",
+  verifyToken,
+  requirePermission("room_create"),
+  createRoom
+);
+router.put(
+  "/rooms/:id",
+  verifyToken,
+  requirePermission("room_update"),
+  updateRoom
+);
+router.delete(
+  "/rooms/:id",
+  verifyToken,
+  requirePermission("room_delete"),
+  deleteRoom
+);
 
-// Student Management (Owner or Warden)
-router.get("/students", requireOwnerOrWarden, getAllStudents);
-router.post("/students", requireOwnerOrWarden, createStudent);
-router.put("/students/:id", requireOwnerOrWarden, updateStudent);
-router.delete("/students/:id", requireOwnerOrWarden, deleteStudent);
+// Student Management
+router.get(
+  "/students",
+  verifyToken,
+  requirePermission("student_read"),
+  getAllStudents
+);
+router.post(
+  "/students",
+  verifyToken,
+  requirePermission("student_create"),
+  createStudent
+);
+router.put(
+  "/students/:id",
+  verifyToken,
+  requirePermission("student_update"),
+  updateStudent
+);
+router.delete(
+  "/students/:id",
+  verifyToken,
+  requirePermission("student_delete"),
+  deleteStudent
+);
 
-// Warden Management (Owner only)
-router.get("/wardens", requireOwner, getAllWardens);
-router.post("/wardens", requireOwner, createWarden);
-router.put("/wardens/:id", requireOwner, updateWarden);
-router.delete("/wardens/:id", requireOwner, deleteWarden);
+// Warden Management
+router.get(
+  "/wardens",
+  verifyToken,
+  requirePermission("warden_read"),
+  getAllWardens
+);
+router.post(
+  "/wardens",
+  verifyToken,
+  requirePermission("warden_create"),
+  createWarden
+);
+router.put(
+  "/wardens/:id",
+  verifyToken,
+  requirePermission("warden_update"),
+  updateWarden
+);
+router.delete(
+  "/wardens/:id",
+  verifyToken,
+  requirePermission("warden_delete"),
+  deleteWarden
+);
 
-// Room Allocation (Owner or Warden)
-router.post("/allocate-room", requireOwnerOrWarden, allocateRoom);
+// Room Allocation
+router.post(
+  "/allocate-room",
+  verifyToken,
+  requirePermission("room_allocate"),
+  allocateRoom
+);
 router.put(
   "/deallocate-room/:allocationId",
-  requireOwnerOrWarden,
+  verifyToken,
+  requirePermission("room_deallocate"),
   deallocateRoom
 );
 
-// Complaint Management (Owner or Warden)
-router.get("/complaints", requireOwnerOrWarden, getAllComplaints);
-router.put("/complaints/:id", requireOwnerOrWarden, updateComplaintStatus);
-router.put("/complaints/:id/resolve", requireOwnerOrWarden, resolveComplaint);
+// Complaint Management
+router.get(
+  "/complaints",
+  verifyToken,
+  requirePermission("complaint_read"),
+  getAllComplaints
+);
+router.put(
+  "/complaints/:id",
+  verifyToken,
+  requirePermission("complaint_update"),
+  updateComplaintStatus
+);
+router.put(
+  "/complaints/:id/resolve",
+  verifyToken,
+  requirePermission("complaint_resolve"),
+  resolveComplaint
+);
+router.put(
+  "/complaints/:id",
+  verifyToken,
+  requirePermission("complaint_delete"),
+  deleteComplaint
+);
 
-// Visitor Log Management (Owner or Warden)
-router.get("/visitor-logs", requireOwnerOrWarden, getAllVisitorLogs);
-router.post("/visitor-logs", requireOwnerOrWarden, createVisitorLog);
-router.put("/visitor-logs/:id/checkout", requireOwnerOrWarden, checkoutVisitor);
-router.put("/visitor-logs/:id", requireOwnerOrWarden, updateVisitorLog); // ✅ NEW
-router.delete("/visitor-logs/:id", requireOwnerOrWarden, deleteVisitorLog); // ✅ NEW
-router.get("/visitor-stats", requireOwnerOrWarden, getVisitorStats); // ✅ NEW
-router.get("/visitor-logs/export", requireOwnerOrWarden, exportVisitorLogs); // ✅ NEW
+// Visitor Log Management
+router.get(
+  "/visitor-logs",
+  verifyToken,
+  requirePermission("visitor_read"),
+  getAllVisitorLogs
+);
+router.post(
+  "/visitor-logs",
+  verifyToken,
+  requirePermission("visitor_create"),
+  createVisitorLog
+);
+router.put(
+  "/visitor-logs/:id/checkout",
+  verifyToken,
+  requirePermission("visitor_checkout"),
+  checkoutVisitor
+);
+router.put(
+  "/visitor-logs/:id",
+  verifyToken,
+  requirePermission("visitor_update"),
+  updateVisitorLog
+); // ✅ NEW
+router.delete(
+  "/visitor-logs/:id",
+  verifyToken,
+  requirePermission("visitor_delete"),
+  deleteVisitorLog
+); // ✅ NEW
+router.get(
+  "/visitor-stats",
+  verifyToken,
+  requirePermission("visitor_stats_read"),
+  getVisitorStats
+); // ✅ NEW
+router.get(
+  "/visitor-logs/export",
+  verifyToken,
+  requirePermission("visitor_export"),
+  exportVisitorLogs
+); // ✅ NEW
 
 module.exports = router;

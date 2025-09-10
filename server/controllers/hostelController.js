@@ -435,9 +435,27 @@ exports.getUserHostels = async (req, res) => {
         break;
 
       default:
-        return res.status(403).json({ error: "Invalid user role" });
+        // Custom roles (like custom_guard) get their assigned hostel
+        if (req.user.hostelId) {
+          const hostel = await Hostel.findByPk(req.user.hostelId, {
+            include: [
+              {
+                model: TenantLocation,
+                as: "location",
+              },
+            ],
+          });
+          if (hostel) hostels = [hostel];
+        }
+        break;
     }
 
+    // Disable caching to prevent 304 responses
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
     res.json({ hostels, userRole });
   } catch (error) {
     console.error("Error in getUserHostels:", error);

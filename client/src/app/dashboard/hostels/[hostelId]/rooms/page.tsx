@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
+import { PermissionGate } from '@/components/PermissionGate';
+import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
@@ -23,6 +26,16 @@ import {
 export default function HostelRoomsPage() {
   const params = useParams<{ hostelId: string }>();
   const hostelId = params?.hostelId || '';
+  const { user, isLoading } = useAuth();
+  const { hasPermission } = usePermissions();
+  
+  // Permission checks
+  const canViewRooms = hasPermission('room_read');
+  const canCreateRooms = hasPermission('room_create');
+  const canUpdateRooms = hasPermission('room_update');
+  const canDeleteRooms = hasPermission('room_delete');
+  const canAllocateRooms = hasPermission('room_allocate');
+  const canDeallocateRooms = hasPermission('room_deallocate');
   
   // State management
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -484,7 +497,7 @@ export default function HostelRoomsPage() {
   }, [rooms, searchQuery]);
 
   // Early returns after all hooks
-  if (loading) {
+  if (loading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -521,6 +534,26 @@ export default function HostelRoomsPage() {
     );
   }
 
+  // Check if user has permission to view rooms
+  if (!canViewRooms) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto h-16 w-16 text-gray-400 mb-4">
+            <BedIcon size={64} />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
+          <p className="text-gray-600 mb-4">
+            You don't have permission to view room management.
+          </p>
+          <p className="text-sm text-gray-500">
+            Contact your administrator to get access to room management features.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
              {/* Header */}
@@ -532,18 +565,22 @@ export default function HostelRoomsPage() {
            </p>
          </div>
          
-                   <Button 
-            variant="primary" 
-            className="flex items-center px-6 py-3"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <PlusIcon size={18} className="mr-2" />
-            Add New Room
-          </Button>
+         {/* Show Add New Room button only if user has room_create permission */}
+         <PermissionGate permission="room_create">
+           <Button 
+             variant="primary" 
+             className="flex items-center px-6 py-3"
+             onClick={() => setShowCreateModal(true)}
+           >
+             <PlusIcon size={18} className="mr-2" />
+             Add New Room
+           </Button>
+         </PermissionGate>
        </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <PermissionGate permission="room_read">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-blue-500 text-white">
@@ -599,7 +636,8 @@ export default function HostelRoomsPage() {
             </div>
           </div>
         </Card>
-      </div>
+        </div>
+      </PermissionGate>
 
              {/* Filters and Search */}
       <Card className="p-6 bg-white shadow-sm">
@@ -647,10 +685,12 @@ export default function HostelRoomsPage() {
             {searchQuery ? `No rooms found for "${searchQuery}"` : 'Get started by adding your first room'}
           </p>
           {!searchQuery && (
-            <Button variant="primary" className="flex items-center mx-auto">
-              <PlusIcon size={16} className="mr-2" />
-              Add New Room
-            </Button>
+            <PermissionGate permission="room_create">
+              <Button variant="primary" className="flex items-center mx-auto">
+                <PlusIcon size={16} className="mr-2" />
+                Add New Room
+              </Button>
+            </PermissionGate>
           )}
         </Card>
       ) : (
@@ -717,25 +757,35 @@ export default function HostelRoomsPage() {
                </div>
                
                <div className="flex space-x-2">
-                                   <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1 hover:bg-blue-50 hover:border-blue-300"
-                    onClick={() => openViewModal(room)}
-                  >
-                    <EyeIcon size={14} className="mr-1" />
-                    View Details
-                  </Button>
-                 <Button 
-                   variant="outline" 
-                   size="sm" 
-                   className="flex-1 hover:bg-green-50 hover:border-green-300"
-                   onClick={() => openEditModal(room)}
-                 >
-                   <EditIcon size={14} className="mr-1" />
-                   Edit
-                 </Button>
-                                    <Button 
+                 {/* View Details - Always visible for view_rooms permission */}
+                 <PermissionGate permission="room_read">
+                   <Button 
+                     variant="outline" 
+                     size="sm" 
+                     className="flex-1 hover:bg-blue-50 hover:border-blue-300"
+                     onClick={() => openViewModal(room)}
+                   >
+                     <EyeIcon size={14} className="mr-1" />
+                     View Details
+                   </Button>
+                 </PermissionGate>
+                 
+                 {/* Edit button - Only visible for room_update permission */}
+                 <PermissionGate permission="room_update">
+                   <Button 
+                     variant="outline" 
+                     size="sm" 
+                     className="flex-1 hover:bg-green-50 hover:border-green-300"
+                     onClick={() => openEditModal(room)}
+                   >
+                     <EditIcon size={14} className="mr-1" />
+                     Edit
+                   </Button>
+                 </PermissionGate>
+                 
+                 {/* Delete button - Only visible for room_delete permission */}
+                 <PermissionGate permission="room_delete">
+                   <Button 
                      variant="outline" 
                      size="sm" 
                      className="px-3 hover:bg-red-50 hover:border-red-300 hover:text-red-600"
@@ -748,6 +798,7 @@ export default function HostelRoomsPage() {
                        <span className="text-red-600">×</span>
                      )}
                    </Button>
+                 </PermissionGate>
                </div>
              </Card>
            ))}
@@ -757,7 +808,8 @@ export default function HostelRoomsPage() {
              {/* No pagination needed - all rooms loaded at once */}
 
                {/* Create Room Modal */}
-        {showCreateModal && (
+        <PermissionGate permission="room_create">
+          {showCreateModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" style={{ left: 0, right: 0, top: 0, bottom: 0, width: '100vw', height: '100vh', position: 'fixed' }}>
             <div className="bg-white rounded-lg p-6 w-full max-w-md mx-auto">
              <h3 className="text-lg font-semibold mb-4">Create New Room</h3>
@@ -820,9 +872,11 @@ export default function HostelRoomsPage() {
            </div>
          </div>
        )}
+        </PermissionGate>
 
                                                {/* Edit Room Modal */}
-         {showEditModal && editingRoom && (
+         <PermissionGate permission="room_update">
+           {showEditModal && editingRoom && (
            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" style={{ left: 0, right: 0, top: 0, bottom: 0, width: '100vw', height: '100vh' }}>
              <div className="bg-white rounded-lg p-6 w-full max-w-md mx-auto">
               <h3 className="text-lg font-semibold mb-4">Edit Room {editingRoom.roomNumber}</h3>
@@ -888,9 +942,11 @@ export default function HostelRoomsPage() {
              </div>
             </div>
                    )}
+         </PermissionGate>
 
                  {/* View Room Details Modal */}
-         {showViewModal && viewingRoom && (
+         <PermissionGate permission="room_read">
+           {showViewModal && viewingRoom && (
            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" style={{ left: 0, right: 0, top: 0, bottom: 0, width: '100vw', height: '100vh' }}>
              <div className="bg-white rounded-lg p-6 w-full max-w-md mx-auto">
               <div className="flex items-center justify-between mb-4">
@@ -953,19 +1009,22 @@ export default function HostelRoomsPage() {
                                 Student
                               </p>
                             </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="bg-red-600 text-white border-red-600 hover:bg-red-700 hover:border-red-700 px-3 py-1"
-                              onClick={() => handleDeallocateStudent(student.id, student.name)}
-                              disabled={deallocatingStudent === student.id}
-                            >
-                              {deallocatingStudent === student.id ? (
-                                <LoadingSpinner size="sm" className="text-white" />
-                              ) : (
-                                'Remove'
-                              )}
-                            </Button>
+                            {/* Only show Remove button if user has allocate_rooms permission */}
+                            {hasPermission('room_allocate') && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="bg-red-600 text-white border-red-600 hover:bg-red-700 hover:border-red-700 px-3 py-1"
+                                onClick={() => handleDeallocateStudent(student.id, student.name)}
+                                disabled={deallocatingStudent === student.id}
+                              >
+                                {deallocatingStudent === student.id ? (
+                                  <LoadingSpinner size="sm" className="text-white" />
+                                ) : (
+                                  'Remove'
+                                )}
+                              </Button>
+                            )}
                           </div>
                         </Card>
                       ))}
@@ -992,6 +1051,7 @@ export default function HostelRoomsPage() {
             </div>
           </div>
         )}
+         </PermissionGate>
       </div>
     );
   }

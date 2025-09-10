@@ -453,9 +453,9 @@ export const WardenManagement = React.memo(() => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
               >
                 <option value="all">All Permissions</option>
-                <option value="view_rooms">View Rooms</option>
-                <option value="manage_students">Manage Students</option>
-                <option value="handle_complaints">Handle Complaints</option>
+                <option value="room_read">View Rooms</option>
+                <option value="student_update">Manage Students</option>
+                <option value="complaint_update">Handle Complaints</option>
               </select>
             </div>
           </div>

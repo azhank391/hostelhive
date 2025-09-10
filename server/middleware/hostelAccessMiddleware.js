@@ -100,10 +100,15 @@ const checkUserHostelAccess = async (userId, hostelId, userRole) => {
         break;
 
       default:
-        return { 
-          allowed: false, 
-          message: 'Invalid user role' 
-        };
+        // Handle custom roles - they can access their assigned hostel
+        const customUser = await User.findByPk(userId);
+        if (!customUser || customUser.hostelId !== hostelId) {
+          return { 
+            allowed: false, 
+            message: 'You can only access your assigned hostel' 
+          };
+        }
+        break;
     }
 
     return { 
@@ -154,6 +159,14 @@ const getUserAccessibleHostels = async (userId, userRole) => {
         break;
 
       default:
+        // Handle custom roles - they can access their assigned hostel
+        const customUser = await User.findByPk(userId);
+        if (customUser && customUser.hostelId) {
+          const hostel = await Hostel.findByPk(customUser.hostelId, {
+            include: [{ model: TenantLocation, as: 'location' }]
+          });
+          if (hostel) hostels = [hostel];
+        }
         break;
     }
 

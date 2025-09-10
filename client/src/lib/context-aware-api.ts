@@ -7,7 +7,6 @@
 
 import { useHostel } from '../context/HostelContext';
 import { adminApi, studentApi, hostelApi } from './api';
-import { useMemo } from 'react';
 
 // ==========================================
 // SIMPLE HOSTEL ID HOOK
@@ -17,68 +16,31 @@ import { useMemo } from 'react';
  * Hook that provides current hostelId with automatic error handling
  */
 export const useCurrentHostelId = () => {
-  const { getCurrentHostelId, getCurrentHostelIdWithUrlFallback, isReady, currentHostel } = useHostel();
+  const { currentHostel, isReady } = useHostel();
 
-  // 🚀 CRITICAL FIX: Memoize the functions to prevent infinite loops
-  const getHostelId = useMemo((): (() => string) => {
-    return (): string => {
-      // First try to get from currentHostel directly
-      if (currentHostel?.id) {
-        return currentHostel.id;
-      }
-      
-      // Then try context methods
-      const contextHostelId = getCurrentHostelId();
-      const urlHostelId = getCurrentHostelIdWithUrlFallback();
-      const hostelId = contextHostelId || urlHostelId;
-      
-      if (!hostelId) {
-        // Try localStorage as final fallback
-        if (typeof window !== 'undefined') {
-          const activeHostel = localStorage.getItem('activeHostel');
-          if (activeHostel) {
-            return activeHostel;
-          }
-        }
-        throw new Error('No active hostel selected. Please select a hostel first.');
-      }
-      
-      return hostelId;
-    };
-  }, [currentHostel?.id, getCurrentHostelId, getCurrentHostelIdWithUrlFallback]);
-
-  const getHostelIdSafe = useMemo((): (() => string | null) => {
-    return (): string | null => {
-      try {
-        const id = getHostelId();
-        return id;
-      } catch (error) {
-        // Try localStorage as final fallback
-        if (typeof window !== 'undefined') {
-          const activeHostel = localStorage.getItem('activeHostel');
-          if (activeHostel) {
-            return activeHostel;
-          }
-        }
-        return null;
-      }
-    };
-  }, [getHostelId]);
-
-  const hasHostel = useMemo(() => {
-    try {
-      const hostelId = getHostelIdSafe();
-      return !!hostelId;
-    } catch (error) {
-      return false;
+  const getHostelId = (): string => {
+    if (!isReady || !currentHostel?.id) {
+      console.warn('⚠️ No active hostel selected. API calls may fail.');
+      throw new Error('No active hostel selected. Please select a hostel first.');
     }
-  }, [getHostelIdSafe]);
+    return currentHostel.id;
+  };
+
+  const getHostelIdSafe = (): string | null => {
+    try {
+      return isReady && currentHostel?.id ? currentHostel.id : null;
+    } catch (error) {
+      console.warn('⚠️ Error getting hostel ID:', error);
+      return null;
+    }
+  };
 
   return {
-    hasHostel,
-    getHostelId: getHostelId as () => string,
-    getHostelIdSafe: getHostelIdSafe as () => string | null,
-    isReady
+    hostelId: currentHostel?.id || null,
+    getHostelId,
+    getHostelIdSafe,
+  hasHostel: isReady && !!currentHostel?.id,
+  isReady,
   };
 };
 
@@ -94,136 +56,39 @@ export const useCurrentHostelId = () => {
 export const useAdminApiWithHostel = () => {
   const { getHostelId, getHostelIdSafe } = useCurrentHostelId();
 
-  // 🚀 CRITICAL FIX: Use useMemo to stabilize the API object reference
-  // This prevents infinite loops when components depend on this hook
-  return useMemo(() => ({
+  return {
     // Dashboard
     getDashboardStats: () => {
       const hostelId = getHostelIdSafe();
+      console.log('🔍 useAdminApiWithHostel.getDashboardStats: hostelId =', hostelId);
       if (!hostelId) {
         return Promise.reject(new Error('No hostel selected for dashboard stats'));
       }
       return adminApi.getDashboardStats(hostelId);
     },
 
-    // Room Allocation
-    allocateRoom: (allocationData: any) => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for room allocation'));
-      }
-      return adminApi.allocateRoom(hostelId, allocationData);
-    },
-    deallocateRoom: (studentId: string) => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for room deallocation'));
-      }
-      return adminApi.deallocateRoom(hostelId, studentId);
-    },
-
     // Room Management
-    getRooms: (params?: any) => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for rooms'));
-      }
-      return adminApi.getRooms(hostelId, params);
-    },
-    createRoom: (roomData: any) => {
-      const hostelId = getHostelIdSafe();
-      console.log('🔍 DEBUG: createRoom - hostelId:', hostelId);
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for creating room'));
-      }
-      return adminApi.createRoom(hostelId, roomData);
-    },
-    updateRoom: (roomId: string, updates: any) => {
-      const hostelId = getHostelIdSafe();
-      console.log('🔍 DEBUG: updateRoom called with:', { roomId, updates, hostelId, hostelIdType: typeof hostelId });
-      if (!hostelId) {
-        console.error('❌ DEBUG: No hostel selected for updating room');
-        return Promise.reject(new Error('No hostel selected for updating room'));
-      }
-      console.log('✅ DEBUG: Calling adminApi.updateRoom with:', { hostelId, roomId, updates });
-      return adminApi.updateRoom(hostelId, roomId, updates);
-    },
-    deleteRoom: (roomId: string) => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for deleting room'));
-      }
-      return adminApi.deleteRoom(hostelId, roomId);
-    },
+    getRooms: (params?: any) => adminApi.getRooms(getHostelId(), params),
+    createRoom: (roomData: any) => adminApi.createRoom(getHostelId(), roomData),
+    updateRoom: (roomId: string, updates: any) => adminApi.updateRoom(getHostelId(), roomId, updates),
+    deleteRoom: (roomId: string) => adminApi.deleteRoom(getHostelId(), roomId),
 
     // Student Management
-    getStudents: (params?: any) => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for students'));
-      }
-      return adminApi.getStudents(hostelId, params);
-    },
-    createStudent: (studentData: any) => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for creating student'));
-      }
-      return adminApi.createStudent(hostelId, studentData);
-    },
-    updateStudent: (studentId: string, updates: any) => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for updating student'));
-      }
-      return adminApi.updateStudent(hostelId, studentId, updates);
-    },
-    deleteStudent: (studentId: string) => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for deleting student'));
-      }
-      return adminApi.deleteStudent(hostelId, studentId);
-    },
+    getStudents: (params?: any) => adminApi.getStudents(getHostelId(), params),
+    createStudent: (studentData: any) => adminApi.createStudent(getHostelId(), studentData),
+    updateStudent: (studentId: string, updates: any) => adminApi.updateStudent(getHostelId(), studentId, updates),
+    deleteStudent: (studentId: string) => adminApi.deleteStudent(getHostelId(), studentId),
 
     // Warden Management
-    getWardens: () => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for getting wardens'));
-      }
-      return adminApi.getWardens(hostelId);
-    },
-    createWarden: (wardenData: any) => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for creating warden'));
-      }
-      return adminApi.createWarden(hostelId, wardenData);
-    },
-    updateWarden: (wardenId: string, updates: any) => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for updating warden'));
-      }
-      return adminApi.updateWarden(hostelId, wardenId, updates);
-    },
-    deleteWarden: (wardenId: string) => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for deleting warden'));
-      }
-      return adminApi.deleteWarden(hostelId, wardenId);
-    },
+    getWardens: () => adminApi.getWardens(getHostelId()),
+    createWarden: (wardenData: any) => adminApi.createWarden(getHostelId(), wardenData),
+    updateWarden: (wardenId: string, updates: any) => adminApi.updateWarden(getHostelId(), wardenId, updates),
+    deleteWarden: (wardenId: string) => adminApi.deleteWarden(getHostelId(), wardenId),
 
     // Room Allocation (if available)
     getRoomAllocations: (params?: any) => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for room allocations'));
-      }
       if ('getRoomAllocations' in adminApi) {
-        return (adminApi as any).getRoomAllocations(hostelId, params);
+        return (adminApi as any).getRoomAllocations(getHostelId(), params);
       }
       throw new Error('getRoomAllocations method not available');
     },
@@ -231,66 +96,36 @@ export const useAdminApiWithHostel = () => {
     // Complaint Management
     getComplaints: (params?: any) => {
       const hostelId = getHostelIdSafe();
+      console.log('🔍 useAdminApiWithHostel.getComplaints: hostelId =', hostelId);
       if (!hostelId) {
         return Promise.reject(new Error('No hostel selected for complaints'));
       }
       return adminApi.getComplaints(hostelId, params);
     },
-    updateComplaint: (complaintId: string, updates: any) => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for updating complaint'));
-      }
-      return adminApi.updateComplaint(hostelId, complaintId, updates);
-    },
-    resolveComplaint: (complaintId: string, resolutionNotes: string) => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for resolving complaint'));
-      }
-      return adminApi.resolveComplaint(hostelId, complaintId, resolutionNotes);
-    },
+    updateComplaint: (complaintId: string, updates: any) => adminApi.updateComplaint(getHostelId(), complaintId, updates),
+    resolveComplaint: (complaintId: string, resolutionNotes: string) => adminApi.resolveComplaint(getHostelId(), complaintId, resolutionNotes),
+
+    // Room Allocation
+    allocateRoom: (allocationData: { studentId: string; roomId: string }) => adminApi.allocateRoom(getHostelId(), allocationData),
+    deallocateRoom: (studentId: string) => adminApi.deallocateRoom(getHostelId(), studentId),
 
     // Visitor Management
     getVisitorLogs: (params?: any) => {
       const hostelId = getHostelIdSafe();
+      console.log('🔍 useAdminApiWithHostel.getVisitorLogs: hostelId =', hostelId);
       if (!hostelId) {
         return Promise.reject(new Error('No hostel selected for visitor logs'));
       }
       return adminApi.getVisitorLogs(hostelId, params);
     },
-    createVisitorLog: (visitorData: any) => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for creating visitor log'));
-      }
-      return adminApi.createVisitorLog(hostelId, visitorData);
-    },
-    updateVisitorLog: (visitorId: string, updates: any) => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for updating visitor log'));
-      }
-      return adminApi.updateVisitorLog(hostelId, visitorId, updates);
-    },
-    deleteVisitorLog: (visitorId: string) => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for deleting visitor log'));
-      }
-      return adminApi.deleteVisitorLog(hostelId, visitorId);
-    },
-    checkoutVisitor: (visitorId: string) => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for checking out visitor'));
-      }
-      return adminApi.checkoutVisitor(hostelId, visitorId);
-    },
+    createVisitorLog: (visitorData: any) => adminApi.createVisitorLog(getHostelId(), visitorData),
+    updateVisitorLog: (visitorId: string, updates: any) => adminApi.updateVisitorLog(getHostelId(), visitorId, updates),
+    deleteVisitorLog: (visitorId: string) => adminApi.deleteVisitorLog(getHostelId(), visitorId),
+    checkoutVisitor: (visitorId: string) => adminApi.checkoutVisitor(getHostelId(), visitorId),
 
     // Utility
     getCurrentHostelId: getHostelId,
-  }), [getHostelId, getHostelIdSafe]); // Only depend on stable functions, not objects
+  };
 };
 
 /**
@@ -301,65 +136,53 @@ export const useAdminApiWithHostel = () => {
 export const useStudentApiWithHostel = () => {
   const { getHostelId } = useCurrentHostelId();
 
-  // 🚀 CRITICAL FIX: Use useMemo to stabilize the API object reference
-  return useMemo(() => ({
+  return {
     // Dashboard
     getDashboard: () => studentApi.getDashboard(),
+    
+    // Profile
     getProfile: () => studentApi.getProfile(),
     updateProfile: (updates: any) => studentApi.updateProfile(updates),
-
+    
     // Room
     getRoom: () => studentApi.getRoom(),
-
+    
     // Complaints
     getComplaints: () => studentApi.getComplaints(),
     lodgeComplaint: (complaintData: any) => studentApi.lodgeComplaint(complaintData),
     updateComplaint: (complaintId: string, updates: any) => studentApi.updateComplaint(complaintId, updates),
     deleteComplaint: (complaintId: string) => studentApi.deleteComplaint(complaintId),
-
+    
     // Visitor Logs
     getVisitorLogs: () => studentApi.getVisitorLogs(),
     createVisitorLog: (visitorData: any) => studentApi.createVisitorLog(visitorData),
     updateVisitorLog: (visitorId: string, updates: any) => studentApi.updateVisitorLog(visitorId, updates),
     deleteVisitorLog: (visitorId: string) => studentApi.deleteVisitorLog(visitorId),
     checkoutVisitor: (visitorId: string) => studentApi.checkoutVisitor(visitorId),
-
+    
     // Utility
     getCurrentHostelId: getHostelId,
-  }), [getHostelId]); // Only depend on stable function, not objects
+  };
 };
 
 /**
  * Hostel API hook with automatic hostelId injection for current hostel operations
  */
 export const useHostelApiWithContext = () => {
-  const { getHostelIdSafe } = useCurrentHostelId();
+  const { getHostelId } = useCurrentHostelId();
 
-  // 🚀 CRITICAL FIX: Use useMemo to stabilize the API object reference
-  return useMemo(() => ({
+  return {
     // Operations that don't need hostelId (user-specific)
     getUserHostels: hostelApi.getUserHostels,
     createHostel: hostelApi.createHostel,
 
     // Operations that use current hostel context
-    getCurrentHostelDetails: () => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for getting hostel details'));
-      }
-      return hostelApi.getHostelDetails(hostelId);
-    },
-    updateCurrentHostel: (updates: any) => {
-      const hostelId = getHostelIdSafe();
-      if (!hostelId) {
-        return Promise.reject(new Error('No hostel selected for updating hostel'));
-      }
-      return hostelApi.updateHostel(hostelId, updates);
-    },
+    getCurrentHostelDetails: () => hostelApi.getHostelDetails(getHostelId()),
+    updateCurrentHostel: (updates: any) => hostelApi.updateHostel(getHostelId(), updates),
 
     // Utility
-    getCurrentHostelId: getHostelIdSafe,
-  }), [getHostelIdSafe]); // Only depend on stable function, not objects
+    getCurrentHostelId: getHostelId,
+  };
 };
 
 // ==========================================

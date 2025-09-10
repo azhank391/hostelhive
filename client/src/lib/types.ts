@@ -31,6 +31,7 @@ export interface User {
   name: string;
   email: string;
   role: 'owner' | 'admin' | 'warden' | 'student';
+  permissions: string[]; // Add this for actual permissions from backend
   hostelId?: string;
   phone?: string;
   isActive?: boolean;
@@ -195,7 +196,7 @@ export interface AuthUser {
   id: string;
   name: string;
   email: string;
-  role: 'owner' | 'admin' | 'warden' | 'student' | 'superadmin';
+  role: string; // Allow any role including custom roles
   token?: string;
   hostelId?: string;
   phone?: string;

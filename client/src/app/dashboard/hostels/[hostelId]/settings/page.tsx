@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHostel } from '@/context/HostelContext';
-import { api } from '@/lib/http';
+import { usePermissions } from '@/hooks/usePermissions';
+import api from '@/lib/http';
 import { notification } from '@/lib/toast';
 import { STORAGE_KEYS } from '@/lib/config';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
@@ -47,9 +48,15 @@ interface HostelFormData {
 
 export default function HostelSettingsPage() {
   const params = useParams();
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, isLoading } = useAuth();
   const { currentHostel, updateHostel, refreshHostels } = useHostel();
-  const hostelId = params.hostelId as string;
+  const { hasPermission } = usePermissions();
+  const hostelId = params?.hostelId as string;
+
+  // Permission checks
+  const canViewSettings = hasPermission('view_settings');
+  const canUpdateProfile = hasPermission('profile_update');
+  const canUpdateHostelSettings = hasPermission('hostel_settings_update');
 
   // Theme state
   const [isDarkTheme, setIsDarkTheme] = useState(false);
@@ -181,7 +188,7 @@ export default function HostelSettingsPage() {
         phone: profileForm.phone
       });
 
-      if (response.data.success) {
+      if ((response as any)?.data?.success) {
         updateUser({
           name: profileForm.name,
           email: profileForm.email,
@@ -189,9 +196,9 @@ export default function HostelSettingsPage() {
         });
         notification.success('Profile updated successfully');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update profile:', error);
-      if (error.response?.status === 401) {
+      if (error?.response?.status === 401) {
         notification.error('Authentication failed. Please log in again.');
         // Redirect to login
         window.location.href = '/auth/login';
@@ -228,7 +235,7 @@ export default function HostelSettingsPage() {
         newPassword: passwordForm.newPassword
       });
 
-      if (response.data.success) {
+      if ((response as any)?.data?.success) {
         notification.success('Password changed successfully');
         setPasswordForm({
           currentPassword: '',
@@ -236,9 +243,9 @@ export default function HostelSettingsPage() {
           confirmPassword: ''
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to change password:', error);
-      if (error.response?.status === 401) {
+      if (error?.response?.status === 401) {
         notification.error('Authentication failed. Please log in again.');
         // Redirect to login
         window.location.href = '/auth/login';
@@ -270,12 +277,32 @@ export default function HostelSettingsPage() {
     }
   };
 
-  if (!user || !currentHostel) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px] dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-muted-foreground dark:text-gray-300">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || !currentHostel || !canViewSettings) {
     return (
       <div className="flex items-center justify-center min-h-[400px] dark:bg-gray-900">
         <div className="text-center">
           <AlertTriangle className="h-8 w-8 mx-auto mb-4 text-yellow-500" />
-          <p className="text-muted-foreground dark:text-gray-300">Please log in and select a hostel to view settings</p>
+          <p className="text-muted-foreground dark:text-gray-300">
+            {!user || !currentHostel
+              ? "Please log in and select a hostel to view settings"
+              : "You don't have permission to view settings"}
+          </p>
+          {!canViewSettings && user && currentHostel && (
+            <p className="text-sm text-gray-500 mt-2">
+              Contact your administrator to get access to settings.
+            </p>
+          )}
         </div>
       </div>
     );
@@ -291,7 +318,7 @@ export default function HostelSettingsPage() {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <Badge variant="outline" className="flex items-center gap-2">
+          <Badge variant="neutral" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             {currentHostel.name}
           </Badge>
@@ -336,16 +363,17 @@ export default function HostelSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Profile Settings */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
-        <CardHeader>
-          <h3 className="flex items-center gap-2 dark:text-white">
-            <User className="h-5 w-5" />
-            Profile Settings
-          </h3>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleProfileUpdate} className="space-y-4">
+      {/* Profile Settings - Visible if user has profile_update permission */}
+      {canUpdateProfile && (
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+          <CardHeader>
+            <h3 className="flex items-center gap-2 dark:text-white">
+              <User className="h-5 w-5" />
+              Profile Settings
+            </h3>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleProfileUpdate} className="space-y-4">
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                <div>
                  <label className="block text-sm font-medium mb-2 dark:text-white">Full Name</label>
@@ -391,8 +419,10 @@ export default function HostelSettingsPage() {
           </form>
         </CardContent>
       </Card>
+      )}
 
-      {/* Password Change */}
+      {/* Password Change - Also part of profile permissions */}
+      {canUpdateProfile && (
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
           <h3 className="flex items-center gap-2 dark:text-white">
@@ -413,7 +443,7 @@ export default function HostelSettingsPage() {
                  />
                  <Button
                    type="button"
-                   variant="ghost"
+                   variant="text"
                    size="sm"
                    className="absolute right-0 top-0 h-full px-3"
                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
@@ -434,7 +464,7 @@ export default function HostelSettingsPage() {
                    />
                    <Button
                      type="button"
-                     variant="ghost"
+                     variant="text"
                      size="sm"
                      className="absolute right-0 top-0 h-full px-3"
                      onClick={() => setShowNewPassword(!showNewPassword)}
@@ -454,7 +484,7 @@ export default function HostelSettingsPage() {
                    />
                    <Button
                      type="button"
-                     variant="ghost"
+                     variant="text"
                      size="sm"
                      className="absolute right-0 top-0 h-full px-3"
                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -480,8 +510,10 @@ export default function HostelSettingsPage() {
           </form>
         </CardContent>
       </Card>
+      )}
 
-      {/* Hostel Information */}
+      {/* Hostel Information - Only visible if user has hostel_settings_update permission */}
+      {canUpdateHostelSettings && (
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
           <h3 className="flex items-center gap-2 dark:text-white">
@@ -556,6 +588,7 @@ export default function HostelSettingsPage() {
           </form>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }

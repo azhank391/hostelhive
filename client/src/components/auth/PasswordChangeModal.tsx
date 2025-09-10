@@ -31,8 +31,8 @@ export function PasswordChangeModal({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Only show modal for students and wardens
-  if (!isOpen || !userRole || !['student', 'warden'].includes(userRole)) {
+  // Only show modal for students, wardens, and custom roles (not owners/superadmins)
+  if (!isOpen || !userRole || ['owner', 'superadmin', 'admin'].includes(userRole)) {
     return null;
   }
 

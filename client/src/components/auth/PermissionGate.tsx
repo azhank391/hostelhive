@@ -1,7 +1,8 @@
 'use client'
 
 import { useAuth } from '@/contexts/AuthContext'
-import { hasPermission, hasAnyPermission, hasAllPermissions, Permission } from '@/lib/permissions'
+import { usePermissions } from '@/hooks/usePermissions'
+import { Permission } from '@/lib/permissionUtils'
 
 interface PermissionGateProps {
   children: React.ReactNode;
@@ -13,12 +14,13 @@ interface PermissionGateProps {
 
 export function PermissionGate({ 
   children, 
-  permission, 
-  permissions = [], 
+  permission,
+  permissions = [],
   requireAll = false,
   fallback = null 
 }: PermissionGateProps) {
   const { user } = useAuth()
+  const { hasPermission, hasAnyPermission, hasAllPermissions } = usePermissions()
 
   if (!user) {
     return fallback
@@ -27,16 +29,14 @@ export function PermissionGate({
   let hasAccess = false
 
   if (permission) {
-    hasAccess = hasPermission(user.role, permission)
+    hasAccess = hasPermission(permission)
   } else if (permissions.length > 0) {
     hasAccess = requireAll 
-      ? hasAllPermissions(user.role, permissions)
-      : hasAnyPermission(user.role, permissions)
+      ? hasAllPermissions(permissions)
+      : hasAnyPermission(permissions)
   } else {
     hasAccess = true
-  }
-
-  if (!hasAccess) {
+  }  if (!hasAccess) {
     return fallback
   }
 
@@ -46,7 +46,7 @@ export function PermissionGate({
 // Convenience components for common permission checks
 export function ManageHostelGate({ children, fallback }: { children: React.ReactNode; fallback?: React.ReactNode }) {
   return (
-    <PermissionGate permission="manage_hostel" fallback={fallback}>
+    <PermissionGate permission="hostel_update" fallback={fallback}>
       {children}
     </PermissionGate>
   )
@@ -54,7 +54,7 @@ export function ManageHostelGate({ children, fallback }: { children: React.React
 
 export function ManageStudentsGate({ children, fallback }: { children: React.ReactNode; fallback?: React.ReactNode }) {
   return (
-    <PermissionGate permission="manage_students" fallback={fallback}>
+    <PermissionGate permission="student_update" fallback={fallback}>
       {children}
     </PermissionGate>
   )
@@ -62,7 +62,7 @@ export function ManageStudentsGate({ children, fallback }: { children: React.Rea
 
 export function ManageRoomsGate({ children, fallback }: { children: React.ReactNode; fallback?: React.ReactNode }) {
   return (
-    <PermissionGate permission="manage_rooms" fallback={fallback}>
+    <PermissionGate permission="room_update" fallback={fallback}>
       {children}
     </PermissionGate>
   )
@@ -70,7 +70,7 @@ export function ManageRoomsGate({ children, fallback }: { children: React.ReactN
 
 export function ViewReportsGate({ children, fallback }: { children: React.ReactNode; fallback?: React.ReactNode }) {
   return (
-    <PermissionGate permission="view_reports" fallback={fallback}>
+    <PermissionGate permission="report_read" fallback={fallback}>
       {children}
     </PermissionGate>
   )

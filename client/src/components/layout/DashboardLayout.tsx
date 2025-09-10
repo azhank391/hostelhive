@@ -97,7 +97,7 @@ const LayoutWrapper = React.memo(({
           {!desktopSidebarOpen && (
             <button
               onClick={() => setDesktopSidebarOpen(true)}
-              className="fixed left-4 top-1/2 transform -translate-y-1/2 z-30 bg-gray-900 hover:bg-gray-800 text-white p-3 rounded-r-lg shadow-lg transition-all duration-300 ease-in-out border-r border-gray-700 border-t border-gray-700 border-b border-gray-700"
+              className="fixed left-4 top-1/2 transform -translate-y-1/2 z-30 bg-gray-900 hover:bg-gray-800 text-white p-3 rounded-r-lg shadow-lg transition-all duration-300 ease-in-out border-r border-t border-b border-gray-700"
               aria-label="Show sidebar"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,6 +132,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     const isWarden = user?.role === 'warden';
     const isOwner = user?.role === 'owner';
     const isSuperadmin = user?.role === 'superadmin';
+    const isCustomRole = user?.role && !['student', 'warden', 'owner', 'superadmin', 'admin'].includes(user.role);
     
     // Superadmin users see the normal dashboard without hostel requirements
     if (isSuperadmin) {
@@ -143,8 +144,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       };
     }
     
-    // Students and wardens always see the normal dashboard
-    if (isStudent || isWarden) {
+    // Students, wardens, and custom roles always see the normal dashboard
+    if (isStudent || isWarden || isCustomRole) {
       return {
         type: 'normal',
         showHostelSelector: false,

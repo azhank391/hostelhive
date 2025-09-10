@@ -22,7 +22,7 @@ import {
   MailIcon,
   PhoneIcon
 } from '../ui/icons';
-import { wardenApi } from '../../lib/api';
+import { useAdminApiWithHostel } from '../../lib/context-aware-api';
 import { Room } from '../../lib/types';
 import RoomFormModal from './RoomFormModal';
 import toast from '../../lib/toast';
@@ -403,6 +403,8 @@ const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
 };
 
 export const WardenRoomManagement = React.memo(() => {
+  const adminApi = useAdminApiWithHostel();
+  
   // State management
   const [rooms, setRooms] = useState<Room[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -468,16 +470,16 @@ export const WardenRoomManagement = React.memo(() => {
   const fetchRooms = useCallback(async () => {
     try {
       setError(null);
-      const response = await wardenApi.getRooms();
+      const response = await adminApi.getRooms();
       
       // Handle different response formats
       let data: Room[] = [];
       if (Array.isArray(response)) {
         data = response;
       } else if (response && typeof response === 'object' && 'data' in response) {
-        data = Array.isArray(response.data) ? response.data : [];
+        data = Array.isArray((response as any).data) ? (response as any).data : [];
       } else if (response && typeof response === 'object' && 'rooms' in response) {
-        data = Array.isArray(response.rooms) ? response.rooms : [];
+        data = Array.isArray((response as any).rooms) ? (response as any).rooms : [];
       }
       
 
@@ -492,15 +494,15 @@ export const WardenRoomManagement = React.memo(() => {
   // Fetch students function
   const fetchStudents = useCallback(async () => {
     try {
-      const response = await wardenApi.getStudents();
+      const response = await adminApi.getStudents();
       
       let data: Student[] = [];
       if (Array.isArray(response)) {
-        data = response;
+        data = response as Student[];
       } else if (response && typeof response === 'object' && 'data' in response) {
-        data = Array.isArray(response.data) ? response.data : [];
+        data = Array.isArray((response as any).data) ? (response as any).data : [];
       } else if (response && typeof response === 'object' && 'students' in response) {
-        data = Array.isArray(response.students) ? response.students : [];
+        data = Array.isArray((response as any).students) ? (response as any).students : [];
       }
       
 
@@ -592,7 +594,7 @@ export const WardenRoomManagement = React.memo(() => {
       setRooms(prevRooms => prevRooms.filter(room => room.id !== roomId));
       
       // Make API call
-      await wardenApi.deleteRoom(roomId);
+      await adminApi.deleteRoom(roomId);
       
       toast.success('Room deleted successfully');
       
@@ -650,7 +652,7 @@ export const WardenRoomManagement = React.memo(() => {
       
       // Make API call in background
       try {
-        await wardenApi.allocateRoom({ studentId, roomId });
+        await adminApi.allocateRoom({ studentId, roomId });
         // NO fetchAllData() - let optimistic updates persist!
       } catch (apiError) {
         // If API fails, revert optimistic updates
@@ -720,7 +722,7 @@ export const WardenRoomManagement = React.memo(() => {
       
       // Make API call in background
       try {
-        await wardenApi.deallocateRoom(studentId);
+        await adminApi.deallocateRoom(studentId);
         // NO fetchAllData() - let optimistic updates persist!
       } catch (apiError) {
         // If API fails, revert optimistic updates
@@ -1114,7 +1116,7 @@ export const WardenRoomManagement = React.memo(() => {
           mode="edit"
           hostelBlocks={[]}
           existingRooms={rooms}
-          adminApi={wardenApi}
+          adminApi={adminApi}
           hostelId=""
           onSuccess={handleEditSuccess} // Use the new success handler
         />
@@ -1127,7 +1129,7 @@ export const WardenRoomManagement = React.memo(() => {
           mode="create"
           hostelBlocks={[]}
           existingRooms={rooms}
-          adminApi={wardenApi}
+          adminApi={adminApi}
           hostelId=""
           onSuccess={handleCreateSuccess} // Use the new success handler
         />

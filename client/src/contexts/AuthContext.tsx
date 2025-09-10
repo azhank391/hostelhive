@@ -5,7 +5,6 @@ import { authApi } from '@/lib/api';
 import { notification, apiNotification } from '@/lib/toast';
 import { useRouter } from 'next/navigation';
 import { STORAGE_KEYS } from '@/lib/config';
-import { setOnUnauthorized } from '@/lib/http';
 // Removed hostel-storage import - using direct localStorage access
 import type { 
   AuthUser, 
@@ -24,7 +23,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoggingIn, setIsLoggingIn] = useState(false); // 🚀 NEW: Flag to prevent useEffect during login
   const router = useRouter();
 
   // Computed property for authentication status
@@ -39,17 +37,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearToken = useCallback(() => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+      // Clear all user-specific data
+      if (user?.id) {
+        localStorage.removeItem(`${STORAGE_KEYS.USER_DATA}_${user.id}`);
+      }
       localStorage.removeItem(STORAGE_KEYS.USER_DATA);
     }
-  }, []);
+  }, [user?.id]);
 
   const logout = useCallback(() => {
+    // Clear user-specific data if user exists
+    if (user?.id) {
+      const userDataKey = `${STORAGE_KEYS.USER_DATA}_${user.id}`;
+      localStorage.removeItem(userDataKey);
+    }
+    
     setUser(null);
     clearToken();
     // Clear hostel selection from localStorage
     localStorage.removeItem(STORAGE_KEYS.ACTIVE_HOSTEL);
     router.push('/auth/login');
-  }, [router, clearToken]);
+  }, [router, clearToken, user?.id]);
 
   const updateUser = useCallback((userData: Partial<AuthUser>) => {
     setUser(current => current ? { ...current, ...userData } : null);
@@ -57,7 +65,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Update localStorage if user exists
     if (user && typeof window !== 'undefined') {
       const updatedUser = { ...user, ...userData };
-      localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(updatedUser));
+      const userDataKey = `${STORAGE_KEYS.USER_DATA}_${user.id}`;
+      localStorage.setItem(userDataKey, JSON.stringify(updatedUser));
     }
   }, [user]);
 
@@ -68,144 +77,78 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const verifyToken = useCallback(async (token: string) => {
-
-    
     try {
       // Decode JWT token to get user data
       const payload = JSON.parse(atob(token.split('.')[1]))
-
       
       if (payload.exp * 1000 < Date.now()) {
         // Token expired
-
-        // Call logout directly instead of depending on it
-        setUser(null);
-        localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-        localStorage.removeItem(STORAGE_KEYS.USER_DATA);
-        localStorage.removeItem(STORAGE_KEYS.ACTIVE_HOSTEL);
-        router.push('/auth/login');
+        logout()
         return
       }
       
-      // Set token directly instead of depending on setToken
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
-      }
-
+      setToken(token)
       
       // Try to restore user data from localStorage first
-      const storedUser = localStorage.getItem(STORAGE_KEYS.USER_DATA)
-
+      const userDataKey = `${STORAGE_KEYS.USER_DATA}_${payload.id}`;
+      const storedUser = localStorage.getItem(userDataKey)
       
       if (storedUser) {
-        try {
-          const userData = JSON.parse(storedUser)
-
+        const userData = JSON.parse(storedUser)
+        
+        // Verify the stored user data matches the token
+        if (userData.id === payload.id) {
+          // Update permissions from token (they might have changed)
+          userData.permissions = payload.permissions || []
+          userData.token = token
           
-          // Verify the stored user data matches the token
-          if (userData.id === payload.id) {
-
-            setUser(userData)
-            setIsLoading(false)
-            return
-          } else {
-
-          }
-        } catch (parseError) {
-          console.warn('Failed to parse stored user data:', parseError)
-          // Continue to fallback
+          setUser(userData)
+          
+          // Update localStorage with fresh data using user-specific key
+          localStorage.setItem(userDataKey, JSON.stringify(userData))
+          setIsLoading(false)
+          return
         }
       }
       
       // Fallback to creating user data from token payload
-      // Use the stored user data if available, otherwise create from payload
-      let userData: AuthUser;
-      
-      if (storedUser) {
-        try {
-          userData = JSON.parse(storedUser)
-
-          // Update with latest token data
-          userData.token = token
-          userData.hostelId = payload.hostelId
-          userData.activeHostelId = payload.hostelId
-        } catch {
-
-                  // If parsing fails, create new user data
-        userData = {
-          id: payload.id,
-          name: payload.name,
-          email: 'user@example.com', // Fallback email
-          role: payload.role,
-          hostelId: payload.hostelId,
-          isActive: true,
-          requiresPasswordChange: payload.requiresPasswordChange || false,
-          token,
-          activeHostelId: payload.hostelId
-        }
-        }
-      } else {
-
-                  // Create new user data from payload
-          userData = {
-            id: payload.id,
-            name: payload.name,
-            email: 'user@example.com', // Fallback email
-            role: payload.role,
-            hostelId: payload.hostelId,
-            isActive: true,
-            requiresPasswordChange: payload.requiresPasswordChange || false,
-            token,
-            activeHostelId: payload.hostelId
-          }
+      const currentActiveHostel = localStorage.getItem(STORAGE_KEYS.ACTIVE_HOSTEL)
+      const userData: AuthUser = {
+        id: payload.id,
+        name: payload.name,
+        email: payload.email || 'user@example.com', // Fallback email
+        role: payload.role,
+        hostelId: payload.hostelId,
+        isActive: true,
+        token,
+        activeHostelId: currentActiveHostel || payload.hostelId,
+        permissions: payload.permissions || [] // Extract permissions from token
       }
       
-
       setUser(userData)
       
-      // Store in localStorage for future use
-      localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData))
-
+      // Store in localStorage for future use with user-specific key
+      localStorage.setItem(userDataKey, JSON.stringify(userData));
+      
+      // Set active hostel if user has a hostelId (for custom roles, wardens, students)
+      if (payload.hostelId) {
+        localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, payload.hostelId);
+      }
       
     } catch (error) {
-      console.error('❌ AuthContext: Error in verifyToken:', error);
-      // Don't logout immediately on error, just set loading to false
-      // This prevents the token from being cleared unnecessarily
-      setIsLoading(false)
+      console.error('AuthContext: Error in verifyToken:', error);
+      logout()
     } finally {
       setIsLoading(false)
     }
-  }, [router]) // Only depend on router
+  }, [logout, setToken])
 
   useEffect(() => {
-    // Set up the unauthorized callback for the HTTP client
-    setOnUnauthorized(() => {
-
-      logout();
-    });
-
-    // 🚀 NEW: Don't run if we're currently logging in
-    if (isLoggingIn) {
-
-      return;
-    }
-
-    // Don't run if we already have a user
-    if (user) {
-
-      setIsLoading(false);
-      return;
-    }
-    
-
     const storedToken = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)
-
     
     if (storedToken) {
-
       verifyToken(storedToken)
     } else {
-
       setIsLoading(false)
     }
 
@@ -216,36 +159,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const payload = JSON.parse(atob(currentToken.split('.')[1]))
           if (payload.exp * 1000 < Date.now()) {
-            // Token expired, logout automatically
-
-            // Call logout directly
-            setUser(null);
-            localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-            localStorage.removeItem(STORAGE_KEYS.USER_DATA);
-            localStorage.removeItem(STORAGE_KEYS.ACTIVE_HOSTEL);
-            router.push('/auth/login');
+            logout()
           }
         } catch {
-          // Invalid token, logout automatically
-
-          // Call logout directly
-          setUser(null);
-          localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-          localStorage.removeItem(STORAGE_KEYS.USER_DATA);
-          localStorage.removeItem(STORAGE_KEYS.ACTIVE_HOSTEL);
-          router.push('/auth/login');
+          logout()
         }
       }
     }, 5 * 60 * 1000) // 5 minutes
 
     return () => clearInterval(interval)
-  }, [router, isLoggingIn]) // Add router and isLoggingIn dependencies
+  }, [verifyToken, logout])
 
   const login = async (credentials: LoginCredentials) => {
     const { email, password } = credentials;
-    
-    // 🚀 NEW: Set flag to prevent useEffect interference
-    setIsLoggingIn(true);
     
     // Clear any previous hostel selection from localStorage
     localStorage.removeItem(STORAGE_KEYS.ACTIVE_HOSTEL);
@@ -253,6 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       // Try standard user login first
       try {
+        console.log('🔍 AuthContext: Attempting standard user login');
         // Use our enhanced API with proper error handling
         const data = await authApi.login(credentials) as {
           token: string;
@@ -273,7 +200,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Decode JWT token to get user ID and other data
         const payload = JSON.parse(atob(data.token.split('.')[1]))
-
         
         // Create user data from response with proper typing
         const userData: AuthUser = {
@@ -283,63 +209,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: data.role as 'owner' | 'admin' | 'warden' | 'student' | 'superadmin', // Allow any role value
           hostelId: data.hostelId,
           isActive: true,
-          requiresPasswordChange: payload.requiresPasswordChange || false,
           token: data.token,
-          activeHostelId: data.hostelId
+          activeHostelId: data.hostelId,
+          permissions: payload.permissions || [] // Extract permissions from token
         }
-        
-        // Handle owner with multiple hostels
-        if (data.role === 'owner' && payload.ownedHostels && Array.isArray(payload.ownedHostels)) {
-          userData.hostels = payload.ownedHostels;
-          
-          // 🚀 NEW: Check if we have a subdomain hostel from the login response
-          if (data.subdomainHostel) {
-            // Use the hostel from the subdomain
-            userData.hostelId = data.subdomainHostel.id;
-            userData.activeHostelId = data.subdomainHostel.id;
-            console.log('🔍 DEBUG: Using subdomain hostel:', data.subdomainHostel.name);
-            
-            // Store the selected hostel in localStorage
-            localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, data.subdomainHostel.id);
-          } else if (payload.ownedHostels.length === 1) {
-            // If only one hostel, auto-select it
-            const firstHostel = payload.ownedHostels[0];
-            userData.hostelId = firstHostel.id;
-            userData.activeHostelId = firstHostel.id;
-            
-            // Store the selected hostel in localStorage
-            localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, firstHostel.id);
-          }
-        }
-        
-
-        
-        // Store user data in localStorage for persistence
-        localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData))
         
         setUser(userData)
         
-        // 🚀 NEW: Reset flag after successful login
-        setIsLoggingIn(false);
+        // Store user data in localStorage for persistence using user-specific key
+        const userDataKey = `${STORAGE_KEYS.USER_DATA}_${payload.id}`;
+        localStorage.setItem(userDataKey, JSON.stringify(userData))
+        
+        // Set active hostel if user has a hostelId (for custom roles, wardens, students)
+        if (data.hostelId || payload.hostelId) {
+          const hostelId = data.hostelId || payload.hostelId;
+          localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, hostelId);
+          console.log('🔄 AuthContext: Set active hostel for user:', hostelId);
+        }
         
         return data;
       } catch (userLoginError) {
-        // Log the error for debugging
-        console.error('❌ AuthContext: User login failed:', userLoginError);
-        console.error('❌ AuthContext: Error details:', {
-          message: userLoginError instanceof Error ? userLoginError.message : 'Unknown error',
-          stack: userLoginError instanceof Error ? userLoginError.stack : undefined,
-          error: userLoginError
-        });
+        // If standard user login fails, try superadmin login
+        console.log('Standard login failed, attempting superadmin login...');
         
-        // For now, just throw the original error without superadmin fallback
-        // This will help us debug what's actually failing in regular user login
-        throw userLoginError;
+        try {
+          const { superadminApi } = await import('@/lib/api');
+          const superadminData = await superadminApi.login({ email, password }) as {
+            token: string;
+            superadmin: {
+              name: string;
+              email: string;
+            }
+          };
+          
+          // Show success notification for superadmin
+          notification.success('Welcome Back, Superadmin!', {
+            description: `Successfully signed in as ${superadminData.superadmin.name}`
+          });
+          
+          localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, superadminData.token)
+          
+          setToken(superadminData.token)
+          
+          // Decode JWT token to get superadmin ID and data
+          const payload = JSON.parse(atob(superadminData.token.split('.')[1]))
+          
+          // Create superadmin user data
+          const userData: AuthUser = {
+            id: payload.id,
+            name: superadminData.superadmin.name,
+            email: email,
+            role: 'superadmin', // Explicitly set role to superadmin
+            isActive: true,
+            token: superadminData.token
+          }
+          
+          setUser(userData)
+          
+          // Store superadmin data in localStorage with user-specific key
+          const userDataKey = `${STORAGE_KEYS.USER_DATA}_${userData.id}`;
+          localStorage.setItem(userDataKey, JSON.stringify(userData))
+          
+          return superadminData;
+        } catch (superadminLoginError) {
+          console.error('❌ AuthContext: All login attempts failed:', superadminLoginError);
+          throw superadminLoginError;
+        }
       }
     } catch (error) {
       console.error('❌ AuthContext: Login error:', error);
-      // 🚀 NEW: Reset flag on error
-      setIsLoggingIn(false);
       // Error handling is now done by our enhanced HTTP client
       throw error
     }
