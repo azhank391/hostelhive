@@ -28,7 +28,7 @@ router.post("/set-active-hostel", verifyToken, setActiveHostel);
 router.put("/profile", verifyToken, requireAuth, updateProfile);
 
 // Password change endpoint
-router.put('/change-password', verifyToken, requireAuth, changePassword);
+router.put("/change-password", verifyToken, requireAuth, changePassword);
 
 module.exports = router;
 

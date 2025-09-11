@@ -1,14 +1,14 @@
 "use strict";
 
-const rbacService = require('../services/rbacService');
-const UnifiedDependencyResolver = require('../utils/unifiedDependencyResolver');
+const rbacService = require("../services/rbacService");
+const UnifiedDependencyResolver = require("../utils/unifiedDependencyResolver");
 
 /**
  * 🔐 RBAC Controller
- * 
+ *
  * This controller handles all Role-Based Access Control operations including
  * user permissions, role management, and permission management.
- * 
+ *
  * @author HostelHive RBAC System
  * @version 1.0.0
  */
@@ -21,22 +21,22 @@ const UnifiedDependencyResolver = require('../utils/unifiedDependencyResolver');
 const getUserPermissions = async (req, res) => {
   try {
     console.log(`🔍 Fetching permissions for user: ${req.user.id}`);
-    
+
     const userId = req.user.id;
     const userRoleData = await rbacService.getUserRoleAndPermissions(userId);
-    
+
     console.log(`✅ User permissions fetched successfully for user: ${userId}`);
-    
+
     res.json({
       success: true,
-      data: userRoleData
+      data: userRoleData,
     });
   } catch (error) {
-    console.error('❌ Error fetching user permissions:', error);
+    console.error("❌ Error fetching user permissions:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch user permissions',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Failed to fetch user permissions",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -49,21 +49,25 @@ const getUserPermissions = async (req, res) => {
 const getAllPermissions = async (req, res) => {
   try {
     console.log(`🔍 Fetching all permissions for user: ${req.user.id}`);
-    
+
     const permissions = await rbacService.getAllPermissions();
-    
-    console.log(`✅ All permissions fetched successfully. Categories: ${Object.keys(permissions).length}`);
-    
+
+    console.log(
+      `✅ All permissions fetched successfully. Categories: ${
+        Object.keys(permissions).length
+      }`
+    );
+
     res.json({
       success: true,
-      data: permissions
+      data: permissions,
     });
   } catch (error) {
-    console.error('❌ Error fetching permissions:', error);
+    console.error("❌ Error fetching permissions:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch permissions',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Failed to fetch permissions",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -76,51 +80,55 @@ const getAllPermissions = async (req, res) => {
 const getGranularPermissions = async (req, res) => {
   try {
     console.log(`🔍 Fetching granular permissions for user: ${req.user.id}`);
-    
+
     const permissions = await rbacService.getGranularPermissions();
-    
+
     // Group permissions by category and operation
     const groupedPermissions = permissions.reduce((acc, permission) => {
       const { category, operation } = permission;
-      
+
       if (!acc[category]) {
         acc[category] = {
           category,
           displayName: category.charAt(0).toUpperCase() + category.slice(1),
-          operations: {}
+          operations: {},
         };
       }
-      
+
       if (!acc[category].operations[operation]) {
         acc[category].operations[operation] = [];
       }
-      
+
       acc[category].operations[operation].push({
         id: permission.id,
         name: permission.name,
         displayName: permission.displayName,
         description: permission.description,
-        operation: permission.operation
+        operation: permission.operation,
       });
-      
+
       return acc;
     }, {});
-    
-    console.log(`✅ Granular permissions fetched successfully. Categories: ${Object.keys(groupedPermissions).length}`);
-    
+
+    console.log(
+      `✅ Granular permissions fetched successfully. Categories: ${
+        Object.keys(groupedPermissions).length
+      }`
+    );
+
     res.json({
       success: true,
       data: {
         permissions: groupedPermissions,
-        totalCount: permissions.length
-      }
+        totalCount: permissions.length,
+      },
     });
   } catch (error) {
-    console.error('❌ Error fetching granular permissions:', error);
+    console.error("❌ Error fetching granular permissions:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch granular permissions',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Failed to fetch granular permissions",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -133,26 +141,30 @@ const getGranularPermissions = async (req, res) => {
 const getPermissionDependencies = async (req, res) => {
   try {
     const { permissionName } = req.params;
-    
+
     console.log(`🔍 Fetching dependencies for permission: ${permissionName}`);
-    
-    const dependencies = await UnifiedDependencyResolver.getUnifiedDependencies(permissionName);
-    
-    console.log(`✅ Dependencies fetched for ${permissionName}. Count: ${dependencies.length}`);
-    
+
+    const dependencies = await UnifiedDependencyResolver.getUnifiedDependencies(
+      permissionName
+    );
+
+    console.log(
+      `✅ Dependencies fetched for ${permissionName}. Count: ${dependencies.length}`
+    );
+
     res.json({
       success: true,
       data: {
         permission: permissionName,
-        dependencies
-      }
+        dependencies,
+      },
     });
   } catch (error) {
-    console.error('❌ Error fetching permission dependencies:', error);
+    console.error("❌ Error fetching permission dependencies:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch permission dependencies',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Failed to fetch permission dependencies",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -165,41 +177,47 @@ const getPermissionDependencies = async (req, res) => {
 const validatePermissionAssignment = async (req, res) => {
   try {
     const { permissionNames } = req.body;
-    
+
     if (!Array.isArray(permissionNames)) {
       return res.status(400).json({
         success: false,
-        message: 'Permission names must be an array'
+        message: "Permission names must be an array",
       });
     }
-    
-    console.log(`🔍 Validating permission assignment for ${permissionNames.length} permissions`);
-    
+
+    console.log(
+      `🔍 Validating permission assignment for ${permissionNames.length} permissions`
+    );
+
     // Validate that all permissions exist
     const validation = { isValid: true, missingPermissions: [] };
-    const { Permission } = require('../models');
+    const { Permission } = require("../models");
     const existingPermissions = await Permission.findAll({
       where: { name: permissionNames },
-      attributes: ['name']
+      attributes: ["name"],
     });
-    const existingNames = existingPermissions.map(p => p.name);
-    validation.missingPermissions = permissionNames.filter(name => !existingNames.includes(name));
+    const existingNames = existingPermissions.map((p) => p.name);
+    validation.missingPermissions = permissionNames.filter(
+      (name) => !existingNames.includes(name)
+    );
     if (validation.missingPermissions.length > 0) {
       validation.isValid = false;
     }
-    
-    console.log(`✅ Permission validation completed. Valid: ${validation.isValid}`);
-    
+
+    console.log(
+      `✅ Permission validation completed. Valid: ${validation.isValid}`
+    );
+
     res.json({
       success: true,
-      data: validation
+      data: validation,
     });
   } catch (error) {
-    console.error('❌ Error validating permission assignment:', error);
+    console.error("❌ Error validating permission assignment:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to validate permission assignment',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Failed to validate permission assignment",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -212,21 +230,23 @@ const validatePermissionAssignment = async (req, res) => {
 const getSystemRoles = async (req, res) => {
   try {
     console.log(`🔍 Fetching system roles for user: ${req.user.id}`);
-    
+
     const systemRoles = await rbacService.getSystemRoles();
-    
-    console.log(`✅ System roles fetched successfully. Count: ${systemRoles.length}`);
-    
+
+    console.log(
+      `✅ System roles fetched successfully. Count: ${systemRoles.length}`
+    );
+
     res.json({
       success: true,
-      data: systemRoles
+      data: systemRoles,
     });
   } catch (error) {
-    console.error('❌ Error fetching system roles:', error);
+    console.error("❌ Error fetching system roles:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch system roles',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Failed to fetch system roles",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -241,68 +261,83 @@ const createCustomRole = async (req, res) => {
     const { name, displayName, description, permissionNames } = req.body;
     const createdById = req.user.id;
     const hostelId = req.params.hostelId;
-    
-    console.log(`🔍 Creating custom role '${displayName}' for hostel: ${hostelId} by user: ${createdById}`);
-    
+
+    console.log(
+      `🔍 Creating custom role '${displayName}' for hostel: ${hostelId} by user: ${createdById}`
+    );
+
     // Validate required fields
-    if (!name || !displayName || !permissionNames || permissionNames.length === 0) {
+    if (
+      !name ||
+      !displayName ||
+      !permissionNames ||
+      permissionNames.length === 0
+    ) {
       return res.status(400).json({
         success: false,
-        message: 'Name, display name, and at least one permission are required'
+        message: "Name, display name, and at least one permission are required",
       });
     }
-    
+
     // Validate permission names are provided
     if (!Array.isArray(permissionNames)) {
       return res.status(400).json({
         success: false,
-        message: 'Permission names must be an array'
+        message: "Permission names must be an array",
       });
     }
-    
+
     // Use permission dependency resolver to create role with automatic dependencies
     // Use RBAC service to create role with dependencies
-    const result = await rbacService.createCustomRole({
-      name,
-      displayName,
-      description,
-      hostelId,
-      permissionNames
-    }, createdById, hostelId);
-    
+    const result = await rbacService.createCustomRole(
+      {
+        name,
+        displayName,
+        description,
+        hostelId,
+        permissionNames,
+      },
+      createdById,
+      hostelId
+    );
+
     if (!result.success) {
       return res.status(400).json({
         success: false,
-        message: result.error
+        message: result.error,
       });
     }
-    
-    console.log(`✅ Custom role '${displayName}' created successfully with ID: ${result.role.id}`);
-    console.log(`📋 Assigned ${result.permissions.resolvedCount} permissions (${result.permissions.originalCount} original + ${result.permissions.dependencies.length} dependencies)`);
-    
+
+    console.log(
+      `✅ Custom role '${displayName}' created successfully with ID: ${result.role.id}`
+    );
+    console.log(
+      `📋 Assigned ${result.permissions.resolvedCount} permissions (${result.permissions.originalCount} original + ${result.permissions.dependencies.length} dependencies)`
+    );
+
     res.status(201).json({
       success: true,
-      message: 'Custom role created successfully',
+      message: "Custom role created successfully",
       data: {
         role: result.role,
-        permissions: result.permissions
-      }
+        permissions: result.permissions,
+      },
     });
   } catch (error) {
-    console.error('❌ Error creating custom role:', error);
-    
+    console.error("❌ Error creating custom role:", error);
+
     // Handle specific error cases
-    if (error.message.includes('already exists')) {
+    if (error.message.includes("already exists")) {
       return res.status(409).json({
         success: false,
-        message: error.message
+        message: error.message,
       });
     }
-    
+
     res.status(500).json({
       success: false,
-      message: 'Failed to create custom role',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Failed to create custom role",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -315,23 +350,23 @@ const createCustomRole = async (req, res) => {
 const getCustomRoles = async (req, res) => {
   try {
     const hostelId = req.params.hostelId;
-    
+
     console.log(`🔍 Fetching custom roles for hostel: ${hostelId}`);
-    
+
     const roles = await rbacService.getHostelCustomRoles(hostelId);
-    
+
     console.log(`✅ Custom roles fetched successfully. Count: ${roles.length}`);
-    
+
     res.json({
       success: true,
-      data: roles
+      data: roles,
     });
   } catch (error) {
-    console.error('❌ Error fetching custom roles:', error);
+    console.error("❌ Error fetching custom roles:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch custom roles',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Failed to fetch custom roles",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -345,45 +380,48 @@ const updateCustomRole = async (req, res) => {
   try {
     const { roleId } = req.params;
     const { displayName, description, permissionIds } = req.body;
-    
+
     console.log(`🔍 Updating custom role: ${roleId} by user: ${req.user.id}`);
-    
+
     // Validate permission IDs if provided
     if (permissionIds && !Array.isArray(permissionIds)) {
       return res.status(400).json({
         success: false,
-        message: 'Permission IDs must be an array'
+        message: "Permission IDs must be an array",
       });
     }
-    
+
     const updatedRole = await rbacService.updateCustomRole(roleId, {
       displayName,
       description,
-      permissionIds
+      permissionIds,
     });
-    
+
     console.log(`✅ Custom role ${roleId} updated successfully`);
-    
+
     res.json({
       success: true,
-      message: 'Custom role updated successfully',
-      data: updatedRole
+      message: "Custom role updated successfully",
+      data: updatedRole,
     });
   } catch (error) {
-    console.error('❌ Error updating custom role:', error);
-    
+    console.error("❌ Error updating custom role:", error);
+
     // Handle specific error cases
-    if (error.message.includes('not found') || error.message.includes('cannot update system roles')) {
+    if (
+      error.message.includes("not found") ||
+      error.message.includes("cannot update system roles")
+    ) {
       return res.status(404).json({
         success: false,
-        message: error.message
+        message: error.message,
       });
     }
-    
+
     res.status(500).json({
       success: false,
-      message: 'Failed to update custom role',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Failed to update custom role",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -396,32 +434,35 @@ const updateCustomRole = async (req, res) => {
 const deleteCustomRole = async (req, res) => {
   try {
     const { roleId } = req.params;
-    
+
     console.log(`🔍 Deleting custom role: ${roleId} by user: ${req.user.id}`);
-    
+
     const result = await rbacService.deleteCustomRole(roleId);
-    
+
     console.log(`✅ Custom role ${roleId} deleted successfully`);
-    
+
     res.json({
       success: true,
-      message: result.message
+      message: result.message,
     });
   } catch (error) {
-    console.error('❌ Error deleting custom role:', error);
-    
+    console.error("❌ Error deleting custom role:", error);
+
     // Handle specific error cases
-    if (error.message.includes('not found') || error.message.includes('cannot delete system roles')) {
+    if (
+      error.message.includes("not found") ||
+      error.message.includes("cannot delete system roles")
+    ) {
       return res.status(404).json({
         success: false,
-        message: error.message
+        message: error.message,
       });
     }
-    
+
     res.status(500).json({
       success: false,
-      message: 'Failed to delete custom role',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Failed to delete custom role",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -435,44 +476,46 @@ const assignRoleToUser = async (req, res) => {
   try {
     const { userId } = req.params;
     const { roleId } = req.body;
-    
-    console.log(`🔍 Assigning role ${roleId} to user ${userId} by user: ${req.user.id}`);
-    
+
+    console.log(
+      `🔍 Assigning role ${roleId} to user ${userId} by user: ${req.user.id}`
+    );
+
     if (!roleId) {
       return res.status(400).json({
         success: false,
-        message: 'Role ID is required'
+        message: "Role ID is required",
       });
     }
-    
+
     const updatedUser = await rbacService.assignRoleToUser(userId, roleId);
-    
+
     console.log(`✅ Role ${roleId} assigned to user ${userId} successfully`);
-    
+
     res.json({
       success: true,
-      message: 'Role assigned to user successfully',
+      message: "Role assigned to user successfully",
       data: {
         userId: updatedUser.id,
         roleId: updatedUser.roleId,
-        role: updatedUser.role
-      }
+        role: updatedUser.role,
+      },
     });
   } catch (error) {
-    console.error('❌ Error assigning role to user:', error);
-    
+    console.error("❌ Error assigning role to user:", error);
+
     // Handle specific error cases
-    if (error.message.includes('not found')) {
+    if (error.message.includes("not found")) {
       return res.status(404).json({
         success: false,
-        message: error.message
+        message: error.message,
       });
     }
-    
+
     res.status(500).json({
       success: false,
-      message: 'Failed to assign role to user',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Failed to assign role to user",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -486,34 +529,41 @@ const checkPermission = async (req, res) => {
   try {
     const { permissionName } = req.body;
     const userId = req.user.id;
-    
-    console.log(`🔍 Checking permission '${permissionName}' for user: ${userId}`);
-    
+
+    console.log(
+      `🔍 Checking permission '${permissionName}' for user: ${userId}`
+    );
+
     if (!permissionName) {
       return res.status(400).json({
         success: false,
-        message: 'Permission name is required'
+        message: "Permission name is required",
       });
     }
-    
-    const hasPermission = await rbacService.hasPermission(userId, permissionName);
-    
-    console.log(`✅ Permission check completed. User ${userId} has '${permissionName}': ${hasPermission}`);
-    
+
+    const hasPermission = await rbacService.hasPermission(
+      userId,
+      permissionName
+    );
+
+    console.log(
+      `✅ Permission check completed. User ${userId} has '${permissionName}': ${hasPermission}`
+    );
+
     res.json({
       success: true,
       data: {
         hasPermission,
         permissionName,
-        userId
-      }
+        userId,
+      },
     });
   } catch (error) {
-    console.error('❌ Error checking permission:', error);
+    console.error("❌ Error checking permission:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to check permission',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Failed to check permission",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -527,34 +577,49 @@ const checkAnyPermission = async (req, res) => {
   try {
     const { permissionNames } = req.body;
     const userId = req.user.id;
-    
-    console.log(`🔍 Checking any permission from [${permissionNames?.join(', ')}] for user: ${userId}`);
-    
-    if (!permissionNames || !Array.isArray(permissionNames) || permissionNames.length === 0) {
+
+    console.log(
+      `🔍 Checking any permission from [${permissionNames?.join(
+        ", "
+      )}] for user: ${userId}`
+    );
+
+    if (
+      !permissionNames ||
+      !Array.isArray(permissionNames) ||
+      permissionNames.length === 0
+    ) {
       return res.status(400).json({
         success: false,
-        message: 'Permission names array is required'
+        message: "Permission names array is required",
       });
     }
-    
-    const hasAnyPermission = await rbacService.hasAnyPermission(userId, permissionNames);
-    
-    console.log(`✅ Any permission check completed. User ${userId} has any of [${permissionNames.join(', ')}]: ${hasAnyPermission}`);
-    
+
+    const hasAnyPermission = await rbacService.hasAnyPermission(
+      userId,
+      permissionNames
+    );
+
+    console.log(
+      `✅ Any permission check completed. User ${userId} has any of [${permissionNames.join(
+        ", "
+      )}]: ${hasAnyPermission}`
+    );
+
     res.json({
       success: true,
       data: {
         hasAnyPermission,
         permissionNames,
-        userId
-      }
+        userId,
+      },
     });
   } catch (error) {
-    console.error('❌ Error checking any permission:', error);
+    console.error("❌ Error checking any permission:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to check any permission',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Failed to check any permission",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -568,34 +633,49 @@ const checkAllPermissions = async (req, res) => {
   try {
     const { permissionNames } = req.body;
     const userId = req.user.id;
-    
-    console.log(`🔍 Checking all permissions from [${permissionNames?.join(', ')}] for user: ${userId}`);
-    
-    if (!permissionNames || !Array.isArray(permissionNames) || permissionNames.length === 0) {
+
+    console.log(
+      `🔍 Checking all permissions from [${permissionNames?.join(
+        ", "
+      )}] for user: ${userId}`
+    );
+
+    if (
+      !permissionNames ||
+      !Array.isArray(permissionNames) ||
+      permissionNames.length === 0
+    ) {
       return res.status(400).json({
         success: false,
-        message: 'Permission names array is required'
+        message: "Permission names array is required",
       });
     }
-    
-    const hasAllPermissions = await rbacService.hasAllPermissions(userId, permissionNames);
-    
-    console.log(`✅ All permissions check completed. User ${userId} has all of [${permissionNames.join(', ')}]: ${hasAllPermissions}`);
-    
+
+    const hasAllPermissions = await rbacService.hasAllPermissions(
+      userId,
+      permissionNames
+    );
+
+    console.log(
+      `✅ All permissions check completed. User ${userId} has all of [${permissionNames.join(
+        ", "
+      )}]: ${hasAllPermissions}`
+    );
+
     res.json({
       success: true,
       data: {
         hasAllPermissions,
         permissionNames,
-        userId
-      }
+        userId,
+      },
     });
   } catch (error) {
-    console.error('❌ Error checking all permissions:', error);
+    console.error("❌ Error checking all permissions:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to check all permissions',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Failed to check all permissions",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -608,30 +688,32 @@ const checkAllPermissions = async (req, res) => {
 const getPageDependencies = async (req, res) => {
   try {
     const { pageName } = req.params;
-    
+
     if (!pageName) {
       return res.status(400).json({
         success: false,
-        message: 'Page name is required'
+        message: "Page name is required",
       });
     }
-    
+
     // Get page dependencies using unified resolver
-    const dependencies = await UnifiedDependencyResolver.getUnifiedDependencies(pageName);
-    
+    const dependencies = await UnifiedDependencyResolver.getUnifiedDependencies(
+      pageName
+    );
+
     res.json({
       success: true,
       data: {
         pageName,
-        dependencies
-      }
+        dependencies,
+      },
     });
   } catch (error) {
-    console.error('❌ Error getting page dependencies:', error);
+    console.error("❌ Error getting page dependencies:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get page dependencies',
-      error: error.message
+      message: "Failed to get page dependencies",
+      error: error.message,
     });
   }
 };
@@ -644,32 +726,34 @@ const getPageDependencies = async (req, res) => {
 const getMultipleDependencies = async (req, res) => {
   try {
     const { permissions } = req.body;
-    
+
     if (!permissions || !Array.isArray(permissions)) {
       return res.status(400).json({
         success: false,
-        message: 'Permissions array is required'
+        message: "Permissions array is required",
       });
     }
-    
+
     // Get dependencies for multiple permissions
     const allDependencies = new Set();
     for (const permission of permissions) {
-      const deps = await UnifiedDependencyResolver.getUnifiedDependencies(permission);
-      deps.forEach(dep => allDependencies.add(dep));
+      const deps = await UnifiedDependencyResolver.getUnifiedDependencies(
+        permission
+      );
+      deps.forEach((dep) => allDependencies.add(dep));
     }
     const dependencies = Array.from(allDependencies);
-    
+
     res.json({
       success: true,
-      data: dependencies
+      data: dependencies,
     });
   } catch (error) {
-    console.error('❌ Error getting multiple dependencies:', error);
+    console.error("❌ Error getting multiple dependencies:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get multiple dependencies',
-      error: error.message
+      message: "Failed to get multiple dependencies",
+      error: error.message,
     });
   }
 };
@@ -688,13 +772,12 @@ module.exports = {
   validatePermissionAssignment,
   getPageDependencies,
   getMultipleDependencies,
-  
+
   // Role management
   getSystemRoles,
   createCustomRole,
   getCustomRoles,
   updateCustomRole,
   deleteCustomRole,
-  assignRoleToUser
+  assignRoleToUser,
 };
-

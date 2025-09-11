@@ -1,9 +1,9 @@
-'use strict';
+"use strict";
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     const transaction = await queryInterface.sequelize.transaction();
-    
+
     try {
       // Create the student_room_read permission
       await queryInterface.sequelize.query(
@@ -17,11 +17,13 @@ module.exports = {
         `SELECT id FROM Permissions WHERE name = 'student_room_read'`,
         { transaction }
       );
-      
+
       if (permissionResult.length === 0) {
-        throw new Error('student_room_read permission not found after creation');
+        throw new Error(
+          "student_room_read permission not found after creation"
+        );
       }
-      
+
       const permissionId = permissionResult[0].id;
 
       // Get the student role ID
@@ -31,7 +33,7 @@ module.exports = {
       );
 
       if (studentRoleResult.length === 0) {
-        throw new Error('student role not found');
+        throw new Error("student role not found");
       }
 
       const studentRoleId = studentRoleResult[0].id;
@@ -60,14 +62,14 @@ module.exports = {
 
   down: async (queryInterface, Sequelize) => {
     const transaction = await queryInterface.sequelize.transaction();
-    
+
     try {
       // Get the permission ID
       const [permissionResult] = await queryInterface.sequelize.query(
         `SELECT id FROM Permissions WHERE name = 'student_room_read'`,
         { transaction }
       );
-      
+
       if (permissionResult.length > 0) {
         const permissionId = permissionResult[0].id;
 
@@ -89,5 +91,5 @@ module.exports = {
       await transaction.rollback();
       throw error;
     }
-  }
+  },
 };

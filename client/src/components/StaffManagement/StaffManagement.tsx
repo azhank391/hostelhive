@@ -628,6 +628,11 @@ export const StaffManagement: React.FC = () => {
       };
 
       const response = await apiClient.post(`/rbac/hostels/${hostelId}/roles`, roleDataWithPermissions);
+      const newRole = (response as any).data;
+      
+      // Solution 1: Immediately update local state for better performance
+      setAvailableRoles(prevRoles => [...prevRoles, newRole]);
+      
       notification.success('Custom role created successfully');
       setShowCreateRoleForm(false);
       
@@ -636,8 +641,7 @@ export const StaffManagement: React.FC = () => {
       setSelectedGroups(new Set());
       setExpandedCategories(new Set());
       
-      fetchCustomRoles(); // Refresh custom roles list
-      fetchAvailableRoles(); // Refresh available roles for staff creation
+      fetchCustomRoles(); // Still refresh custom roles list for the management table
     } catch (error: any) {
       console.error('Failed to create role:', error);
       notification.error(error.response?.data?.message || 'Failed to create custom role');

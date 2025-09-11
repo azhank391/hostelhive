@@ -21,7 +21,7 @@ exports.registerOwner = async (req, res) => {
     // Find the owner system role
     const { Role } = require("../models");
     const ownerRole = await Role.findOne({
-      where: { name: "owner", isSystemRole: true }
+      where: { name: "owner", isSystemRole: true },
     });
 
     if (!ownerRole) {
@@ -95,7 +95,7 @@ exports.registerUser = async (req, res) => {
     // Find the system role for the user
     const { Role } = require("../models");
     const systemRole = await Role.findOne({
-      where: { name: role, isSystemRole: true }
+      where: { name: role, isSystemRole: true },
     });
 
     if (!systemRole) {
@@ -143,24 +143,33 @@ exports.loginUser = async (req, res) => {
     console.log("🔍 DEBUG: Subdomain from request:", subdomain);
     console.log("🔍 DEBUG: Subdomain from middleware:", req.subdomain);
     console.log("🔍 DEBUG: HostelId from middleware:", req.hostelId);
-    
+
     // Step 1: Try to find user in Users table first
     let user = await User.findOne({ where: { email } });
     let isSuperadmin = false;
-    let userSource = 'Users';
+    let userSource = "Users";
 
     if (user) {
-      console.log("✅ User found in Users table:", { id: user.id, role: user.role, hostelId: user.hostelId });
+      console.log("✅ User found in Users table:", {
+        id: user.id,
+        role: user.role,
+        hostelId: user.hostelId,
+      });
     } else {
-      console.log("ℹ️  User not found in Users table, checking Superadmins table...");
-      
+      console.log(
+        "ℹ️  User not found in Users table, checking Superadmins table..."
+      );
+
       // Step 2: If no user found, check Superadmins table
       const { Superadmin } = require("../models");
       const superadmin = await Superadmin.findOne({ where: { email } });
-      
+
       if (superadmin) {
-        console.log("✅ Superadmin found:", { id: superadmin.id, name: superadmin.name });
-        
+        console.log("✅ Superadmin found:", {
+          id: superadmin.id,
+          name: superadmin.name,
+        });
+
         // Verify superadmin password
         const isMatch = await bcrypt.compare(password, superadmin.password);
         if (isMatch) {
@@ -169,12 +178,12 @@ exports.loginUser = async (req, res) => {
             id: superadmin.id,
             name: superadmin.name,
             email: superadmin.email,
-            role: 'superadmin',
+            role: "superadmin",
             hostelId: null,
-            requiresPasswordChange: false
+            requiresPasswordChange: false,
           };
           isSuperadmin = true;
-          userSource = 'Superadmins';
+          userSource = "Superadmins";
           console.log("✅ Superadmin password verified, created user object");
         } else {
           console.log("❌ Superadmin password mismatch");
@@ -197,12 +206,19 @@ exports.loginUser = async (req, res) => {
       }
 
       // Note: We allow login with default password but will prompt for change later
-      if (user.requiresPasswordChange && password === '123456') {
-        console.log("User logged in with default password, will prompt for change");
+      if (user.requiresPasswordChange && password === "123456") {
+        console.log(
+          "User logged in with default password, will prompt for change"
+        );
       }
     }
 
-    console.log(`✅ Login successful for ${userSource} user:`, user.id, "Role:", user.role);
+    console.log(
+      `✅ Login successful for ${userSource} user:`,
+      user.id,
+      "Role:",
+      user.role
+    );
 
     // Step 4: Subdomain validation for regular users (not superadmin)
     if (!isSuperadmin && (req.hostelId || req.subdomain)) {
@@ -210,7 +226,12 @@ exports.loginUser = async (req, res) => {
       // (except for owners who may own multiple hostels)
       if (user.role !== "owner" && user.hostelId !== req.hostelId) {
         console.log("❌ User does not belong to this hostel");
-        console.log("❌ User hostelId:", user.hostelId, "Request hostelId:", req.hostelId);
+        console.log(
+          "❌ User hostelId:",
+          user.hostelId,
+          "Request hostelId:",
+          req.hostelId
+        );
         return res.status(400).json({ message: "Invalid credentials" });
       }
       console.log("✅ Subdomain validation passed");
@@ -227,18 +248,24 @@ exports.loginUser = async (req, res) => {
       // 🚀 NEW: If logging in through subdomain, prioritize that hostel
       let selectedHostelId = null;
       let subdomainHostel = null;
-      
+
       if (req.hostelId && req.hostel) {
         // Check if the user owns the hostel from the subdomain
-        subdomainHostel = ownedHostels.find(h => h.id === req.hostelId);
+        subdomainHostel = ownedHostels.find((h) => h.id === req.hostelId);
         if (subdomainHostel) {
           selectedHostelId = req.hostelId;
-          console.log("🔍 DEBUG: Subdomain login - using hostel from subdomain:", subdomainHostel.name);
+          console.log(
+            "🔍 DEBUG: Subdomain login - using hostel from subdomain:",
+            subdomainHostel.name
+          );
         } else {
-          console.log("🔍 DEBUG: User does not own the hostel from subdomain:", req.hostelId);
+          console.log(
+            "🔍 DEBUG: User does not own the hostel from subdomain:",
+            req.hostelId
+          );
         }
       }
-      
+
       // If no subdomain hostel or user doesn't own it, use default logic
       if (!selectedHostelId) {
         // Determine if hostel selection is needed
@@ -251,12 +278,17 @@ exports.loginUser = async (req, res) => {
       }
 
       // Fetch user permissions for JWT
-      const rbacService = require('../services/rbacService');
+      const rbacService = require("../services/rbacService");
       let userPermissions = [];
       try {
-        const userRoleData = await rbacService.getUserRoleAndPermissions(user.id);
-        userPermissions = userRoleData.permissions.map(p => p.name);
-        console.log("🔍 DEBUG: User permissions fetched for JWT:", userPermissions);
+        const userRoleData = await rbacService.getUserRoleAndPermissions(
+          user.id
+        );
+        userPermissions = userRoleData.permissions.map((p) => p.name);
+        console.log(
+          "🔍 DEBUG: User permissions fetched for JWT:",
+          userPermissions
+        );
       } catch (error) {
         console.error("❌ DEBUG: Failed to fetch permissions for JWT:", error);
         // For legacy users, set empty permissions array
@@ -297,14 +329,22 @@ exports.loginUser = async (req, res) => {
     } else if (user.role === "superadmin") {
       // Superadmin - no hostel association, global access
       // Fetch permissions for superadmin
-      const rbacService = require('../services/rbacService');
+      const rbacService = require("../services/rbacService");
       let userPermissions = [];
       try {
-        const userRoleData = await rbacService.getUserRoleAndPermissions(user.id);
-        userPermissions = userRoleData.permissions.map(p => p.name);
-        console.log("🔍 DEBUG: Superadmin permissions fetched for JWT:", userPermissions);
+        const userRoleData = await rbacService.getUserRoleAndPermissions(
+          user.id
+        );
+        userPermissions = userRoleData.permissions.map((p) => p.name);
+        console.log(
+          "🔍 DEBUG: Superadmin permissions fetched for JWT:",
+          userPermissions
+        );
       } catch (error) {
-        console.error("❌ DEBUG: Failed to fetch superadmin permissions for JWT:", error);
+        console.error(
+          "❌ DEBUG: Failed to fetch superadmin permissions for JWT:",
+          error
+        );
         userPermissions = [];
       }
 
@@ -325,7 +365,7 @@ exports.loginUser = async (req, res) => {
         id: user.id,
         name: user.name,
         role: user.role,
-        hostelId: null
+        hostelId: null,
       });
 
       res.json({
@@ -340,14 +380,22 @@ exports.loginUser = async (req, res) => {
     } else {
       // Warden/Student - they have a specific hostelId
       // Fetch permissions for warden/student
-      const rbacService = require('../services/rbacService');
+      const rbacService = require("../services/rbacService");
       let userPermissions = [];
       try {
-        const userRoleData = await rbacService.getUserRoleAndPermissions(user.id);
-        userPermissions = userRoleData.permissions.map(p => p.name);
-        console.log("🔍 DEBUG: Warden/Student permissions fetched for JWT:", userPermissions);
+        const userRoleData = await rbacService.getUserRoleAndPermissions(
+          user.id
+        );
+        userPermissions = userRoleData.permissions.map((p) => p.name);
+        console.log(
+          "🔍 DEBUG: Warden/Student permissions fetched for JWT:",
+          userPermissions
+        );
       } catch (error) {
-        console.error("❌ DEBUG: Failed to fetch warden/student permissions for JWT:", error);
+        console.error(
+          "❌ DEBUG: Failed to fetch warden/student permissions for JWT:",
+          error
+        );
         userPermissions = [];
       }
 
@@ -368,7 +416,7 @@ exports.loginUser = async (req, res) => {
         role: user.role,
         name: user.name,
         hostelId: user.hostelId,
-        role_id: user.role_id
+        role_id: user.role_id,
       });
 
       res.json({
@@ -412,7 +460,7 @@ exports.getCurrentUser = async (req, res) => {
         name: superadmin.name,
         email: superadmin.email,
         role: superadmin.role,
-        hostelId: null // Superadmin has no hostel
+        hostelId: null, // Superadmin has no hostel
       };
     } else {
       // For regular users, get data from Users table
@@ -463,7 +511,10 @@ exports.getUserHostels = async (req, res) => {
         ],
         order: [["createdAt", "DESC"]],
       });
-      console.log("🔍 DEBUG: Superadmin accessing all hostels, count:", hostels.length);
+      console.log(
+        "🔍 DEBUG: Superadmin accessing all hostels, count:",
+        hostels.length
+      );
     } else if (userRole === "owner") {
       // Owner gets all hostels they own
       const { Hostel, TenantLocation } = require("../models");
@@ -534,7 +585,9 @@ exports.getAllOwnerHostels = async (req, res) => {
     const userRole = req.user.role;
 
     if (userRole !== "owner") {
-      return res.status(403).json({ message: "Only owners can access this endpoint" });
+      return res
+        .status(403)
+        .json({ message: "Only owners can access this endpoint" });
     }
 
     const { Hostel, TenantLocation } = require("../models");
@@ -559,11 +612,16 @@ exports.getAllOwnerHostels = async (req, res) => {
       order: [["createdAt", "DESC"]],
     });
 
-    console.log("🔍 DEBUG: Owner accessing all hostels (active + inactive), count:", hostels.length);
+    console.log(
+      "🔍 DEBUG: Owner accessing all hostels (active + inactive), count:",
+      hostels.length
+    );
     res.json({ hostels });
   } catch (error) {
     console.error("Error in getAllOwnerHostels:", error);
-    res.status(500).json({ message: "Server error while fetching all hostels" });
+    res
+      .status(500)
+      .json({ message: "Server error while fetching all hostels" });
   }
 };
 
@@ -588,14 +646,22 @@ exports.setActiveHostel = async (req, res) => {
       }
 
       // Fetch user permissions for JWT
-      const rbacService = require('../services/rbacService');
+      const rbacService = require("../services/rbacService");
       let userPermissions = [];
       try {
-        const userRoleData = await rbacService.getUserRoleAndPermissions(req.user.id);
-        userPermissions = userRoleData.permissions.map(p => p.name);
-        console.log("🔍 DEBUG: Superadmin permissions fetched for hostel selection:", userPermissions);
+        const userRoleData = await rbacService.getUserRoleAndPermissions(
+          req.user.id
+        );
+        userPermissions = userRoleData.permissions.map((p) => p.name);
+        console.log(
+          "🔍 DEBUG: Superadmin permissions fetched for hostel selection:",
+          userPermissions
+        );
       } catch (error) {
-        console.error("❌ DEBUG: Failed to fetch superadmin permissions for hostel selection:", error);
+        console.error(
+          "❌ DEBUG: Failed to fetch superadmin permissions for hostel selection:",
+          error
+        );
         userPermissions = [];
       }
 
@@ -637,14 +703,22 @@ exports.setActiveHostel = async (req, res) => {
       }
 
       // Fetch user permissions for JWT
-      const rbacService = require('../services/rbacService');
+      const rbacService = require("../services/rbacService");
       let userPermissions = [];
       try {
-        const userRoleData = await rbacService.getUserRoleAndPermissions(req.user.id);
-        userPermissions = userRoleData.permissions.map(p => p.name);
-        console.log("🔍 DEBUG: Owner permissions fetched for hostel selection:", userPermissions);
+        const userRoleData = await rbacService.getUserRoleAndPermissions(
+          req.user.id
+        );
+        userPermissions = userRoleData.permissions.map((p) => p.name);
+        console.log(
+          "🔍 DEBUG: Owner permissions fetched for hostel selection:",
+          userPermissions
+        );
       } catch (error) {
-        console.error("❌ DEBUG: Failed to fetch owner permissions for hostel selection:", error);
+        console.error(
+          "❌ DEBUG: Failed to fetch owner permissions for hostel selection:",
+          error
+        );
         userPermissions = [];
       }
 
@@ -692,14 +766,22 @@ exports.setActiveHostel = async (req, res) => {
       }
 
       // Fetch user permissions for JWT
-      const rbacService = require('../services/rbacService');
+      const rbacService = require("../services/rbacService");
       let userPermissions = [];
       try {
-        const userRoleData = await rbacService.getUserRoleAndPermissions(req.user.id);
-        userPermissions = userRoleData.permissions.map(p => p.name);
-        console.log("🔍 DEBUG: Custom role permissions fetched for hostel selection:", userPermissions);
+        const userRoleData = await rbacService.getUserRoleAndPermissions(
+          req.user.id
+        );
+        userPermissions = userRoleData.permissions.map((p) => p.name);
+        console.log(
+          "🔍 DEBUG: Custom role permissions fetched for hostel selection:",
+          userPermissions
+        );
       } catch (error) {
-        console.error("❌ DEBUG: Failed to fetch custom role permissions for hostel selection:", error);
+        console.error(
+          "❌ DEBUG: Failed to fetch custom role permissions for hostel selection:",
+          error
+        );
         userPermissions = [];
       }
 
@@ -729,7 +811,12 @@ exports.setActiveHostel = async (req, res) => {
         },
       });
     } else {
-      res.status(400).json({ message: "Only owners, superadmins, and staff with hostel access can switch hostels" });
+      res
+        .status(400)
+        .json({
+          message:
+            "Only owners, superadmins, and staff with hostel access can switch hostels",
+        });
     }
   } catch (error) {
     console.error("Error setting active hostel:", error);
@@ -745,44 +832,43 @@ exports.updateProfile = async (req, res) => {
 
     // Validate required fields
     if (!name || !email) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Name and email are required' 
+        message: "Name and email are required",
       });
     }
 
     // Check if email is already taken by another user
     // For owners, we don't check hostelId since they can manage multiple hostels
-    const whereClause = req.user.role === 'owner' 
-      ? { email, id: { [Op.ne]: userId } }
-      : { email, hostelId: req.user.hostelId, id: { [Op.ne]: userId } };
-    
+    const whereClause =
+      req.user.role === "owner"
+        ? { email, id: { [Op.ne]: userId } }
+        : { email, hostelId: req.user.hostelId, id: { [Op.ne]: userId } };
+
     const existingUser = await User.findOne({ where: whereClause });
 
     if (existingUser) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: req.user.role === 'owner' 
-          ? 'Email is already taken by another user' 
-          : 'Email is already taken by another user in this hostel' 
+        message:
+          req.user.role === "owner"
+            ? "Email is already taken by another user"
+            : "Email is already taken by another user in this hostel",
       });
     }
 
     // Update user profile
-    await User.update(
-      { name, email, phone },
-      { where: { id: userId } }
-    );
+    await User.update({ name, email, phone }, { where: { id: userId } });
 
-    res.json({ 
+    res.json({
       success: true,
-      message: 'Profile updated successfully' 
+      message: "Profile updated successfully",
     });
   } catch (error) {
-    console.error('Error updating profile:', error);
-    res.status(500).json({ 
+    console.error("Error updating profile:", error);
+    res.status(500).json({
       success: false,
-      message: 'Failed to update profile' 
+      message: "Failed to update profile",
     });
   }
 };
@@ -794,44 +880,47 @@ exports.changePassword = async (req, res) => {
     const userId = req.user.id;
 
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Current password and new password are required' 
+        message: "Current password and new password are required",
       });
     }
 
     if (newPassword.length < 6) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Password must be at least 6 characters long' 
+        message: "Password must be at least 6 characters long",
       });
     }
 
     // Prevent using the default password
-    if (newPassword === '123456') {
-      return res.status(400).json({ 
+    if (newPassword === "123456") {
+      return res.status(400).json({
         success: false,
-        message: 'Cannot use the default password (123456)' 
+        message: "Cannot use the default password (123456)",
       });
     }
 
     // Get current user to verify current password
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: 'User not found' 
+        message: "User not found",
       });
     }
 
     // Verify current password
-    const bcrypt = require('bcrypt');
-    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
-    
+    const bcrypt = require("bcrypt");
+    const isPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
+
     if (!isPasswordValid) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Current password is incorrect' 
+        message: "Current password is incorrect",
       });
     }
 
@@ -840,22 +929,22 @@ exports.changePassword = async (req, res) => {
 
     // Update user's password and set requiresPasswordChange to false
     await User.update(
-      { 
-        password: hashedPassword, 
-        requiresPasswordChange: false 
+      {
+        password: hashedPassword,
+        requiresPasswordChange: false,
       },
       { where: { id: userId } }
     );
 
-    res.json({ 
+    res.json({
       success: true,
-      message: 'Password changed successfully' 
+      message: "Password changed successfully",
     });
   } catch (error) {
-    console.error('Error changing password:', error);
-    res.status(500).json({ 
+    console.error("Error changing password:", error);
+    res.status(500).json({
       success: false,
-      message: 'Failed to change password' 
+      message: "Failed to change password",
     });
   }
 };

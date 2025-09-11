@@ -1,16 +1,19 @@
 "use strict";
 
-const { Permission, RolePermission, Role } = require('../models');
-const { Op } = require('sequelize');
-const { PERMISSION_DEFINITIONS, getPermissionDefinition } = require('./permissionDefinitions');
+const { Permission, RolePermission, Role } = require("../models");
+const { Op } = require("sequelize");
+const {
+  PERMISSION_DEFINITIONS,
+  getPermissionDefinition,
+} = require("./permissionDefinitions");
 
 /**
  * 🎯 PERMISSION DEPENDENCY RESOLVER
- * 
+ *
  * Handles automatic permission assignment based on dependencies.
  * When a permission is assigned to a role, all its required permissions
  * are automatically assigned as well.
- * 
+ *
  * Includes support for high-privilege permissions and their warnings.
  */
 
@@ -31,12 +34,14 @@ class PermissionDependencyResolver {
       // Fallback to database if not in definitions
       const permission = await Permission.findOne({
         where: { name: permissionName },
-        include: [{
-          association: 'requiredPermissions',
-          through: {
-            where: { is_automatic: true }
-          }
-        }]
+        include: [
+          {
+            association: "requiredPermissions",
+            through: {
+              where: { is_automatic: true },
+            },
+          },
+        ],
       });
 
       if (!permission) {
@@ -44,13 +49,13 @@ class PermissionDependencyResolver {
         return [];
       }
 
-      return permission.requiredPermissions.map(p => p.name);
+      return permission.requiredPermissions.map((p) => p.name);
     } catch (error) {
-      console.error('❌ Error getting permission dependencies:', error);
+      console.error("❌ Error getting permission dependencies:", error);
       return [];
     }
   }
-  
+
   /**
    * Check if a permission is high privilege
    * @param {string} permissionName - Name of the permission
@@ -59,10 +64,10 @@ class PermissionDependencyResolver {
   static isHighPrivilegePermission(permissionName) {
     const permDef = getPermissionDefinition(permissionName);
     if (!permDef) return { isHighPrivilege: false };
-    
+
     return {
       isHighPrivilege: permDef.isHighPrivilege || false,
-      warning: permDef.warning
+      warning: permDef.warning,
     };
   }
 
@@ -75,12 +80,14 @@ class PermissionDependencyResolver {
     try {
       const permission = await Permission.findOne({
         where: { name: permissionName },
-        include: [{
-          association: 'parentPermissions',
-          through: {
-            where: { is_automatic: true }
-          }
-        }]
+        include: [
+          {
+            association: "parentPermissions",
+            through: {
+              where: { is_automatic: true },
+            },
+          },
+        ],
       });
 
       if (!permission) {
@@ -88,9 +95,9 @@ class PermissionDependencyResolver {
         return [];
       }
 
-      return permission.parentPermissions.map(p => p.name);
+      return permission.parentPermissions.map((p) => p.name);
     } catch (error) {
-      console.error('❌ Error getting dependent permissions:', error);
+      console.error("❌ Error getting dependent permissions:", error);
       return [];
     }
   }
@@ -107,7 +114,7 @@ class PermissionDependencyResolver {
 
       while (toProcess.length > 0) {
         const currentPermission = toProcess.shift();
-        
+
         if (resolvedPermissions.has(currentPermission)) {
           continue;
         }
@@ -116,8 +123,10 @@ class PermissionDependencyResolver {
         resolvedPermissions.add(currentPermission);
 
         // Get dependencies
-        const dependencies = await this.getPermissionDependencies(currentPermission);
-        
+        const dependencies = await this.getPermissionDependencies(
+          currentPermission
+        );
+
         // Add dependencies to processing queue
         for (const dep of dependencies) {
           if (!resolvedPermissions.has(dep)) {
@@ -128,7 +137,7 @@ class PermissionDependencyResolver {
 
       return Array.from(resolvedPermissions);
     } catch (error) {
-      console.error('❌ Error resolving permission dependencies:', error);
+      console.error("❌ Error resolving permission dependencies:", error);
       return permissionNames; // Return original list if error
     }
   }
@@ -142,62 +151,69 @@ class PermissionDependencyResolver {
   static async assignPermissionsWithDependencies(roleId, permissionNames) {
     try {
       console.log(`🔗 Resolving dependencies for role ${roleId}...`);
-      
+
       // Check for high privilege permissions
-      const highPrivilegePerms = permissionNames.filter(perm => {
-        const { isHighPrivilege, warning } = this.isHighPrivilegePermission(perm);
+      const highPrivilegePerms = permissionNames.filter((perm) => {
+        const { isHighPrivilege, warning } =
+          this.isHighPrivilegePermission(perm);
         if (isHighPrivilege) {
           console.warn(`⚠️ High Privilege Permission: ${perm} - ${warning}`);
         }
         return isHighPrivilege;
       });
-      
+
       if (highPrivilegePerms.length > 0) {
-        console.log(`🚨 Including ${highPrivilegePerms.length} high privilege permissions`);
+        console.log(
+          `🚨 Including ${highPrivilegePerms.length} high privilege permissions`
+        );
       }
-      
+
       // Resolve all dependencies
       const allPermissions = await this.resolveDependencies(permissionNames);
-      
+
       console.log(`📋 Original permissions: ${permissionNames.length}`);
       console.log(`📋 Resolved permissions: ${allPermissions.length}`);
-      
+
       // Get permission IDs
       const permissions = await Permission.findAll({
-        where: { name: { [Op.in]: allPermissions } }
+        where: { name: { [Op.in]: allPermissions } },
       });
 
-      const permissionIds = permissions.map(p => p.id);
-      
+      const permissionIds = permissions.map((p) => p.id);
+
       // Remove existing permissions for this role
       await RolePermission.destroy({
-        where: { roleId }
+        where: { roleId },
       });
 
       // Add all permissions (including dependencies)
-      const rolePermissions = permissionIds.map(permissionId => ({
-        id: require('crypto').randomUUID(),
+      const rolePermissions = permissionIds.map((permissionId) => ({
+        id: require("crypto").randomUUID(),
         roleId,
         permissionId,
-        createdAt: new Date()
+        createdAt: new Date(),
       }));
 
       await RolePermission.bulkCreate(rolePermissions);
 
-      console.log(`✅ Assigned ${permissionIds.length} permissions to role ${roleId}`);
-      
+      console.log(
+        `✅ Assigned ${permissionIds.length} permissions to role ${roleId}`
+      );
+
       return {
         success: true,
         originalCount: permissionNames.length,
         resolvedCount: allPermissions.length,
         assignedPermissions: allPermissions,
-        dependencies: allPermissions.filter(p => !permissionNames.includes(p))
+        dependencies: allPermissions.filter(
+          (p) => !permissionNames.includes(p)
+        ),
       };
     } catch (error) {
-      console.error('❌ Error assigning permissions with dependencies:', error);
+      console.error("❌ Error assigning permissions with dependencies:", error);
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -209,20 +225,27 @@ class PermissionDependencyResolver {
    * @param {string} createdBy - ID of the user creating the role
    * @returns {Object} Result object with success status and role data
    */
-  static async createRoleWithDependencies(roleData, permissionNames, createdBy) {
+  static async createRoleWithDependencies(
+    roleData,
+    permissionNames,
+    createdBy
+  ) {
     try {
       console.log(`🎭 Creating custom role: ${roleData.name}`);
-      
+
       // Create the role
       const role = await Role.create({
         ...roleData,
         createdBy,
-        isSystemRole: false
+        isSystemRole: false,
       });
 
       // Assign permissions with dependencies
-      const result = await this.assignPermissionsWithDependencies(role.id, permissionNames);
-      
+      const result = await this.assignPermissionsWithDependencies(
+        role.id,
+        permissionNames
+      );
+
       if (!result.success) {
         // Rollback role creation if permission assignment fails
         await Role.destroy({ where: { id: role.id } });
@@ -230,17 +253,17 @@ class PermissionDependencyResolver {
       }
 
       console.log(`✅ Custom role created successfully: ${role.name}`);
-      
+
       return {
         success: true,
         role,
-        permissions: result
+        permissions: result,
       };
     } catch (error) {
-      console.error('❌ Error creating role with dependencies:', error);
+      console.error("❌ Error creating role with dependencies:", error);
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -254,19 +277,22 @@ class PermissionDependencyResolver {
   static async updateRolePermissions(roleId, permissionNames) {
     try {
       console.log(`🔄 Updating permissions for role ${roleId}...`);
-      
-      const result = await this.assignPermissionsWithDependencies(roleId, permissionNames);
-      
+
+      const result = await this.assignPermissionsWithDependencies(
+        roleId,
+        permissionNames
+      );
+
       if (result.success) {
         console.log(`✅ Role permissions updated successfully`);
       }
-      
+
       return result;
     } catch (error) {
-      console.error('❌ Error updating role permissions:', error);
+      console.error("❌ Error updating role permissions:", error);
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -279,33 +305,37 @@ class PermissionDependencyResolver {
   static async getRolePermissionTree(roleId) {
     try {
       const role = await Role.findByPk(roleId, {
-        include: [{
-          association: 'permissions',
-          include: [{
-            association: 'requiredPermissions',
-            through: {
-              where: { is_automatic: true }
-            }
-          }]
-        }]
+        include: [
+          {
+            association: "permissions",
+            include: [
+              {
+                association: "requiredPermissions",
+                through: {
+                  where: { is_automatic: true },
+                },
+              },
+            ],
+          },
+        ],
       });
 
       if (!role) {
-        throw new Error('Role not found');
+        throw new Error("Role not found");
       }
 
       const permissionTree = {};
-      
+
       for (const permission of role.permissions) {
         permissionTree[permission.name] = {
           displayName: permission.displayName,
           category: permission.category,
           operation: permission.operation,
-          dependencies: permission.requiredPermissions.map(p => ({
+          dependencies: permission.requiredPermissions.map((p) => ({
             name: p.name,
             displayName: p.displayName,
-            category: p.category
-          }))
+            category: p.category,
+          })),
         };
       }
 
@@ -314,15 +344,15 @@ class PermissionDependencyResolver {
         role: {
           id: role.id,
           name: role.name,
-          displayName: role.displayName
+          displayName: role.displayName,
         },
-        permissions: permissionTree
+        permissions: permissionTree,
       };
     } catch (error) {
-      console.error('❌ Error getting role permission tree:', error);
+      console.error("❌ Error getting role permission tree:", error);
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -334,21 +364,25 @@ class PermissionDependencyResolver {
    */
   static async validatePermissionAssignment(permissionNames) {
     try {
-      const resolvedPermissions = await this.resolveDependencies(permissionNames);
-      const missingDependencies = resolvedPermissions.filter(p => !permissionNames.includes(p));
-      
+      const resolvedPermissions = await this.resolveDependencies(
+        permissionNames
+      );
+      const missingDependencies = resolvedPermissions.filter(
+        (p) => !permissionNames.includes(p)
+      );
+
       return {
         success: true,
         originalPermissions: permissionNames,
         resolvedPermissions,
         missingDependencies,
-        isValid: missingDependencies.length === 0
+        isValid: missingDependencies.length === 0,
       };
     } catch (error) {
-      console.error('❌ Error validating permission assignment:', error);
+      console.error("❌ Error validating permission assignment:", error);
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -360,18 +394,25 @@ class PermissionDependencyResolver {
    */
   static async getMultipleDependencies(permissionNames) {
     try {
-      console.log(`🔍 Getting dependencies for multiple permissions:`, permissionNames);
-      
+      console.log(
+        `🔍 Getting dependencies for multiple permissions:`,
+        permissionNames
+      );
+
       const results = {};
-      
+
       for (const permissionName of permissionNames) {
-        results[permissionName] = await this.getPermissionDependencies(permissionName);
+        results[permissionName] = await this.getPermissionDependencies(
+          permissionName
+        );
       }
-      
-      console.log(`✅ Retrieved dependencies for ${permissionNames.length} permissions`);
+
+      console.log(
+        `✅ Retrieved dependencies for ${permissionNames.length} permissions`
+      );
       return results;
     } catch (error) {
-      console.error('❌ Error getting multiple dependencies:', error);
+      console.error("❌ Error getting multiple dependencies:", error);
       throw error;
     }
   }
@@ -384,37 +425,38 @@ class PermissionDependencyResolver {
   static async getPageDependencies(pageName) {
     try {
       console.log(`🔍 Getting page dependencies for: ${pageName}`);
-      
+
       const pageDependencies = {
-        'dashboard': ['view_dashboard'],
-        'rooms': ['room_read'],
-        'students': ['student_read'],
-        'visitors': ['visitor_read'],
-        'complaints': ['complaint_read'],
-        'staff': ['role_read'],
-        'wardens': ['warden_read'],
-        'settings': ['view_settings'],
-        'hostel_detail': ['view_hostel_details'],
-        'owner_hostels': ['hostel_read']
+        dashboard: ["view_dashboard"],
+        rooms: ["room_read"],
+        students: ["student_read"],
+        visitors: ["visitor_read"],
+        complaints: ["complaint_read"],
+        staff: ["role_read"],
+        wardens: ["warden_read"],
+        settings: ["view_settings"],
+        hostel_detail: ["view_hostel_details"],
+        owner_hostels: ["hostel_read"],
       };
-      
+
       const primaryPermissions = pageDependencies[pageName] || [];
       if (primaryPermissions.length === 0) {
         console.log(`❌ Unknown page: ${pageName}`);
         return [];
       }
-      
+
       // Resolve all dependencies for the page
       const allPermissions = await this.resolveDependencies(primaryPermissions);
-      
-      console.log(`✅ Page ${pageName} requires ${allPermissions.length} permissions`);
+
+      console.log(
+        `✅ Page ${pageName} requires ${allPermissions.length} permissions`
+      );
       return allPermissions;
     } catch (error) {
-      console.error('❌ Error getting page dependencies:', error);
+      console.error("❌ Error getting page dependencies:", error);
       throw error;
     }
   }
 }
 
 module.exports = PermissionDependencyResolver;
-
