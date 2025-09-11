@@ -1624,8 +1624,10 @@ export const StaffManagement: React.FC = () => {
                         className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors bg-white"
                       >
                         <option value="">Choose a role for this staff member</option>
-                        {availableRoles.map((role) => (
-                          <option key={role.id} value={role.id}>
+                        {availableRoles
+                          .filter(role => role && role.id) // Ensure role has valid id
+                          .map((role, index) => (
+                          <option key={`${role.id}-${index}`} value={role.id}>
                             {role.displayName} {role.isSystemRole ? '(System)' : '(Custom)'}
                           </option>
                         ))}
@@ -2103,8 +2105,10 @@ export const StaffManagement: React.FC = () => {
                     }}
                   >
                     <option value="">Select a role</option>
-                    {availableRoles.map((role) => (
-                      <option key={role.id} value={role.id}>
+                    {availableRoles
+                      .filter(role => role && role.id) // Ensure role has valid id
+                      .map((role, index) => (
+                      <option key={`${role.id}-${index}`} value={role.id}>
                         {role.displayName} {!role.isSystemRole && '(Custom)'}
                       </option>
                     ))}

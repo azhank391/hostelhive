@@ -1,8 +1,14 @@
 /**
- * 🎯 UNIFIED DEPENDENCY RESOLVER
+ * 🎯 UNIFIED DEPENDENCY RESOLVER - FIXED VERSION
  *
  * Single, fine-tuned resolver that ensures any action permission automatically
  * gets the corresponding view permission for sidebar visibility.
+ * 
+ * FIXES:
+ * - Removed overly broad cross-dependencies
+ * - Made dependencies more specific and operation-focused
+ * - Removed automatic hostel_read/view_dashboard for custom roles
+ * - Only adds dependencies that are truly necessary for the operation
  */
 
 const { Permission } = require("../models");
@@ -18,47 +24,37 @@ class UnifiedDependencyResolver {
   static cacheTimestamps = new Map();
 
   /**
-   * 🎯 ACTION TO VIEW PERMISSION MAPPING
+   * 🎯 ACTION TO VIEW PERMISSION MAPPING - REFINED
    * Maps action permissions to their corresponding view permissions for sidebar visibility
+   * This is the ONLY cross-resource dependency that should be automatic
    */
   static ACTION_TO_VIEW_MAPPING = {
-    // Room Management Actions
+    // Room Management Actions - only need room_read for sidebar
     room_create: "room_read",
-    room_update: "room_read",
+    room_update: "room_read", 
     room_delete: "room_read",
-    room_update: "room_read",
-    room_allocate: "room_read",
-    room_allocate: "room_read",
-    room_deallocate: "room_read",
-    room_deallocate: "room_read",
-    room_allocation_read: "room_read",
+    room_allocate: "room_read", // ONLY room_read, not student_read
+    room_deallocate: "room_read", // ONLY room_read, not student_read
 
-    // Student Management Actions
+    // Student Management Actions - only need student_read for sidebar
     student_create: "student_read",
     student_update: "student_read",
     student_delete: "student_read",
-    student_update: "student_read",
     student_export: "student_read",
-    student_room_assign: "student_read",
-    student_room_read: "student_read",
+    student_room_assign: "student_read", // ONLY student_read, not room_read
 
     // Complaint Management Actions
     complaint_create: "complaint_read",
     complaint_update: "complaint_read",
     complaint_delete: "complaint_read",
-    complaint_create: "complaint_read",
-    complaint_update: "complaint_read",
-    complaint_update: "complaint_read",
+    complaint_handle: "complaint_read",
     complaint_stats_read: "complaint_read",
 
     // Visitor Management Actions
     visitor_create: "visitor_read",
     visitor_update: "visitor_read",
     visitor_delete: "visitor_read",
-    visitor_create: "visitor_read",
-    visitor_update: "visitor_read",
-    visitor_checkout: "visitor_read",
-    visitor_checkout: "visitor_read",
+    visitor_checkout: "visitor_read", // ONLY visitor_read, not student_read
     visitor_export: "visitor_read",
     visitor_stats_read: "visitor_read",
 
@@ -66,13 +62,12 @@ class UnifiedDependencyResolver {
     warden_create: "warden_read",
     warden_update: "warden_read",
     warden_delete: "warden_read",
-    warden_role_assign: "warden_read",
+    warden_role_assign: "warden_read", // ONLY warden_read, not role_read
 
     // Role/Staff Management Actions
     role_create: "role_read",
     role_update: "role_read",
     role_delete: "role_read",
-    role_update: "role_read",
     role_assign: "role_read",
     permission_manage: "role_read",
 
@@ -88,7 +83,6 @@ class UnifiedDependencyResolver {
     hostel_create: "hostel_read",
     hostel_update: "hostel_read",
     hostel_delete: "hostel_read",
-    hostel_update: "hostel_read",
     hostel_stats_read: "hostel_read",
     hostel_settings_update: "hostel_read",
 
@@ -96,47 +90,29 @@ class UnifiedDependencyResolver {
     profile_create: "profile_read",
     profile_update: "profile_read",
     profile_delete: "profile_read",
-
-    // User Management Actions
-    user_create: "user_read",
-    user_update: "user_read",
-    user_delete: "user_read",
   };
 
   /**
-   * 🎯 CROSS-DEPENDENCY MAPPING
-   * Maps permissions to other permissions they need to function properly
+   * 🎯 REFINED CROSS-DEPENDENCIES - OPERATION-SPECIFIC ONLY
+   * Only includes dependencies that are absolutely critical for the operation to function
+   * REMOVED broad dependencies that were causing unwanted sidebar access
    */
   static CROSS_DEPENDENCIES = {
-    // Room allocation needs to see students and rooms
-    room_allocate: ["student_read", "room_read"],
-    room_allocate: ["student_read", "room_read"],
-    room_deallocate: ["student_read", "room_read"],
-    room_deallocate: ["student_read", "room_read"],
-    room_allocation_read: ["student_read", "room_read"],
-
-    // Student room assignment needs to see rooms
-    student_room_assign: ["room_read"],
-    student_room_read: ["room_read"],
-
-    // Complaint handling needs to see students for context
-    complaint_update: ["student_read"],
-    complaint_update: ["student_read"],
-
-    // Visitor management needs to see students for context
-    visitor_update: ["student_read"],
-    visitor_checkout: ["student_read"],
-    visitor_checkout: ["student_read"],
-
-    // Warden management needs to see roles
-    warden_role_assign: ["role_read"],
-
-    // Role management needs to see roles
-    role_assign: ["role_read"],
+    // These are the ONLY operations that truly need cross-resource access
+    // All others should be explicit choices by the admin
+    
+    // Room allocation APIs specifically need both resources
+    "POST /hostels/:hostelId/room-allocations": ["student_read", "room_read"],
+    "PUT /hostels/:hostelId/room-allocations/:id": ["student_read", "room_read"],
+    "DELETE /hostels/:hostelId/room-allocations/:id": ["student_read", "room_read"],
+    
+    // Student room assignment API specifically needs room access
+    "POST /hostels/:hostelId/students/:studentId/assign-room": ["room_read"],
+    "DELETE /hostels/:hostelId/students/:studentId/assign-room": ["room_read"],
   };
 
   /**
-   * Get unified dependencies for a permission using API-driven analysis
+   * Get unified dependencies for a permission using refined logic
    * @param {string} permissionName - The permission name
    * @returns {Array<string>} Array of all required dependencies
    */
@@ -162,10 +138,10 @@ class UnifiedDependencyResolver {
         return cached;
       }
 
-      // Initialize dependencies - REMOVED universal hostel_read dependency
+      // Initialize dependencies - NO universal dependencies
       const dependencies = new Set();
 
-      // 1. Add view permission for sidebar visibility
+      // 1. ONLY add view permission for sidebar visibility (most important fix)
       const viewPermission = this.ACTION_TO_VIEW_MAPPING[permissionName];
       if (viewPermission) {
         dependencies.add(viewPermission);
@@ -174,32 +150,14 @@ class UnifiedDependencyResolver {
         );
       }
 
-      // 2. Add cross-dependencies
-      const crossDeps = this.CROSS_DEPENDENCIES[permissionName] || [];
-      crossDeps.forEach((dep) => {
-        dependencies.add(dep);
-        console.log(`🔗 [${context.requestId}] Added cross-dependency: ${dep}`);
-      });
+      // 2. REMOVED broad cross-dependencies - they were causing the issue
+      // Cross-dependencies now only apply to specific API endpoints, not general permissions
 
-      // 3. Add specific resource dependencies based on permission type
-      const resourceDeps = this.getResourceDependencies(permissionName);
-      resourceDeps.forEach((dep) => {
-        dependencies.add(dep);
-        console.log(
-          `🏠 [${context.requestId}] Added resource dependency: ${dep}`
-        );
-      });
+      // 3. REMOVED universal hostel_read - let it be explicit
+      // 4. REMOVED universal view_dashboard - let it be explicit
+      // 5. REMOVED resource dependencies - they were too broad
 
-      // 4. 🆕 API-DRIVEN DEPENDENCY ANALYSIS
-      const apiDeps = this.getApiDrivenDependencies(permissionName);
-      apiDeps.forEach((dep) => {
-        dependencies.add(dep);
-        console.log(
-          `🌐 [${context.requestId}] Added API-driven dependency: ${dep}`
-        );
-      });
-
-      // 5. Validate all dependencies exist in database
+      // 6. Only validate the minimal dependencies we actually added
       const allDeps = Array.from(dependencies);
       const validatedDeps = await this.validateDependenciesBatch(allDeps);
 
@@ -236,126 +194,13 @@ class UnifiedDependencyResolver {
   }
 
   /**
-   * 🆕 Get API-driven dependencies based on actual API usage patterns
-   * @param {string} permissionName - The permission name
-   * @returns {Array<string>} Array of API-driven dependencies
+   * Get API-specific dependencies (used only for specific endpoint analysis)
+   * This replaces the broad cross-dependencies with endpoint-specific ones
+   * @param {string} endpoint - The specific API endpoint 
+   * @returns {Array<string>} Array of endpoint-specific dependencies
    */
-  static getApiDrivenDependencies(permissionName) {
-    const dependencies = [];
-
-    // Get all APIs that use this permission
-    const apis = getApisForPermission(permissionName);
-
-    // Analyze each API to determine what other permissions might be needed
-    apis.forEach((api) => {
-      const [method, path] = api.split(" ");
-
-      // Room allocation APIs need to see students and rooms
-      if (
-        path.includes("/room-allocations") ||
-        path.includes("/allocate") ||
-        path.includes("/deallocate")
-      ) {
-        dependencies.push("student_read", "room_read");
-      }
-
-      // Student management APIs need to see students
-      if (path.includes("/students")) {
-        dependencies.push("student_read");
-      }
-
-      // Room management APIs need to see rooms
-      if (path.includes("/rooms") && !path.includes("/room-allocations")) {
-        dependencies.push("room_read");
-      }
-
-      // Complaint APIs need to see students for context
-      if (path.includes("/complaints")) {
-        dependencies.push("student_read");
-      }
-
-      // Visitor APIs need to see students for context
-      if (path.includes("/visitors")) {
-        dependencies.push("student_read");
-      }
-
-      // Warden management APIs need to see wardens
-      if (path.includes("/wardens")) {
-        dependencies.push("warden_read");
-      }
-
-      // Staff management APIs need to see roles
-      if (path.includes("/staff")) {
-        dependencies.push("role_read");
-      }
-    });
-
-    return [...new Set(dependencies)]; // Remove duplicates
-  }
-
-  /**
-   * Get resource-specific dependencies
-   * @param {string} permissionName - The permission name
-   * @returns {Array<string>} Array of resource dependencies
-   */
-  static getResourceDependencies(permissionName) {
-    const deps = [];
-
-    // Room-related permissions need view_rooms
-    if (
-      permissionName.includes("room") ||
-      permissionName.includes("allocate") ||
-      permissionName.includes("deallocate")
-    ) {
-      deps.push("room_read");
-    }
-
-    // Student-related permissions need view_students
-    if (
-      permissionName.includes("student") ||
-      permissionName.includes("complaint") ||
-      permissionName.includes("visitor")
-    ) {
-      deps.push("student_read");
-    }
-
-    // Complaint-related permissions need view_complaints
-    if (permissionName.includes("complaint")) {
-      deps.push("complaint_read");
-    }
-
-    // Visitor-related permissions need view_visitors
-    if (permissionName.includes("visitor")) {
-      deps.push("visitor_read");
-    }
-
-    // Warden-related permissions need view_wardens
-    if (permissionName.includes("warden")) {
-      deps.push("warden_read");
-    }
-
-    // Role-related permissions need view_roles
-    if (
-      permissionName.includes("role") ||
-      permissionName.includes("permission")
-    ) {
-      deps.push("role_read");
-    }
-
-    // Report-related permissions need view_reports
-    if (
-      permissionName.includes("report") ||
-      permissionName.includes("analytics")
-    ) {
-      deps.push("view_reports");
-    }
-
-    // Billing-related permissions need view_billing
-    if (permissionName.includes("billing")) {
-      deps.push("billing_read");
-    }
-
-    return deps;
+  static getEndpointSpecificDependencies(endpoint) {
+    return this.CROSS_DEPENDENCIES[endpoint] || [];
   }
 
   /**
@@ -402,47 +247,6 @@ class UnifiedDependencyResolver {
   }
 
   /**
-   * Test specific scenarios with unified resolver
-   * @param {string} scenario - The scenario to test
-   * @returns {Object} Test results
-   */
-  static async testScenario(scenario) {
-    const scenarios = {
-      "deallocate-students-only": ["room_deallocate"],
-      "delete-warden-only": ["warden_delete"],
-      "create-complaint-only": ["complaint_create"],
-      "manage-visitors-only": ["visitor_update"],
-      "room-manager": ["room_create", "room_update", "room_delete"],
-      "student-manager": ["student_create", "student_update", "student_delete"],
-    };
-
-    const permissions = scenarios[scenario];
-    if (!permissions) {
-      throw new Error(`Unknown scenario: ${scenario}`);
-    }
-
-    console.log(`🧪 Testing unified scenario: ${scenario}`);
-    console.log(`📋 Base permissions:`, permissions);
-
-    // Get dependencies for each permission
-    const allDependencies = new Set();
-    for (const permission of permissions) {
-      const deps = await this.getUnifiedDependencies(permission);
-      deps.forEach((dep) => allDependencies.add(dep));
-    }
-
-    const finalPermissions = [...permissions, ...allDependencies];
-
-    return {
-      scenario,
-      basePermissions: permissions,
-      dependencies: [...allDependencies],
-      finalPermissions,
-      totalPermissions: finalPermissions.length,
-    };
-  }
-
-  /**
    * 🎯 PHASE 3 INTEGRATION: Resolve permissions for multiple permissions at once
    * This method is used by PagePermissionResolver for batch permission resolution
    * @param {Array<string>} permissionNames - Array of permission names to resolve
@@ -465,20 +269,19 @@ class UnifiedDependencyResolver {
 
     const allDependencies = new Set();
 
+    // Add the original permissions first
+    permissionNames.forEach(permission => allDependencies.add(permission));
+
+    // Then add only their minimal dependencies
     for (const permissionName of permissionNames) {
       try {
-        const dependencies = await this.getUnifiedDependencies(
-          permissionName,
-          context
-        );
+        const dependencies = await this.getUnifiedDependencies(permissionName);
         dependencies.forEach((dep) => allDependencies.add(dep));
       } catch (error) {
         console.warn(
           `⚠️ [UnifiedResolver] Failed to resolve ${permissionName}:`,
           error.message
         );
-        // Add the permission itself as fallback
-        allDependencies.add(permissionName);
       }
     }
 
@@ -489,6 +292,43 @@ class UnifiedDependencyResolver {
     );
 
     return resolvedPermissions;
+  }
+
+  /**
+   * Test refined scenarios
+   * @param {string} scenario - The scenario to test
+   * @returns {Object} Test results
+   */
+  static async testScenario(scenario) {
+    const scenarios = {
+      "student-only": ["student_read", "student_create", "student_update"],
+      "visitor-only": ["visitor_read", "visitor_create", "visitor_checkout"],
+      "room-only": ["room_read", "room_create", "room_update"],
+    };
+
+    const permissions = scenarios[scenario];
+    if (!permissions) {
+      throw new Error(`Unknown scenario: ${scenario}`);
+    }
+
+    console.log(`� Testing refined scenario: ${scenario}`);
+    console.log(`📋 Base permissions:`, permissions);
+
+    const allDependencies = new Set();
+    for (const permission of permissions) {
+      const deps = await this.getUnifiedDependencies(permission);
+      deps.forEach((dep) => allDependencies.add(dep));
+    }
+
+    const finalPermissions = [...new Set([...permissions, ...allDependencies])];
+
+    return {
+      scenario,
+      basePermissions: permissions,
+      dependencies: [...allDependencies],
+      finalPermissions,
+      totalPermissions: finalPermissions.length,
+    };
   }
 }
 
