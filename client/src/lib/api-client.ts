@@ -243,6 +243,7 @@ class ApiClient {
       error.status = response.status;
       error.code = errorData.code;
       error.details = errorData;
+
       throw error;
     }
 

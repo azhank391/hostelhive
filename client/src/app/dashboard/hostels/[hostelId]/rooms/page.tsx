@@ -70,6 +70,9 @@ export default function HostelRoomsPage() {
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [deallocatingStudent, setDeallocatingStudent] = useState<string | null>(null);
   
+  // Mobile accordion state - track which rooms are expanded
+  const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set());
+  
   // Ref to track if component is mounted
   const isMountedRef = useRef(true);
 
@@ -694,115 +697,321 @@ export default function HostelRoomsPage() {
           )}
         </Card>
       ) : (
-                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredRooms.map((room) => (
-             <Card key={room.id} className="p-6 hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500">
-               <div className="flex items-center justify-between mb-4">
-                 <div className="flex items-center">
-                   <div className="p-3 rounded-lg bg-blue-100 text-blue-600 mr-3">
-                     <BedIcon size={22} />
-                   </div>
-                   <div>
-                     <h3 className="text-xl font-bold text-gray-900">
-                       Room {room.roomNumber}
-                     </h3>
-                     <p className="text-sm text-gray-500">
-                       {room.block ? `Block ${room.block}` : 'No block assigned'}
-                     </p>
-                   </div>
-                 </div>
-                 <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${
-                   (room.occupied || 0) >= (room.capacity || 1) 
-                     ? 'bg-red-100 text-red-800 border border-red-200' 
-                     : 'bg-green-100 text-green-800 border border-green-200'
-                 }`}>
-                   {(room.occupied || 0) >= (room.capacity || 1) ? 'Full' : 'Available'}
-                 </span>
-               </div>
-               
-               <div className="space-y-3 mb-6">
-                 <div className="grid grid-cols-2 gap-4">
-                   <div className="bg-gray-50 p-3 rounded-lg">
-                     <p className="text-xs text-gray-500 uppercase tracking-wide">Capacity</p>
-                     <p className="text-lg font-semibold text-gray-900">{room.capacity || 'N/A'}</p>
-                   </div>
-                   <div className="bg-gray-50 p-3 rounded-lg">
-                     <p className="text-xs text-gray-500 uppercase tracking-wide">Occupied</p>
-                     <p className="text-lg font-semibold text-gray-900">{room.occupied || 0}/{room.capacity || 0}</p>
-                   </div>
-                 </div>
-                 
-                 <div className="bg-gray-50 p-3 rounded-lg">
-                   <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Available Space</p>
-                   <p className="text-lg font-semibold text-green-600">
-                     {(room.capacity || 0) - (room.occupied || 0)} spots
-                   </p>
-                 </div>
+        <>
+          {/* Desktop Table View */}
+          <Card className="overflow-hidden hidden md:block">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Room Details
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Block
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Capacity
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Occupancy
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Available Space
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredRooms.map((room) => {
+                    const occupiedBeds = room.occupied || 0;
+                    const capacity = room.capacity || 0;
+                    const occupancyPercentage = capacity > 0 ? (occupiedBeds / capacity) * 100 : 0;
+                    const availableSpots = capacity - occupiedBeds;
+                    
+                    return (
+                      <tr key={room.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="h-10 w-10 flex-shrink-0">
+                              <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                                <BedIcon size={20} className="text-blue-600" />
+                              </div>
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">
+                                Room {room.roomNumber}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                ID: {room.id}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {room.block ? `Block ${room.block}` : 'No block assigned'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {capacity} beds
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {occupiedBeds}/{capacity}
+                          </div>
+                          <div className="w-16 bg-gray-200 rounded-full h-2 mt-1">
+                            <div 
+                              className={`h-2 rounded-full transition-all duration-300 ${
+                                occupancyPercentage === 100 ? 'bg-red-500' : 
+                                occupancyPercentage >= 80 ? 'bg-yellow-500' : 
+                                'bg-green-500'
+                              }`}
+                              style={{ width: `${occupancyPercentage}%` }}
+                            />
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${
+                            occupancyPercentage === 100 
+                              ? 'bg-red-100 text-red-800 border border-red-200' 
+                              : 'bg-green-100 text-green-800 border border-green-200'
+                          }`}>
+                            {occupancyPercentage === 100 ? 'Full' : 'Available'}
+                          </span>
+                          {occupiedBeds > 0 && (
+                            <div className="text-xs text-blue-600 mt-1">
+                              {occupiedBeds} student{occupiedBeds !== 1 ? 's' : ''} assigned
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-semibold text-green-600">
+                            {availableSpots} spots
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="relative inline-block text-left">
+                            <select
+                              className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              onChange={(e) => {
+                                const action = e.target.value;
+                                if (action === 'view') {
+                                  openViewModal(room);
+                                } else if (action === 'edit') {
+                                  openEditModal(room);
+                                } else if (action === 'delete') {
+                                  handleDeleteRoom(room.id);
+                                }
+                                e.target.value = ''; // Reset select
+                              }}
+                              defaultValue=""
+                            >
+                              <option value="" disabled>Actions</option>
+                              {hasPermission('room_read') && <option value="view">View Details</option>}
+                              {hasPermission('room_update') && <option value="edit">Edit Room</option>}
+                              {hasPermission('room_delete') && <option value="delete" className="text-red-600">Delete Room</option>}
+                            </select>
+                            {isDeleting === room.id && (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <LoadingSpinner size="sm" className="text-red-600" />
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
 
-                                   {/* Student Information */}
-                  {(room.occupied || 0) > 0 && (
-                   <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                     <p className="text-xs text-blue-600 uppercase tracking-wide mb-2">Students in Room</p>
-                     <div className="space-y-1">
-                       {/* This would show actual student names when we have the data */}
-                       <p className="text-sm text-blue-800">
-                         {room.occupied} student{(room.occupied || 0) !== 1 ? 's' : ''} assigned
-                       </p>
-                       <p className="text-xs text-blue-600">
-                         Click "View Details" to see student list
-                       </p>
-                     </div>
-                   </div>
-                 )}
-               </div>
-               
-               <div className="flex space-x-2">
-                 {/* View Details - Always visible for view_rooms permission */}
-                 <PermissionGate permission="room_read">
-                   <Button 
-                     variant="outline" 
-                     size="sm" 
-                     className="flex-1 hover:bg-blue-50 hover:border-blue-300"
-                     onClick={() => openViewModal(room)}
-                   >
-                     <EyeIcon size={14} className="mr-1" />
-                     View Details
-                   </Button>
-                 </PermissionGate>
-                 
-                 {/* Edit button - Only visible for room_update permission */}
-                 <PermissionGate permission="room_update">
-                   <Button 
-                     variant="outline" 
-                     size="sm" 
-                     className="flex-1 hover:bg-green-50 hover:border-green-300"
-                     onClick={() => openEditModal(room)}
-                   >
-                     <EditIcon size={14} className="mr-1" />
-                     Edit
-                   </Button>
-                 </PermissionGate>
-                 
-                 {/* Delete button - Only visible for room_delete permission */}
-                 <PermissionGate permission="room_delete">
-                   <Button 
-                     variant="outline" 
-                     size="sm" 
-                     className="px-3 hover:bg-red-50 hover:border-red-300 hover:text-red-600"
-                     onClick={() => handleDeleteRoom(room.id)}
-                     disabled={isDeleting === room.id}
-                   >
-                     {isDeleting === room.id ? (
-                       <LoadingSpinner size="sm" className="text-red-600" />
-                     ) : (
-                       <span className="text-red-600">×</span>
-                     )}
-                   </Button>
-                 </PermissionGate>
-               </div>
-             </Card>
-           ))}
-         </div>
+          {/* Mobile Accordion View */}
+          <div className="md:hidden space-y-4">
+            {filteredRooms.map((room) => {
+              const occupiedBeds = room.occupied || 0;
+              const capacity = room.capacity || 0;
+              const occupancyPercentage = capacity > 0 ? (occupiedBeds / capacity) * 100 : 0;
+              const availableSpots = capacity - occupiedBeds;
+              const isExpanded = expandedRooms.has(room.id);
+              
+              const toggleExpanded = () => {
+                const newExpanded = new Set(expandedRooms);
+                if (isExpanded) {
+                  newExpanded.delete(room.id);
+                } else {
+                  newExpanded.add(room.id);
+                }
+                setExpandedRooms(newExpanded);
+              };
+              
+              return (
+                <Card key={room.id} className="overflow-hidden">
+                  {/* Collapsible Header */}
+                  <button
+                    className="w-full px-4 py-4 text-left hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset transition-colors"
+                    onClick={toggleExpanded}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 flex-shrink-0">
+                          <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <BedIcon size={20} className="text-blue-600" />
+                          </div>
+                        </div>
+                        <div className="ml-3">
+                          <div className="text-base font-medium text-gray-900">
+                            Room {room.roomNumber}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {room.block ? `Block ${room.block}` : 'No block assigned'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${
+                          occupancyPercentage === 100 
+                            ? 'bg-red-100 text-red-800' 
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {occupancyPercentage === 100 ? 'Full' : 'Available'}
+                        </span>
+                        <svg
+                          className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${
+                            isExpanded ? 'transform rotate-180' : ''
+                          }`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Expandable Content */}
+                  {isExpanded && (
+                    <div className="px-4 pb-4 border-t border-gray-100">
+                      <div className="space-y-4 pt-4">
+                        {/* Room Details Grid */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-gray-50 p-3 rounded-lg">
+                            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Capacity</p>
+                            <p className="text-lg font-semibold text-gray-900">{capacity} beds</p>
+                          </div>
+                          <div className="bg-gray-50 p-3 rounded-lg">
+                            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Occupied</p>
+                            <p className="text-lg font-semibold text-gray-900">{occupiedBeds}/{capacity}</p>
+                          </div>
+                        </div>
+
+                        {/* Occupancy Progress */}
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <div className="flex justify-between items-center mb-2">
+                            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Occupancy Rate</p>
+                            <p className="text-sm font-medium text-gray-700">{Math.round(occupancyPercentage)}%</p>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-3">
+                            <div 
+                              className={`h-3 rounded-full transition-all duration-300 ${
+                                occupancyPercentage === 100 ? 'bg-red-500' : 
+                                occupancyPercentage >= 80 ? 'bg-yellow-500' : 
+                                'bg-green-500'
+                              }`}
+                              style={{ width: `${occupancyPercentage}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Available Space */}
+                        <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                          <p className="text-xs text-green-600 uppercase tracking-wide font-medium mb-1">Available Space</p>
+                          <p className="text-lg font-semibold text-green-700">
+                            {availableSpots} spots available
+                          </p>
+                        </div>
+
+                        {/* Student Information */}
+                        {occupiedBeds > 0 && (
+                          <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                            <p className="text-xs text-blue-600 uppercase tracking-wide font-medium mb-1">Students</p>
+                            <p className="text-sm text-blue-800">
+                              {occupiedBeds} student{occupiedBeds !== 1 ? 's' : ''} currently assigned
+                            </p>
+                            <p className="text-xs text-blue-600 mt-1">
+                              Tap "View Details" to see student list
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Room ID */}
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Room ID</p>
+                          <p className="text-sm font-mono text-gray-700">{room.id}</p>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-col space-y-2 pt-2">
+                          {hasPermission('room_read') && (
+                            <Button 
+                              variant="outline" 
+                              className="w-full justify-center hover:bg-blue-50 hover:border-blue-300"
+                              onClick={() => openViewModal(room)}
+                            >
+                              <EyeIcon size={16} className="mr-2" />
+                              View Details
+                            </Button>
+                          )}
+                          
+                          {hasPermission('room_update') && (
+                            <Button 
+                              variant="outline" 
+                              className="w-full justify-center hover:bg-green-50 hover:border-green-300"
+                              onClick={() => openEditModal(room)}
+                            >
+                              <EditIcon size={16} className="mr-2" />
+                              Edit Room
+                            </Button>
+                          )}
+                          
+                          {hasPermission('room_delete') && (
+                            <Button 
+                              variant="outline" 
+                              className="w-full justify-center hover:bg-red-50 hover:border-red-300 hover:text-red-600"
+                              onClick={() => handleDeleteRoom(room.id)}
+                              disabled={isDeleting === room.id}
+                            >
+                              {isDeleting === room.id ? (
+                                <>
+                                  <LoadingSpinner size="sm" className="mr-2 text-red-600" />
+                                  Deleting...
+                                </>
+                              ) : (
+                                <>
+                                  <span className="text-red-600 mr-2">×</span>
+                                  Delete Room
+                                </>
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        </>
       )}
 
              {/* No pagination needed - all rooms loaded at once */}

@@ -936,9 +936,28 @@ exports.changePassword = async (req, res) => {
       { where: { id: userId } }
     );
 
+    // Generate a new token with updated requiresPasswordChange field
+    const jwt = require("jsonwebtoken");
+    const updatedUser = await User.findByPk(userId);
+    
+    const tokenPayload = {
+      id: updatedUser.id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      hostelId: updatedUser.hostelId,
+      requiresPasswordChange: false, // Updated value
+      permissions: req.user.permissions || [] // Preserve existing permissions
+    };
+
+    const newToken = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
+      expiresIn: "24h",
+    });
+
     res.json({
       success: true,
       message: "Password changed successfully",
+      token: newToken // Return new token
     });
   } catch (error) {
     console.error("Error changing password:", error);

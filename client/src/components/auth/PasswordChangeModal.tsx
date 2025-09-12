@@ -71,7 +71,7 @@ export function PasswordChangeModal({
       setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setErrors({});
       notification.success('Password changed successfully!', {
-        description: 'You can now access the dashboard with your new password.'
+        description: 'You can now access the dashboard with your new password when you log in again.'
       });
     } catch (error) {
       notification.error('Failed to change password', {

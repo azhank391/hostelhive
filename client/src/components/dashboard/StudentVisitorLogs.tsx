@@ -296,7 +296,7 @@ export const StudentVisitorLogs = React.memo(() => {
        try {
          await studentApi.checkoutVisitor(logId)
          toast.success('Visitor checked out successfully!')
-         // NO fetchVisitorLogs() - let optimistic updates persist!
+         fetchVisitorLogs()  //- let optimistic updates persist!
        } catch (apiError) {
          // Revert optimistic update on API error
          setVisitorLogs(prev => prev.map(log => 
@@ -332,7 +332,7 @@ export const StudentVisitorLogs = React.memo(() => {
        try {
          await studentApi.deleteVisitorLog(logId)
          toast.success('Visitor log deleted successfully!')
-         // NO fetchVisitorLogs() - let optimistic updates persist!
+         fetchVisitorLogs() // let optimistic updates persist!
        } catch (apiError) {
          // Revert optimistic update on API error
          setVisitorLogs(originalLogs)

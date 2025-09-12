@@ -12,7 +12,8 @@ exports.verifyToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('🔍 DEBUG: AuthMiddleware - Decoded token:', decoded);
-    req.user = decoded; // { id, role, hostelId, ... }
+    req.user = decoded; // { id, role, hostelId, requiresPasswordChange, ... }
+
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {

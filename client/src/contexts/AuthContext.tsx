@@ -16,6 +16,7 @@ import type {
 interface AuthContextType extends AuthContextValue {
   setToken: (token: string) => void;
   clearToken: () => void;
+  verifyToken: (token: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -100,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (userData.id === payload.id) {
           // Update permissions from token (they might have changed)
           userData.permissions = payload.permissions || []
+          userData.requiresPasswordChange = payload.requiresPasswordChange || false // Update from token
           userData.token = token
           
           setUser(userData)
@@ -122,7 +124,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isActive: true,
         token,
         activeHostelId: currentActiveHostel || payload.hostelId,
-        permissions: payload.permissions || [] // Extract permissions from token
+        permissions: payload.permissions || [], // Extract permissions from token
+        requiresPasswordChange: payload.requiresPasswordChange || false // Extract from token
       }
       
       setUser(userData)
@@ -293,7 +296,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateUser,
       refreshUser,
       setToken, 
-      clearToken 
+      clearToken,
+      verifyToken 
     }}>
       {children}
     </AuthContext.Provider>

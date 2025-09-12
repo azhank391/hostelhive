@@ -425,7 +425,7 @@ exports.updateMyVisitorLog = async (req, res) => {
     const { id } = req.params;
     const { id: userId, hostelId } = req.user;
     const { visitorName, relation } = req.body;
-
+    console.log("Updating visitor log:", { id, userId, hostelId, visitorName, relation });
     const log = await VisitorLog.findOne({
       where: { id, studentId: userId, hostelId },
     });

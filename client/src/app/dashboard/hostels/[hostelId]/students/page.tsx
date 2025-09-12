@@ -21,7 +21,8 @@ import {
   MailIcon,
   PhoneIcon,
   MapPinIcon,
-  RefreshCwIcon
+  RefreshCwIcon,
+  ChevronDownIcon
 } from 'lucide-react';
 
 // Custom type for students response to match backend structure
@@ -85,6 +86,7 @@ export default function HostelStudentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [expandedStudents, setExpandedStudents] = useState<Set<string>>(new Set());
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<StudentData | null>(null);
@@ -555,7 +557,7 @@ export default function HostelStudentsPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Student Management</h1>
           <p className="mt-2 text-gray-600">
@@ -563,10 +565,10 @@ export default function HostelStudentsPage() {
           </p>
         </div>
         
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
           <Button 
             variant="outline" 
-            className="flex items-center px-4 py-2"
+            className="flex items-center justify-center px-4 py-2 w-full sm:w-auto"
             onClick={handleManualRefresh}
             disabled={isRefreshing}
           >
@@ -578,7 +580,7 @@ export default function HostelStudentsPage() {
           {canCreateStudents && (
             <Button 
               variant="primary" 
-              className="flex items-center px-6 py-3"
+              className="flex items-center justify-center px-6 py-3 w-full sm:w-auto"
               onClick={() => setShowCreateModal(true)}
             >
               <PlusIcon size={18} className="mr-2" />
@@ -662,7 +664,7 @@ export default function HostelStudentsPage() {
         </div>
       </Card>
 
-      {/* Students Grid */}
+      {/* Students Display */}
       {filteredStudents.length === 0 ? (
         <Card className="p-12 text-center">
           <div className="mx-auto h-16 w-16 text-gray-400 mb-4">
@@ -674,125 +676,271 @@ export default function HostelStudentsPage() {
           <p className="text-gray-600 mb-6">
             {searchQuery ? `No students found for "${searchQuery}"` : 'Get started by adding your first student'}
           </p>
-          {!searchQuery && (
-            <Button variant="primary" className="flex items-center mx-auto">
+          {!searchQuery && canCreateStudents && (
+            <Button 
+              variant="primary" 
+              className="flex items-center mx-auto"
+              onClick={() => setShowCreateModal(true)}
+            >
               <PlusIcon size={16} className="mr-2" />
               Add New Student
             </Button>
           )}
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredStudents.map((student) => (
-            <Card key={student.id} className="p-6 hover:shadow-lg transition-all duration-200 border-l-4 border-l-green-500">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center">
-                  <div className="p-3 rounded-lg bg-green-100 text-green-600 mr-3">
-                    <UserIcon size={22} />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900">
-                      {student.name}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {student.email}
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Room allocation button or room info */}
-                {student.roomNumber ? (
-                  <div className="flex items-center space-x-2">
-                    <span className="inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 border border-blue-200">
-                      Room {student.roomNumber}
-                    </span>
-                    {/* Only show deallocate button if user has room_deallocate permission */}
-                    <PermissionGate permission="room_deallocate">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="px-2 py-1 text-xs hover:bg-red-50 hover:border-red-300 hover:text-red-600"
-                        onClick={() => handleRoomDeallocation(student.id)}
-                        disabled={isDeleting === student.id}
-                      >
-                        {isDeleting === student.id ? (
-                          <LoadingSpinner size="sm" className="text-red-600" />
-                        ) : (
-                          '×'
-                        )}
-                      </Button>
-                    </PermissionGate>
-                  </div>
-                ) : (
-                  /* Only show allocate button if user has room_allocate permission */
-                  <PermissionGate permission="room_allocate">
-                    <Button 
-                      variant="primary" 
-                      size="sm" 
-                      className="px-3 py-1 text-xs"
-                      onClick={() => openRoomAllocationModal(student)}
-                    >
-                      Allocate Room
-                    </Button>
-                  </PermissionGate>
-                )}
-              </div>
-              
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center text-sm text-gray-600">
-                  <MailIcon size={16} className="mr-2 text-gray-400" />
-                  <span>{student.email}</span>
-                </div>
-                
-                {(student as any).phone && (
-                  <div className="flex items-center text-sm text-gray-600">
-                    <PhoneIcon size={16} className="mr-2 text-gray-400" />
-                    <span>{(student as any).phone}</span>
-                  </div>
-                )}
-                
-                <div className="flex items-center text-sm text-gray-600">
-                  <MapPinIcon size={16} className="mr-2 text-gray-400" />
-                  <span className={student.roomNumber ? 'text-green-600 font-medium' : 'text-gray-500'}>
-                    {student.roomNumber ? `Room ${student.roomNumber}` : 'No room assigned'}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="flex space-x-2">
-                {/* Edit button - Using student_create permission as fallback since custom roles may not have student_update */}
-                <PermissionGate permission="student_create">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1 hover:bg-blue-50 hover:border-blue-300"
-                    onClick={() => openEditModal(student)}
-                  >
-                    <EditIcon size={14} className="mr-1" />
-                    Edit
-                  </Button>
-                </PermissionGate>
-                
-                {/* Delete button - Only visible for student_delete permission */}
-                <PermissionGate permission="student_delete">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="px-3 hover:bg-red-50 hover:border-red-300 hover:text-red-600"
-                    onClick={() => handleDeleteStudent(student.id)}
-                    disabled={isDeleting === student.id}
-                  >
-                    {isDeleting === student.id ? (
-                      <LoadingSpinner size="sm" className="text-red-600" />
-                    ) : (
-                      <span className="text-red-600">×</span>
-                    )}
-                  </Button>
-                </PermissionGate>
+        <>
+          {/* Desktop Table View */}
+          <div className="hidden md:block">
+            <Card className="overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Student
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Contact
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Room
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredStudents.map((student) => (
+                      <tr key={student.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
+                              <UserIcon size={18} className="text-green-600" />
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                              <div className="text-sm text-gray-500">{student.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{student.email}</div>
+                          {(student as any).phone && (
+                            <div className="text-sm text-gray-500">{(student as any).phone}</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {student.roomNumber ? (
+                            <div className="flex items-center space-x-2">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                Room {student.roomNumber}
+                              </span>
+                              {canDeallocateRooms && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="px-2 py-1 text-xs hover:bg-red-50 hover:border-red-300 hover:text-red-600"
+                                  onClick={() => handleRoomDeallocation(student.id)}
+                                  disabled={isDeleting === student.id}
+                                >
+                                  {isDeleting === student.id ? (
+                                    <LoadingSpinner size="sm" className="text-red-600" />
+                                  ) : (
+                                    '×'
+                                  )}
+                                </Button>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm text-gray-500">Not assigned</span>
+                              {canAllocateRooms && (
+                                <Button 
+                                  variant="primary" 
+                                  size="sm" 
+                                  className="text-xs"
+                                  onClick={() => openRoomAllocationModal(student)}
+                                >
+                                  Allocate
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="relative inline-block text-left">
+                            <select
+                              className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              onChange={(e) => {
+                                const action = e.target.value;
+                                if (action === 'edit') {
+                                  openEditModal(student);
+                                } else if (action === 'delete') {
+                                  handleDeleteStudent(student.id);
+                                } else if (action === 'allocate') {
+                                  openRoomAllocationModal(student);
+                                } else if (action === 'deallocate') {
+                                  handleRoomDeallocation(student.id);
+                                }
+                                e.target.value = ''; // Reset select
+                              }}
+                              defaultValue=""
+                            >
+                              <option value="" disabled>Actions</option>
+                              {canUpdateStudents && <option value="edit">Edit Student</option>}
+                              {!student.roomNumber && canAllocateRooms && <option value="allocate">Allocate Room</option>}
+                              {student.roomNumber && canDeallocateRooms && <option value="deallocate">Remove Room</option>}
+                              {canDeleteStudents && <option value="delete" className="text-red-600">Delete Student</option>}
+                            </select>
+                            {isDeleting === student.id && (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <LoadingSpinner size="sm" className="text-red-600" />
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </Card>
-          ))}
-        </div>
+          </div>
+
+          {/* Mobile Accordion View */}
+          <div className="md:hidden space-y-4">
+            {filteredStudents.map((student) => (
+              <Card key={student.id} className="overflow-hidden">
+                <button
+                  className="w-full px-4 py-4 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+                  onClick={() => {
+                    setExpandedStudents(prev => {
+                      const newSet = new Set(prev);
+                      if (newSet.has(student.id)) {
+                        newSet.delete(student.id);
+                      } else {
+                        newSet.add(student.id);
+                      }
+                      return newSet;
+                    });
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center min-w-0 flex-1">
+                      <div className="flex-shrink-0 h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <UserIcon size={18} className="text-green-600" />
+                      </div>
+                      <div className="ml-3 min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {student.name}
+                        </p>
+                        <p className="text-sm text-gray-500 truncate">
+                          {student.roomNumber ? `Room ${student.roomNumber}` : 'No room assigned'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0 ml-2">
+                      <ChevronDownIcon 
+                        size={20} 
+                        className={`text-gray-400 transition-transform duration-200 ${
+                          expandedStudents.has(student.id) ? 'transform rotate-180' : ''
+                        }`} 
+                      />
+                    </div>
+                  </div>
+                </button>
+                
+                {expandedStudents.has(student.id) && (
+                  <div className="px-4 pb-4 border-t border-gray-100 bg-gray-50">
+                    <dl className="space-y-3 pt-3">
+                      <div>
+                        <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</dt>
+                        <dd className="mt-1 text-sm text-gray-900">{student.email}</dd>
+                      </div>
+                      
+                      {(student as any).phone && (
+                        <div>
+                          <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Phone</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{(student as any).phone}</dd>
+                        </div>
+                      )}
+                      
+                      <div>
+                        <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Room Assignment</dt>
+                        <dd className="mt-1">
+                          {student.roomNumber ? (
+                            <div className="flex items-center space-x-2">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                Room {student.roomNumber}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-500">Not assigned</span>
+                          )}
+                        </dd>
+                      </div>
+                    </dl>
+                    
+                    <div className="flex space-x-2 mt-4 pt-3 border-t border-gray-200">
+                      {canUpdateStudents && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => openEditModal(student)}
+                        >
+                          <EditIcon size={14} className="mr-1" />
+                          Edit
+                        </Button>
+                      )}
+                      {!student.roomNumber && canAllocateRooms && (
+                        <Button 
+                          variant="primary" 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => openRoomAllocationModal(student)}
+                        >
+                          Allocate Room
+                        </Button>
+                      )}
+                      {student.roomNumber && canDeallocateRooms && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1 hover:bg-red-50 hover:border-red-300 hover:text-red-600"
+                          onClick={() => handleRoomDeallocation(student.id)}
+                          disabled={isDeleting === student.id}
+                        >
+                          {isDeleting === student.id ? (
+                            <LoadingSpinner size="sm" className="text-red-600" />
+                          ) : (
+                            'Remove Room'
+                          )}
+                        </Button>
+                      )}
+                      {canDeleteStudents && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="px-3 hover:bg-red-50 hover:border-red-300 hover:text-red-600"
+                          onClick={() => handleDeleteStudent(student.id)}
+                          disabled={isDeleting === student.id}
+                        >
+                          {isDeleting === student.id ? (
+                            <LoadingSpinner size="sm" className="text-red-600" />
+                          ) : (
+                            <span className="text-red-600">Delete</span>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </Card>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Create Student Modal */}

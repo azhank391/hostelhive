@@ -318,20 +318,25 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [currentHostel]);
 
   const refreshHostels = useCallback(async () => {
-    if (user?.role === 'owner') {
-      const hostelList = await fetchOwnerHostels();
-      setHostels(hostelList);
-    } else if (user?.role === 'student' || user?.role === 'warden') {
-      const hostel = await fetchStudentWardenHostel();
-      if (hostel) {
-        setHostels([hostel]);
+    try {
+      if (user?.role === 'owner') {
+        const hostelList = await fetchOwnerHostels();
+        setHostels(hostelList);
+      } else if (user?.role === 'student' || user?.role === 'warden') {
+        const hostel = await fetchStudentWardenHostel();
+        if (hostel) {
+          setHostels([hostel]);
+        }
+      } else if (user?.hostelId && user?.role !== 'superadmin') {
+        // Handle custom roles (custom_manager, admin, etc.) that have a hostelId
+        const hostel = await fetchStudentWardenHostel(); // Reuse the same logic
+        if (hostel) {
+          setHostels([hostel]);
+        }
       }
-    } else if (user?.hostelId && user?.role !== 'superadmin') {
-      // Handle custom roles (custom_manager, admin, etc.) that have a hostelId
-      const hostel = await fetchStudentWardenHostel(); // Reuse the same logic
-      if (hostel) {
-        setHostels([hostel]);
-      }
+    } catch (error) {
+      console.error('Failed to refresh hostels:', error);
+      throw error;
     }
   }, [user, fetchOwnerHostels, fetchStudentWardenHostel]);
 

@@ -330,10 +330,10 @@ export const RoomManagement = React.memo(() => {
         )}
       </div>
 
-      {/* Optimized room grid rendering */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {/* Optimized room table rendering */}
+      <div className="bg-white shadow-sm rounded-lg border">
         {filteredRooms.length === 0 ? (
-          <div className="col-span-full text-center py-12">
+          <div className="text-center py-12">
             <div className="mx-auto h-12 w-12 text-gray-400 mb-4">
               🏠
             </div>
@@ -351,76 +351,125 @@ export const RoomManagement = React.memo(() => {
             )}
           </div>
         ) : (
-          filteredRooms.map((room) => {
-            const occupiedBeds = room.allocations ? room.allocations.length : 0;
-            const capacity = room.capacity || 0;
-            const occupancyPercentage = capacity > 0 ? (occupiedBeds / capacity) * 100 : 0;
-            
-            return (
-              <div key={room.id} className="bg-white rounded-lg shadow border hover:shadow-md transition-shadow">
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Room {room.roomNumber}
-                    </h3>
-                    <div className="flex space-x-1">
-                      <Button
-                        onClick={() => handleEditClick(room)}
-                        variant="outline"
-                        size="sm"
-                        className="p-2"
-                      >
-                        <EditIcon size={14} />
-                      </Button>
-                      <Button
-                        onClick={() => handleDeleteRoom(room.id)}
-                        variant="outline"
-                        size="sm"
-                        className="p-2 text-red-600 hover:text-red-700"
-                      >
-                        <TrashIcon size={14} />
-                      </Button>
-                    </div>
-                  </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Room Details
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Block
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Capacity
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Occupancy
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Occupancy Rate
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredRooms.map((room) => {
+                  const occupiedBeds = room.allocations ? room.allocations.length : 0;
+                  const capacity = room.capacity || 0;
+                  const occupancyPercentage = capacity > 0 ? (occupiedBeds / capacity) * 100 : 0;
                   
-                  {room.block && (
-                    <p className="text-sm text-gray-600 mb-2">Block: {room.block}</p>
-                  )}
-                  
-                  <div className="mb-3">
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
-                      <span>Occupancy</span>
-                      <span>{occupiedBeds}/{capacity}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full transition-all duration-300 ${
-                          occupancyPercentage === 100 ? 'bg-red-500' : 
-                          occupancyPercentage >= 80 ? 'bg-yellow-500' : 
-                          'bg-green-500'
-                        }`}
-                        style={{ width: `${occupancyPercentage}%` }}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-between items-center">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      occupancyPercentage === 100 ? 'bg-red-100 text-red-800' :
-                      occupancyPercentage > 0 ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-green-100 text-green-800'
-                    }`}>
-                      {occupancyPercentage === 100 ? 'Full' :
-                       occupancyPercentage > 0 ? 'Partial' : 'Vacant'}
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      {Math.round(occupancyPercentage)}% full
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })
+                  return (
+                    <tr key={room.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="h-10 w-10 flex-shrink-0">
+                            <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                              <span className="text-blue-600 font-medium text-sm">
+                                {room.roomNumber}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                              Room {room.roomNumber}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              ID: {room.id}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {room.block || 'No block assigned'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {capacity} beds
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {occupiedBeds}/{capacity}
+                        </div>
+                        <div className="w-16 bg-gray-200 rounded-full h-2 mt-1">
+                          <div 
+                            className={`h-2 rounded-full transition-all duration-300 ${
+                              occupancyPercentage === 100 ? 'bg-red-500' : 
+                              occupancyPercentage >= 80 ? 'bg-yellow-500' : 
+                              'bg-green-500'
+                            }`}
+                            style={{ width: `${occupancyPercentage}%` }}
+                          />
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          occupancyPercentage === 100 ? 'bg-red-100 text-red-800' :
+                          occupancyPercentage > 0 ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {occupancyPercentage === 100 ? 'Full' :
+                           occupancyPercentage > 0 ? 'Partially Occupied' : 'Available'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {Math.round(occupancyPercentage)}%
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="relative inline-block text-left">
+                          <select
+                            className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            onChange={(e) => {
+                              const action = e.target.value;
+                              if (action === 'edit') {
+                                handleEditClick(room);
+                              } else if (action === 'delete') {
+                                handleDeleteRoom(room.id);
+                              }
+                              e.target.value = ''; // Reset select
+                            }}
+                            defaultValue=""
+                          >
+                            <option value="" disabled>Actions</option>
+                            <option value="edit">Edit Room</option>
+                            <option value="delete" className="text-red-600">Delete Room</option>
+                          </select>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
