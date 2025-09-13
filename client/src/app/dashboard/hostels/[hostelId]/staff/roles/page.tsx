@@ -15,12 +15,12 @@ export default function CustomRolesPage() {
   const { hasHostel } = useCurrentHostelId();
 
   // Permission checks for role management
-  const canViewRoles = hasPermission('role_read');
-  const canCreateRoles = hasPermission('role_create');
-  const canUpdateRoles = hasPermission('role_update');
-  const canDeleteRoles = hasPermission('role_delete');
+  const canViewRoles = hasPermission('staff_read');
+  const canCreateRoles = hasPermission('staff_create');
+  const canUpdateRoles = hasPermission('staff_update');
+  const canDeleteRoles = hasPermission('staff_delete');
+  // Updated legacy permission 'staff_assign' -> canonical 'role_assign'
   const canAssignRoles = hasPermission('role_assign');
-  const canManagePermissions = hasPermission('permission_manage');
   
   // Can manage roles if they have the core role management permissions
   const canManageRoles = canCreateRoles && canUpdateRoles && canDeleteRoles;

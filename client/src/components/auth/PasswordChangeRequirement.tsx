@@ -11,7 +11,7 @@ import httpClient from '@/lib/http';
 import { notification } from '@/lib/toast';
 
 export function PasswordChangeRequirement() {
-  const { user, updateUser, setToken, verifyToken } = useAuth();
+  const { user, updateUser } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -20,23 +20,8 @@ export function PasswordChangeRequirement() {
     (user.role === 'warden' || user.role === 'student' || 
      (user.role && !['owner', 'superadmin', 'admin'].includes(user.role)));
 
-  // Debug logging
-  React.useEffect(() => {
-    if (user) {
-      console.log('🔍 PasswordChangeRequirement Debug:', {
-        user: user,
-        requiresPasswordChange: user.requiresPasswordChange,
-        role: user.role,
-        needsPasswordChange: needsPasswordChange,
-        isExcludedRole: ['owner', 'superadmin', 'admin'].includes(user.role)
-      });
-    }
-  }, [user, needsPasswordChange]);
-
   // Show modal if user needs password change
   React.useEffect(() => {
-    console.log('🔍 Modal Effect - needsPasswordChange:', needsPasswordChange);
-    
     if (needsPasswordChange) {
       // Check if there's a reminder set
       const reminderTime = localStorage.getItem('passwordChangeReminder');
@@ -72,22 +57,12 @@ export function PasswordChangeRequirement() {
       });
 
       if ((response as any)?.data?.success) {
-        // If backend returns a new token, update it
-        if ((response as any)?.data?.token) {
-          const newToken = (response as any).data.token;
-          
-          // Update the token and verify it to refresh user state
-          setToken(newToken);
-          await verifyToken(newToken);
-        } else {
-          // Fallback: update user state locally
-          updateUser({ requiresPasswordChange: false });
-        }
-        
+        // Update user state to remove password change requirement
+        updateUser({ requiresPasswordChange: false });
         setIsModalOpen(false);
         // Clear any password change reminder
         localStorage.removeItem('passwordChangeReminder');
-        notification.success('Password changed successfully!');
+        // User can now access the dashboard
       }
     } catch (error) {
       console.error('Failed to change password:', error);
@@ -95,7 +70,7 @@ export function PasswordChangeRequirement() {
     } finally {
       setIsLoading(false);
     }
-  }, [updateUser, setToken, verifyToken]);
+  }, [updateUser]);
 
   const handleCloseModal = useCallback(() => {
     // Allow closing (skipping) the password change modal

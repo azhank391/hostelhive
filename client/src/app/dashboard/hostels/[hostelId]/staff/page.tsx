@@ -15,11 +15,10 @@ export default function StaffPage() {
   const { hasHostel } = useCurrentHostelId();
 
   // Permission checks for staff operations
-  const canViewStaff = hasPermission('warden_read');
-  const canCreateStaff = hasPermission('warden_create');
-  const canUpdateStaff = hasPermission('warden_update');
-  const canDeleteStaff = hasPermission('warden_delete');
-  const canAssignRoles = hasPermission('warden_role_assign');
+  const canViewStaff = hasPermission('staff_read');
+  // const canCreateStaff = hasPermission('staff_create');
+  // const canUpdateStaff = hasPermission('staff_update');
+  // const canDeleteStaff = hasPermission('staff_delete');
 
   // Show loading state while auth is loading
   if (isLoading) {

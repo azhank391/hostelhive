@@ -70,7 +70,7 @@ export function ManageRoomsGate({ children, fallback }: { children: React.ReactN
 
 export function ViewReportsGate({ children, fallback }: { children: React.ReactNode; fallback?: React.ReactNode }) {
   return (
-    <PermissionGate permission="report_read" fallback={fallback}>
+    <PermissionGate permission="view_reports" fallback={fallback}>
       {children}
     </PermissionGate>
   )

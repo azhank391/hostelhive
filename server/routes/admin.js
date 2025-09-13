@@ -27,6 +27,7 @@ const {
   deleteVisitorLog, // ✅ NEW
   getVisitorStats, // ✅ NEW
   exportVisitorLogs, // ✅ NEW
+  exportStudents, // ✅ NEW
 } = require("../controllers/adminController");
 const { getUserHostels } = require("../controllers/authController");
 const { verifyToken } = require("../middleware/authMiddleware");
@@ -72,7 +73,7 @@ router.use((req, res, next) => {
 router.get(
   "/stats",
   verifyToken,
-  requirePermission("hostel_stats_read"),
+  requirePermission("view_hostel_stats"),
   getHostelStats
 );
 
@@ -161,13 +162,13 @@ router.delete(
 router.post(
   "/allocate-room",
   verifyToken,
-  requirePermission("room_allocate"),
+  requirePermission("room_allocation_create"),
   allocateRoom
 );
 router.put(
   "/deallocate-room/:allocationId",
   verifyToken,
-  requirePermission("room_deallocate"),
+  requirePermission("room_allocation_delete"),
   deallocateRoom
 );
 
@@ -213,7 +214,7 @@ router.post(
 router.put(
   "/visitor-logs/:id/checkout",
   verifyToken,
-  requirePermission("visitor_checkout"),
+  requirePermission("visitor_update"),
   checkoutVisitor
 );
 router.put(
@@ -231,14 +232,22 @@ router.delete(
 router.get(
   "/visitor-stats",
   verifyToken,
-  requirePermission("visitor_stats_read"),
+  requirePermission("visitor_read"),
   getVisitorStats
-); // ✅ NEW
+); // aligned
 router.get(
   "/visitor-logs/export",
   verifyToken,
-  requirePermission("visitor_export"),
+  requirePermission("export_visitor_data"),
   exportVisitorLogs
+); // ✅ NEW
+
+// ✅ Student export route
+router.get(
+  "/students/export",
+  verifyToken,
+  requirePermission("export_student_data"),
+  exportStudents
 ); // ✅ NEW
 
 module.exports = router;

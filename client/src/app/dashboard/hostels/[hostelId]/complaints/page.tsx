@@ -18,7 +18,8 @@ import {
   EyeIcon,
   CheckCircleIcon,
   ClockIcon,
-  XCircleIcon
+  XCircleIcon,
+  DownloadIcon
 } from 'lucide-react';
 
 export default function HostelComplaintsPage() {
@@ -44,9 +45,11 @@ export default function HostelComplaintsPage() {
   // Permission checks
   const canViewComplaints = hasPermission('complaint_read');
   const canCreateComplaints = hasPermission('complaint_create');
-  const canHandleComplaints = hasPermission('complaint_handle');
+  // Canonical permission checks
+  const canUpdateComplaints = hasPermission('complaint_update');
   const canDeleteComplaints = hasPermission('complaint_delete');
-  const canViewComplaintStats = hasPermission('complaint_stats_read');
+  const canViewComplaintStats = hasPermission('view_complaint_stats');
+  const canExportComplaints = hasPermission('export_complaint_data');
   
   
   // Debug counter to track effect runs and prevent infinite loops
@@ -304,7 +307,7 @@ export default function HostelComplaintsPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Complaint Management</h1>
           <p className="mt-2 text-gray-600">
-            {canHandleComplaints 
+            {canUpdateComplaints 
               ? 'View and manage complaints from students'
               : canCreateComplaints 
                 ? 'Submit and track your complaints' 
@@ -313,18 +316,48 @@ export default function HostelComplaintsPage() {
           </p>
         </div>
         
-        <PermissionGate permission="complaint_create">
-          {user?.role === 'student' && (
-            <Button variant="primary" className="flex items-center">
-              <PlusIcon size={16} className="mr-2" />
-              Add New Complaint
-            </Button>
+        <div className="flex gap-3">
+          {canExportComplaints && (
+            <PermissionGate permission="export_complaint_data">
+              <Button variant="outline" className="flex items-center" onClick={async () => {
+                try {
+                  const resp = await fetch(`/api/hostels/${hostelId}/complaints/export?format=csv`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+                  });
+                  if (!resp.ok) throw new Error('Export failed');
+                  const blob = await resp.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `complaints-${hostelId}-${new Date().toISOString().split('T')[0]}.csv`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  window.URL.revokeObjectURL(url);
+                  notification.success('Complaints exported successfully');
+                } catch (e) {
+                  console.error(e);
+                  notification.error('Failed to export complaints');
+                }
+              }}>
+                <DownloadIcon size={16} className="mr-2" />
+                Export CSV
+              </Button>
+            </PermissionGate>
           )}
-        </PermissionGate>
+          <PermissionGate permission="complaint_create">
+            {user?.role === 'student' && (
+              <Button variant="primary" className="flex items-center">
+                <PlusIcon size={16} className="mr-2" />
+                Add New Complaint
+              </Button>
+            )}
+          </PermissionGate>
+        </div>
       </div>
 
       {/* Stats Cards */}
-      <PermissionGate permission="complaint_stats_read">
+  <PermissionGate permission="view_complaint_stats">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="p-6">
           <div className="flex items-center">
@@ -387,7 +420,7 @@ export default function HostelComplaintsPage() {
       </PermissionGate>
 
       {/* Filters and Search */}
-      <PermissionGate permission="complaint_read">
+  <PermissionGate permission="complaint_read">
         <Card className="p-6">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
@@ -461,7 +494,7 @@ export default function HostelComplaintsPage() {
                   Complaint
                 </th>
                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                   {canHandleComplaints ? 'Student' : 'Status'}
+                   {canUpdateComplaints ? 'Student' : 'Status'}
                  </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Priority
@@ -473,7 +506,7 @@ export default function HostelComplaintsPage() {
                   Created
                 </th>
                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                   {canHandleComplaints ? 'Manage' : 'Actions'}
+                   {canUpdateComplaints ? 'Manage' : 'Actions'}
                  </th>
               </tr>
             </thead>
@@ -491,7 +524,7 @@ export default function HostelComplaintsPage() {
                     </div>
                   </td>
                                      <td className="px-6 py-4 whitespace-nowrap">
-                     {canHandleComplaints ? (
+                     {canUpdateComplaints ? (
                         // For users who can handle complaints, show student info
                         <div>
                           <div className="text-sm font-medium text-gray-900">
@@ -532,7 +565,7 @@ export default function HostelComplaintsPage() {
                    </td>
                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                      <div className="flex space-x-2">
-                       {canHandleComplaints ? (
+                       {canUpdateComplaints ? (
                          // Users who can handle complaints can update status and priority
                          <>
                            {/* Status Update Dropdown */}

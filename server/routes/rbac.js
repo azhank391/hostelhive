@@ -61,44 +61,44 @@ router.post('/check-all-permissions', verifyToken, rbacController.checkAllPermis
 /**
  * @route GET /api/rbac/permissions
  * @desc Get all permissions (for role creation form)
- * @access Private (Users with manage_roles permission)
+ * @access Private (Users with staff_create permission)
  */
-router.get('/permissions', verifyToken, requirePermission('role_update'), rbacController.getAllPermissions);
+router.get('/permissions', verifyToken, requirePermission('staff_create'), rbacController.getAllPermissions);
 
 /**
  * @route GET /api/rbac/permissions/granular
  * @desc Get granular permissions grouped by category and operation
- * @access Private (Users with manage_roles permission)
+ * @access Private (Users with staff_create permission)
  */
-router.get('/permissions/granular', verifyToken, requirePermission('role_update'), rbacController.getGranularPermissions);
+router.get('/permissions/granular', verifyToken, requirePermission('staff_create'), rbacController.getGranularPermissions);
 
 /**
  * @route GET /api/rbac/permissions/:permissionName/dependencies
  * @desc Get permission dependencies for a specific permission
- * @access Private (Users with manage_roles permission)
+ * @access Private (Users with staff_create permission)
  */
-router.get('/permissions/:permissionName/dependencies', verifyToken, requirePermission('role_update'), rbacController.getPermissionDependencies);
+router.get('/permissions/:permissionName/dependencies', verifyToken, requirePermission('staff_create'), rbacController.getPermissionDependencies);
 
 /**
  * @route POST /api/rbac/permissions/validate
  * @desc Validate permission assignment with dependencies
- * @access Private (Users with manage_roles permission)
+ * @access Private (Users with staff_create permission)
  */
-router.post('/permissions/validate', verifyToken, requirePermission('role_update'), rbacController.validatePermissionAssignment);
+router.post('/permissions/validate', verifyToken, requirePermission('staff_create'), rbacController.validatePermissionAssignment);
 
 /**
  * @route GET /api/rbac/pages/:pageName/dependencies
  * @desc Get page-specific dependencies based on frontend analysis
- * @access Private (Users with manage_roles permission)
+ * @access Private (Users with staff_create permission)
  */
-router.get('/pages/:pageName/dependencies', verifyToken, requirePermission('role_update'), rbacController.getPageDependencies);
+router.get('/pages/:pageName/dependencies', verifyToken, requirePermission('staff_create'), rbacController.getPageDependencies);
 
 /**
  * @route POST /api/rbac/permissions/multiple-dependencies
  * @desc Get dependencies for multiple permissions
- * @access Private (Users with manage_roles permission)
+ * @access Private (Users with staff_create permission)
  */
-router.post('/permissions/multiple-dependencies', verifyToken, requirePermission('role_update'), rbacController.getMultipleDependencies);
+router.post('/permissions/multiple-dependencies', verifyToken, requirePermission('staff_create'), rbacController.getMultipleDependencies);
 
 // ========================================
 // SYSTEM ROLE ROUTES
@@ -107,9 +107,9 @@ router.post('/permissions/multiple-dependencies', verifyToken, requirePermission
 /**
  * @route GET /api/rbac/system-roles
  * @desc Get all system roles
- * @access Private (Users with manage_roles permission)
+ * @access Private (Users with staff_create permission)
  */
-router.get('/system-roles', verifyToken, requirePermission('role_update'), rbacController.getSystemRoles);
+router.get('/system-roles', verifyToken, requirePermission('staff_create'), rbacController.getSystemRoles);
 
 // ========================================
 // HOSTEL-SPECIFIC ROLE ROUTES
@@ -118,30 +118,30 @@ router.get('/system-roles', verifyToken, requirePermission('role_update'), rbacC
 /**
  * @route GET /api/hostels/:hostelId/roles
  * @desc Get hostel's custom roles
- * @access Private (Users with view_roles permission)
+ * @access Private (Users with staff_read permission)
  */
-router.get('/hostels/:hostelId/roles', verifyToken, requirePermission('role_read'), rbacController.getCustomRoles);
+router.get('/hostels/:hostelId/roles', verifyToken, requirePermission('staff_read'), rbacController.getCustomRoles);
 
 /**
  * @route POST /api/hostels/:hostelId/roles
  * @desc Create custom role
- * @access Private (Users with manage_roles permission)
+ * @access Private (Users with staff_create permission)
  */
-router.post('/hostels/:hostelId/roles', verifyToken, requirePermission('role_update'), rbacController.createCustomRole);
+router.post('/hostels/:hostelId/roles', verifyToken, requirePermission('staff_create'), rbacController.createCustomRole);
 
 /**
  * @route PUT /api/hostels/:hostelId/roles/:roleId
  * @desc Update custom role
- * @access Private (Users with manage_roles permission)
+ * @access Private (Users with staff_update permission)
  */
-router.put('/hostels/:hostelId/roles/:roleId', verifyToken, requirePermission('role_update'), rbacController.updateCustomRole);
+router.put('/hostels/:hostelId/roles/:roleId', verifyToken, requirePermission('staff_update'), rbacController.updateCustomRole);
 
 /**
  * @route DELETE /api/hostels/:hostelId/roles/:roleId
  * @desc Delete custom role
- * @access Private (Users with manage_roles permission)
+ * @access Private (Users with staff_delete permission)
  */
-router.delete('/hostels/:hostelId/roles/:roleId', verifyToken, requirePermission('role_update'), rbacController.deleteCustomRole);
+router.delete('/hostels/:hostelId/roles/:roleId', verifyToken, requirePermission('staff_delete'), rbacController.deleteCustomRole);
 
 // ========================================
 // USER ROLE ASSIGNMENT ROUTES
@@ -150,9 +150,9 @@ router.delete('/hostels/:hostelId/roles/:roleId', verifyToken, requirePermission
 /**
  * @route POST /api/hostels/:hostelId/users/:userId/assign-role
  * @desc Assign role to user
- * @access Private (Users with manage_roles permission)
+ * @access Private (Users with staff_assign permission)
  */
-router.post('/hostels/:hostelId/users/:userId/assign-role', verifyToken, requirePermission('role_update'), rbacController.assignRoleToUser);
+router.post('/hostels/:hostelId/users/:userId/assign-role', verifyToken, requirePermission('role_assign'), rbacController.assignRoleToUser);
 
 module.exports = router;
 

@@ -1,40 +1,32 @@
-"use strict";
+'use strict';
 
-/**
- * 🎯 RBAC SEED DATA MIGRATION
- * 
- * Seeds the RBAC system with initial data:
- * - System roles (owner, student)
- * - Predefined permissions
- * - Role-permission mappings
- * 
- * This provides the foundation for the RBAC system.
- */
+const { v4: uuidv4 } = require('uuid');
+
+function generateUUID() {
+  return uuidv4();
+}
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    console.log('🌱 Seeding RBAC system with initial data...');
+    console.log('🌱 Starting RBAC data seeding...');
 
-    // ==========================================
-    // 1. INSERT SYSTEM ROLES
-    // ==========================================
-    console.log('👥 Creating system roles...');
-    
-    // Generate UUIDs manually for migration
-    const crypto = require('crypto');
-    const generateUUID = () => crypto.randomUUID();
-
+    // Generate UUIDs for system roles
     const ownerRoleId = generateUUID();
     const studentRoleId = generateUUID();
     const wardenRoleId = generateUUID();
     const superadminRoleId = generateUUID();
 
+    // ==========================================
+    // 1. INSERT SYSTEM ROLES
+    // ==========================================
+    console.log('👥 Creating system roles...');
+
     await queryInterface.bulkInsert('Roles', [{
       id: ownerRoleId,
       name: 'owner',
-      display_name: 'Hostel Owner',
-      description: 'Full access to hostel management and ability to create custom roles',
+      display_name: 'Owner',
+      description: 'Full hostel management access with financial and administrative control',
       is_system_role: true,
       hostel_id: null,
       created_by: null,
@@ -46,7 +38,7 @@ module.exports = {
       id: studentRoleId,
       name: 'student',
       display_name: 'Student',
-      description: 'Basic permissions for students (complaints, visitors)',
+      description: 'Basic student access for viewing personal information and creating complaints',
       is_system_role: true,
       hostel_id: null,
       created_by: null,
@@ -92,57 +84,52 @@ module.exports = {
       { name: 'change_password', display_name: 'Change Password', description: 'Change own password', category: 'profile' },
       { name: 'view_own_data', display_name: 'View Own Data', description: 'View own data (room, complaints, visitors)', category: 'profile' },
       
-      // 2. Hostel Management (Split into proper CRUD)
-      { name: 'hostel_create', display_name: 'Create Hostel', description: 'Create new hostel', category: 'hostel' },
+      // 2. Hostel Management
+      { name: 'hostel_update', display_name: 'Manage Hostel', description: 'Create, update, and delete hostel information', category: 'hostel' },
       { name: 'hostel_read', display_name: 'View Hostel', description: 'View hostel information and settings', category: 'hostel' },
-      { name: 'hostel_update', display_name: 'Update Hostel', description: 'Update hostel information', category: 'hostel' },
-      { name: 'hostel_delete', display_name: 'Delete Hostel', description: 'Delete hostel', category: 'hostel' },
-      { name: 'hostel_settings_update', display_name: 'Update Hostel Settings', description: 'Update hostel settings, subdomain, etc.', category: 'hostel' },
+      { name: 'manage_hostel_settings', display_name: 'Manage Hostel Settings', description: 'Update hostel settings, subdomain, etc.', category: 'hostel' },
       { name: 'view_hostel_stats', display_name: 'View Hostel Stats', description: 'View hostel statistics and analytics', category: 'hostel' },
       
-      // 3. Room Management (Split into proper CRUD)
-      { name: 'room_create', display_name: 'Create Rooms', description: 'Create new rooms', category: 'rooms' },
+      // 3. Room Management
+      { name: 'room_update', display_name: 'Manage Rooms', description: 'Create, update, and delete rooms', category: 'rooms' },
       { name: 'room_read', display_name: 'View Rooms', description: 'View room information and availability', category: 'rooms' },
-      { name: 'room_update', display_name: 'Update Rooms', description: 'Update room information', category: 'rooms' },
-      { name: 'room_delete', display_name: 'Delete Rooms', description: 'Delete rooms', category: 'rooms' },
       { name: 'room_allocate', display_name: 'Allocate Rooms', description: 'Assign rooms to students', category: 'rooms' },
       { name: 'room_deallocate', display_name: 'Deallocate Rooms', description: 'Remove room assignments', category: 'rooms' },
       { name: 'room_allocation_read', display_name: 'View Room Allocations', description: 'View room allocation details', category: 'rooms' },
       
-      // 4. Student Management (Split into proper CRUD)
-      { name: 'student_create', display_name: 'Create Students', description: 'Create new student records', category: 'students' },
+      // 4. Student Management
+      { name: 'student_update', display_name: 'Manage Students', description: 'Create, update, and delete student records', category: 'students' },
       { name: 'student_read', display_name: 'View Students', description: 'View student information and records', category: 'students' },
-      { name: 'student_update', display_name: 'Update Students', description: 'Update student information', category: 'students' },
-      { name: 'student_delete', display_name: 'Delete Students', description: 'Delete student records', category: 'students' },
       { name: 'manage_student_rooms', display_name: 'Manage Student Rooms', description: 'Assign/change student rooms', category: 'students' },
       { name: 'view_student_rooms', display_name: 'View Student Rooms', description: 'View student room assignments', category: 'students' },
       { name: 'export_student_data', display_name: 'Export Student Data', description: 'Export student information', category: 'students' },
       
-      // 5. Staff Management (Cleaned up)
+      // 5. Staff Management
       { name: 'staff_create', display_name: 'Create Staff', description: 'Create new staff members', category: 'staff' },
       { name: 'staff_read', display_name: 'View Staff', description: 'View staff details and lists', category: 'staff' },
-      { name: 'staff_update', display_name: 'Update Staff', description: 'Update staff information and status', category: 'staff' },
+      { name: 'staff_update', display_name: 'Update Staff', description: 'Update staff information', category: 'staff' },
       { name: 'staff_delete', display_name: 'Delete Staff', description: 'Delete staff members', category: 'staff' },
-      { name: 'role_assign', display_name: 'Assign Roles', description: 'Assign roles to staff and users', category: 'staff' },
+      { name: 'staff_status_toggle', display_name: 'Toggle Staff Status', description: 'Activate/deactivate staff members', category: 'staff' },
+      { name: 'staff_assign', display_name: 'Assign Staff', description: 'Assign staff members to roles and hostels', category: 'staff' },
       
-      // 6. Complaint Management (Already clean)
+      // 6. Complaint Management
       { name: 'complaint_create', display_name: 'Create Complaints', description: 'Create new complaints', category: 'complaints' },
       { name: 'complaint_read', display_name: 'View Complaints', description: 'View complaint details', category: 'complaints' },
       { name: 'complaint_update', display_name: 'Handle Complaints', description: 'Resolve, update complaint status', category: 'complaints' },
       { name: 'complaint_delete', display_name: 'Delete Complaints', description: 'Delete complaints', category: 'complaints' },
       { name: 'view_complaint_stats', display_name: 'View Complaint Stats', description: 'View complaint analytics', category: 'complaints' },
       
-      // 7. Visitor Management (Split update/delete)
+      // 7. Visitor Management
       { name: 'visitor_create', display_name: 'Create Visitors', description: 'Create visitor logs', category: 'visitors' },
       { name: 'visitor_read', display_name: 'View Visitors', description: 'View visitor details', category: 'visitors' },
-      { name: 'visitor_update', display_name: 'Update Visitors', description: 'Update visitor logs', category: 'visitors' },
-      { name: 'visitor_delete', display_name: 'Delete Visitors', description: 'Delete visitor logs', category: 'visitors' },
+      { name: 'visitor_update', display_name: 'Manage Visitors', description: 'Update, delete visitor logs', category: 'visitors' },
       { name: 'visitor_checkout', display_name: 'Checkout Visitors', description: 'Check out visitors', category: 'visitors' },
       { name: 'view_visitor_stats', display_name: 'View Visitor Stats', description: 'View visitor analytics', category: 'visitors' },
       { name: 'export_visitor_data', display_name: 'Export Visitor Data', description: 'Export visitor logs', category: 'visitors' },
       
-      // 8. Reports & Analytics (Cleaned up)
+      // 8. Reports & Analytics
       { name: 'view_reports', display_name: 'View Reports', description: 'View various reports', category: 'reports' },
+      { name: 'export_data', display_name: 'Export Data', description: 'Export data in various formats', category: 'reports' },
       { name: 'view_analytics', display_name: 'View Analytics', description: 'View analytics dashboards', category: 'reports' },
       { name: 'view_billing', display_name: 'View Billing', description: 'View billing information', category: 'reports' },
       
@@ -186,57 +173,52 @@ module.exports = {
       'change_password',
       'view_own_data',
       
-      // Hostel management (full CRUD)
-      'hostel_create',
-      'hostel_read',
+      // Hostel management
       'hostel_update',
-      'hostel_delete',
-      'hostel_settings_update',
+      'hostel_read',
+      'manage_hostel_settings',
       'view_hostel_stats',
       
-      // Room management (full CRUD + allocations)
-      'room_create',
-      'room_read',
+      // Room management
       'room_update',
-      'room_delete',
+      'room_read',
       'room_allocate',
       'room_deallocate',
       'room_allocation_read',
       
-      // Student management (full CRUD + rooms)
-      'student_create',
-      'student_read',
+      // Student management
       'student_update',
-      'student_delete',
+      'student_read',
       'manage_student_rooms',
       'view_student_rooms',
       'export_student_data',
       
-      // Staff management (full CRUD + role assignment)
+      // Staff management
       'staff_create',
       'staff_read',
       'staff_update',
       'staff_delete',
-      'role_assign',
+      'staff_status_toggle',
+      'staff_assign',
       
-      // Complaint management (full CRUD + stats)
+      // Complaint management
       'complaint_create',
       'complaint_read',
       'complaint_update',
       'complaint_delete',
       'view_complaint_stats',
       
-      // Visitor management (full CRUD + checkout + stats + export)
+      // Visitor management
       'visitor_create',
       'visitor_read',
       'visitor_update',
-      'visitor_delete',
       'visitor_checkout',
       'view_visitor_stats',
       'export_visitor_data',
       
       // Reports & Analytics (hostel-level only)
       'view_reports',
+      'export_data',
       'view_analytics',
       'view_billing'
     ];
@@ -265,15 +247,17 @@ module.exports = {
     ];
     
     for (const permissionName of studentPermissions) {
-      await queryInterface.bulkInsert('RolePermissions', [{
-        id: generateUUID(),
-        role_id: studentRoleId,
-        permission_id: permissionIds[permissionName],
-        created_at: new Date()
-      }]);
+      if (permissionIds[permissionName]) {
+        await queryInterface.bulkInsert('RolePermissions', [{
+          id: generateUUID(),
+          role_id: studentRoleId,
+          permission_id: permissionIds[permissionName],
+          created_at: new Date()
+        }]);
+      }
     }
 
-    // Warden gets limited hostel management permissions (no create/delete)
+    // Warden gets hostel management permissions
     const wardenPermissions = [
       'manage_profile',
       'view_profile',
@@ -281,31 +265,35 @@ module.exports = {
       'view_own_data',
       'hostel_read',
       'view_hostel_stats',
-      'room_read',
       'room_update',
+      'room_read',
       'room_allocate',
       'room_deallocate',
       'room_allocation_read',
-      'student_read',
       'student_update',
+      'student_read',
       'manage_student_rooms',
       'view_student_rooms',
+      'complaint_create',
       'complaint_read',
       'complaint_update',
+      'visitor_create',
       'visitor_read',
       'visitor_update',
       'visitor_checkout',
-      'view_reports',
-      'view_analytics'
+      'view_visitor_stats',
+      'view_reports'
     ];
     
     for (const permissionName of wardenPermissions) {
-      await queryInterface.bulkInsert('RolePermissions', [{
-        id: generateUUID(),
-        role_id: wardenRoleId,
-        permission_id: permissionIds[permissionName],
-        created_at: new Date()
-      }]);
+      if (permissionIds[permissionName]) {
+        await queryInterface.bulkInsert('RolePermissions', [{
+          id: generateUUID(),
+          role_id: wardenRoleId,
+          permission_id: permissionIds[permissionName],
+          created_at: new Date()
+        }]);
+      }
     }
 
     // Superadmin gets all permissions (system-wide access)
@@ -319,29 +307,23 @@ module.exports = {
       }]);
     }
 
-    console.log('✅ Role-permission mappings created successfully');
-    console.log('🎉 RBAC system seeded successfully!');
+    console.log('✅ RBAC data seeding completed successfully!');
     console.log('📊 Summary:');
     console.log('   - 4 system roles created (owner, student, warden, superadmin)');
-    console.log('   - 45 permissions created across 9 categories (CRUD normalized)');
-    console.log('   - Owner has 43 hostel-level permissions (NO system access)');
-    console.log('   - Student has 8 basic permissions (profile, complaints, visitors)');
-    console.log('   - Warden has 22 limited management permissions');
-    console.log('   - Superadmin has ALL 45 permissions (system-wide access)');
+    console.log(`   - ${permissions.length} permissions created`);
+    console.log(`   - Owner has ${ownerPermissions.length} permissions (hostel-level only)`);
+    console.log(`   - Student has ${studentPermissions.length} permissions (basic access)`);
+    console.log(`   - Warden has ${wardenPermissions.length} permissions (hostel management)`);
+    console.log(`   - Superadmin has ${permissions.length} permissions (system-wide access)`);
   },
 
   async down(queryInterface, Sequelize) {
-    console.log('🔄 Rolling back RBAC seed data...');
+    console.log('🗑️ Removing RBAC data...');
     
-    // Remove role-permission mappings
     await queryInterface.bulkDelete('RolePermissions', {});
+    await queryInterface.bulkDelete('Permissions', { is_system_permission: true });
+    await queryInterface.bulkDelete('Roles', { is_system_role: true });
     
-    // Remove permissions
-    await queryInterface.bulkDelete('Permissions', {});
-    
-    // Remove roles
-    await queryInterface.bulkDelete('Roles', {});
-    
-    console.log('✅ RBAC seed data rolled back successfully!');
+    console.log('✅ RBAC data removed successfully!');
   }
 };

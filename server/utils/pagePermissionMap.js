@@ -43,8 +43,8 @@ const PAGE_PERMISSION_MAP = {
     
     // Room allocation permissions (from dependency APIs)
     'room_read',              // GET /api/hostels/:hostelId/rooms (for allocation dropdown)
-    'room_allocate',          // POST /api/hostels/:hostelId/room-allocations
-    'room_deallocate',        // DELETE /api/hostels/:hostelId/room-allocations/:allocationId
+    'room_allocation_create', // POST /api/hostels/:hostelId/room-allocations
+    'room_allocation_delete', // DELETE /api/hostels/:hostelId/room-allocations/:allocationId
     
     // Universal dependency
     'hostel_read'              // Required for all hostel operations
@@ -60,7 +60,7 @@ const PAGE_PERMISSION_MAP = {
     
     // Room details permissions
     'room_allocation_read',   // GET /api/hostels/:hostelId/rooms/:roomId/students
-    'room_deallocate',        // DELETE /api/hostels/:hostelId/room-allocations/:studentId
+    'room_allocation_delete', // DELETE /api/hostels/:hostelId/room-allocations/:studentId
     
     // Universal dependency
     'hostel_read'              // Required for all hostel operations
@@ -74,7 +74,7 @@ const PAGE_PERMISSION_MAP = {
     'visitor_read',           // GET /api/hostels/:hostelId/visitors
     'visitor_create',         // POST /api/hostels/:hostelId/visitors
     'visitor_update',         // PUT/DELETE /api/hostels/:hostelId/visitors
-    'visitor_checkout',       // POST /api/hostels/:hostelId/visitors/:visitorId/checkout
+    'visitor_update',         // POST /api/hostels/:hostelId/visitors/:visitorId/checkout
     
     // Dependency permissions (for visitor creation)
     'student_read',           // GET /api/hostels/:hostelId/students (for host selection)
@@ -97,32 +97,21 @@ const PAGE_PERMISSION_MAP = {
   ],
 
   // ========================================
-  // WARDENS PAGE
-  // ========================================
-  'wardens': [
-    // Primary permissions
-    'warden_read',            // GET /api/hostels/:hostelId/wardens
-    'warden_update',          // POST/PUT/DELETE /api/hostels/:hostelId/wardens
-    
-    // Universal dependency
-    'hostel_read'              // Required for all hostel operations
-  ],
-
-  // ========================================
   // STAFF PAGE
   // ========================================
   'staff': [
     // Primary permissions
-    'role_read',              // GET /api/hostels/:hostelId/staff
-    'role_update',            // POST/PUT/DELETE /api/hostels/:hostelId/staff
-    
-    // RBAC permissions (for role management)
-    'role_update',            // Role creation/management
+    'staff_read',             // GET /api/hostels/:hostelId/staff
+    'staff_create',           // POST /api/hostels/:hostelId/staff
+    'staff_update',           // PUT /api/hostels/:hostelId/staff
+    'staff_delete',           // DELETE /api/hostels/:hostelId/staff
+    'staff_update',           // Toggle staff status
     
     // Universal dependency
-    'hostel_read'              // Required for all hostel operations
+    'hostel_read'             // Required for all hostel operations
   ],
 
+  // ========================================
   // ========================================
   // HOSTEL DASHBOARD
   // ========================================

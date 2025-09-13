@@ -23,7 +23,7 @@ const API_PERMISSION_MAP = {
   // ========================================
   // ADMIN ROUTES (/api/admin)
   // ========================================
-  'GET /api/admin/stats': ['hostel_stats_read'],
+  'GET /api/admin/stats': ['view_hostel_stats'],
   'GET /api/admin/hostels': ['hostel_read'],
   
   // Room Management
@@ -37,30 +37,31 @@ const API_PERMISSION_MAP = {
   'POST /api/admin/students': ['student_create'],
   'PUT /api/admin/students/:id': ['student_update'],
   'DELETE /api/admin/students/:id': ['student_delete'],
+  'GET /api/admin/students/export': ['export_student_data'],
   
-  // Warden Management
-  'GET /api/admin/wardens': ['warden_read'],
-  'POST /api/admin/wardens': ['warden_create'],
-  'PUT /api/admin/wardens/:id': ['warden_update'],
-  'DELETE /api/admin/wardens/:id': ['warden_delete'],
+  // Staff Management
+  'GET /api/admin/staff': ['staff_read'],
+  'POST /api/admin/staff': ['staff_create'],
+  'PUT /api/admin/staff/:id': ['staff_update'],
+  'DELETE /api/admin/staff/:id': ['staff_delete'],
   
-  // Room Allocation
-  'POST /api/admin/allocate-room': ['room_allocate'],
-  'PUT /api/admin/deallocate-room/:allocationId': ['room_deallocate'],
+  // Room Allocation (Updated to use new permission names)
+  'POST /api/admin/allocate-room': ['room_allocation_create'],
+  'PUT /api/admin/deallocate-room/:allocationId': ['room_allocation_delete'],
   
-  // Complaint Management
+  // Complaint Management (Split CRUD)
   'GET /api/admin/complaints': ['complaint_read'],
   'PUT /api/admin/complaints/:id': ['complaint_update'],
   'PUT /api/admin/complaints/:id/resolve': ['complaint_update'],
   
-  // Visitor Log Management
+  // Visitor Log Management (Updated to new permissions)
   'GET /api/admin/visitor-logs': ['visitor_read'],
   'POST /api/admin/visitor-logs': ['visitor_create'],
-  'PUT /api/admin/visitor-logs/:id/checkout': ['visitor_checkout'],
+  'PUT /api/admin/visitor-logs/:id/checkout': ['visitor_update'],
   'PUT /api/admin/visitor-logs/:id': ['visitor_update'],
   'DELETE /api/admin/visitor-logs/:id': ['visitor_delete'],
-  'GET /api/admin/visitor-stats': ['visitor_stats_read'],
-  'GET /api/admin/visitor-logs/export': ['visitor_export'],
+  'GET /api/admin/visitor-stats': ['visitor_read'],
+  'GET /api/admin/visitor-logs/export': ['export_visitor_data'],
 
   // ========================================
   // HOSTEL ROUTES (/api/hostels)
@@ -68,29 +69,31 @@ const API_PERMISSION_MAP = {
   
   // Base Hostel Routes
   'GET /api/hostels': ['hostel_read'],
-  'POST /api/hostels': ['hostel_update'],
+  'POST /api/hostels': ['hostel_create'],
   
   // Hostel-Specific Routes
   'GET /api/hostels/:hostelId': ['hostel_read'],
   'PUT /api/hostels/:hostelId': ['hostel_update'],
-  'DELETE /api/hostels/:hostelId': ['hostel_update'],
+  'DELETE /api/hostels/:hostelId': ['hostel_delete'],
   
   // Dashboard Routes
   'GET /api/hostels/:hostelId/dashboard': ['hostel_read'],
-  'GET /api/hostels/:hostelId/stats': ['hostel_read'],
+  'GET /api/hostels/:hostelId/stats': ['view_hostel_stats'],
   
-  // Visitor Management
+  // Visitor Management (Updated to new permission structure)
   'GET /api/hostels/:hostelId/visitors': ['visitor_read'],
   'POST /api/hostels/:hostelId/visitors': ['visitor_create'],
   'PUT /api/hostels/:hostelId/visitors/:visitorId': ['visitor_update'],
-  'DELETE /api/hostels/:hostelId/visitors/:visitorId': ['visitor_update'],
-  'POST /api/hostels/:hostelId/visitors/:visitorId/checkout': ['visitor_checkout'],
+  'DELETE /api/hostels/:hostelId/visitors/:visitorId': ['visitor_delete'],
+  'POST /api/hostels/:hostelId/visitors/:visitorId/checkout': ['visitor_update'],
+  'GET /api/hostels/:hostelId/visitors/export': ['export_visitor_data'],
   
-  // Student Management
+  // Student Management (Split CRUD)
   'GET /api/hostels/:hostelId/students': ['student_read'],
-  'POST /api/hostels/:hostelId/students': ['student_update'],
+  'POST /api/hostels/:hostelId/students': ['student_create'],
   'PUT /api/hostels/:hostelId/students/:studentId': ['student_update'],
-  'DELETE /api/hostels/:hostelId/students/:studentId': ['student_update'],
+  'DELETE /api/hostels/:hostelId/students/:studentId': ['student_delete'],
+  'GET /api/hostels/:hostelId/students/export': ['export_student_data'],
   
   // Complaint Management
   'GET /api/hostels/:hostelId/complaints': ['complaint_read'],
@@ -98,30 +101,33 @@ const API_PERMISSION_MAP = {
   'POST /api/hostels/:hostelId/complaints/:complaintId/resolve': ['complaint_update'],
   'PUT /api/hostels/:hostelId/complaints/:complaintId/status': ['complaint_update'],
   'DELETE /api/hostels/:hostelId/complaints/:complaintId': ['complaint_delete'],
+  'GET /api/hostels/:hostelId/complaints/export': ['export_complaint_data'],
   
-  // Room Management
+  // Room Management (Split CRUD)
   'GET /api/hostels/:hostelId/rooms': ['room_read'],
-  'POST /api/hostels/:hostelId/rooms': ['room_update'],
+  'POST /api/hostels/:hostelId/rooms': ['room_create'],
   'PUT /api/hostels/:hostelId/rooms/:roomId': ['room_update'],
-  'DELETE /api/hostels/:hostelId/rooms/:roomId': ['room_update'],
+  'DELETE /api/hostels/:hostelId/rooms/:roomId': ['room_delete'],
   'GET /api/hostels/:hostelId/rooms/:roomId/students': ['room_allocation_read'],
+  'GET /api/hostels/:hostelId/rooms/export': ['export_room_data'],
   
-  // Room Allocation
-  'POST /api/hostels/:hostelId/room-allocations': ['room_allocate'],
-  'DELETE /api/hostels/:hostelId/room-allocations/:allocationId': ['room_deallocate'],
+  // Room Allocation (Updated to new permission names)
+  'POST /api/hostels/:hostelId/room-allocations': ['room_allocation_create'],
+  'DELETE /api/hostels/:hostelId/room-allocations/:allocationId': ['room_allocation_delete'],
   
   // Warden Management
-  'GET /api/hostels/:hostelId/wardens': ['warden_read'],
-  'POST /api/hostels/:hostelId/wardens': ['warden_update'],
-  'PUT /api/hostels/:hostelId/wardens/:wardenId': ['warden_update'],
-  'DELETE /api/hostels/:hostelId/wardens/:wardenId': ['warden_update'],
+  'GET /api/hostels/:hostelId/wardens': ['staff_read'],
+  'POST /api/hostels/:hostelId/wardens': ['staff_create'],
+  'PUT /api/hostels/:hostelId/wardens/:wardenId': ['staff_update'],
+  'DELETE /api/hostels/:hostelId/wardens/:wardenId': ['staff_delete'],
   
   // Staff Management
-  'GET /api/hostels/:hostelId/staff': ['role_read'],
-  'POST /api/hostels/:hostelId/staff': ['role_update'],
-  'PUT /api/hostels/:hostelId/staff/:staffId': ['role_update'],
-  'DELETE /api/hostels/:hostelId/staff/:staffId': ['role_update'],
-  'PATCH /api/hostels/:hostelId/staff/:staffId/status': ['role_update'],
+  'GET /api/hostels/:hostelId/staff': ['staff_read'],
+  'POST /api/hostels/:hostelId/staff': ['staff_create'],
+  'PUT /api/hostels/:hostelId/staff/:staffId': ['staff_update'],
+  'DELETE /api/hostels/:hostelId/staff/:staffId': ['staff_delete'],
+  'PATCH /api/hostels/:hostelId/staff/:staffId/status': ['staff_update'],
+  'GET /api/hostels/:hostelId/staff/export': ['export_staff_data'],
 
   // ========================================
   // RBAC ROUTES (/api/rbac)
@@ -132,34 +138,15 @@ const API_PERMISSION_MAP = {
   'POST /api/rbac/check-permission': [], // Requires token only
   'POST /api/rbac/check-any-permission': [], // Requires token only
   'POST /api/rbac/check-all-permissions': [], // Requires token only
-  
-  // Permission Management
-  'GET /api/rbac/permissions': ['role_update'],
-  'GET /api/rbac/permissions/granular': ['role_update'],
-  'GET /api/rbac/permissions/:permissionName/dependencies': ['role_update'],
-  'POST /api/rbac/permissions/validate': ['role_update'],
-  'GET /api/rbac/pages/:pageName/dependencies': ['role_update'],
-  'POST /api/rbac/permissions/multiple-dependencies': ['role_update'],
-  
-  // System Role Routes
-  'GET /api/rbac/system-roles': ['role_update'],
-  
-  // Hostel-Specific Role Routes
-  'GET /api/rbac/hostels/:hostelId/roles': ['role_read'],
-  'POST /api/rbac/hostels/:hostelId/roles': ['role_update'],
-  'PUT /api/rbac/hostels/:hostelId/roles/:roleId': ['role_update'],
-  'DELETE /api/rbac/hostels/:hostelId/roles/:roleId': ['role_update'],
-  
-  // User Role Assignment
-  'POST /api/rbac/hostels/:hostelId/users/:userId/assign-role': ['role_update'],
 
   // ========================================
   // STUDENT ROUTES (/api/student)
   // ========================================
-  'GET /api/student/dashboard': ['view_dashboard'],
-  'GET /api/student/profile': ['profile_read'],
-  'PUT /api/student/profile': ['profile_update'],
-  'GET /api/student/room': ['student_room_read'],
+  // Student self-service (canonical permissions)
+  'GET /api/student/dashboard': ['hostel_read'], // dashboard access now tied to hostel visibility
+  'GET /api/student/profile': ['view_profile'],
+  'PUT /api/student/profile': ['manage_profile'],
+  'GET /api/student/room': ['view_student_rooms'],
   'POST /api/student/complaints': ['complaint_create'],
   'GET /api/student/complaints': ['complaint_read'],
   'GET /api/student/complaints/:id': ['complaint_read'],
@@ -169,24 +156,24 @@ const API_PERMISSION_MAP = {
   'POST /api/student/visitor-logs': ['visitor_create'],
   'PUT /api/student/visitor-logs/:id': ['visitor_update'],
   'DELETE /api/student/visitor-logs/:id': ['visitor_delete'],
-  'PUT /api/student/visitor-logs/:id/checkout': ['visitor_checkout'],
+  'PUT /api/student/visitor-logs/:id/checkout': ['visitor_update'],
 
   // ========================================
   // SUPERADMIN ROUTES (/api/superadmin)
   // ========================================
   'POST /api/superadmin/login': [], // Public endpoint
-  'GET /api/superadmin/dashboard': ['view_dashboard'],
-  'GET /api/superadmin/billing-overview': ['billing_read'],
-  'POST /api/superadmin/owners': ['owner_manage'],
-  'POST /api/superadmin/hostels': ['hostel_global_manage'],
-  'GET /api/superadmin/hostels': ['hostel_global_manage'],
-  'GET /api/superadmin/hostels/:id': ['hostel_global_manage'],
-  'GET /api/superadmin/hostels/:id/students': ['hostel_global_manage'],
-  'PUT /api/superadmin/hostels/:id/plan': ['hostel_global_manage'],
-  'PUT /api/superadmin/hostels/:id/status': ['hostel_global_manage'],
-  'PUT /api/superadmin/hostels/:id/billing': ['billing_manage'],
-  'DELETE /api/superadmin/hostels/:id': ['hostel_global_manage'],
-  'GET /api/superadmin/hostels-by-region': ['system_stats_read']
+  'GET /api/superadmin/dashboard': ['manage_system'],
+  'GET /api/superadmin/billing-overview': ['manage_billing'],
+  'POST /api/superadmin/owners': ['manage_owners'],
+  'POST /api/superadmin/hostels': ['manage_all_hostels'],
+  'GET /api/superadmin/hostels': ['manage_all_hostels'],
+  'GET /api/superadmin/hostels/:id': ['manage_all_hostels'],
+  'GET /api/superadmin/hostels/:id/students': ['manage_all_hostels'],
+  'PUT /api/superadmin/hostels/:id/plan': ['manage_all_hostels'],
+  'PUT /api/superadmin/hostels/:id/status': ['manage_all_hostels'],
+  'PUT /api/superadmin/hostels/:id/billing': ['manage_billing'],
+  'DELETE /api/superadmin/hostels/:id': ['manage_all_hostels'],
+  'GET /api/superadmin/hostels-by-region': ['view_system_stats']
 };
 
 /**
@@ -234,7 +221,6 @@ function getApisByCategory() {
     'student_read': [],
     'complaint_read': [],
     'visitor_read': [],
-    'warden_management': [],
     'staff_management': [],
     'rbac_management': [],
     'student_self_service': [],
@@ -251,9 +237,7 @@ function getApisByCategory() {
         categories.complaint_management.push(api);
       } else if (api.includes('/visitors')) {
         categories.visitor_management.push(api);
-      } else if (api.includes('/wardens')) {
-        categories.warden_management.push(api);
-      } else if (api.includes('/staff')) {
+      } else if (api.includes('/wardens') || api.includes('/staff')) {
         categories.staff_management.push(api);
       } else {
         categories.hostel_management.push(api);

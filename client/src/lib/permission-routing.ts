@@ -15,7 +15,7 @@ interface RouteMap {
 // Define route mapping based on permissions (in priority order)
 const PERMISSION_ROUTE_MAP: RouteMap[] = [
   // High priority routes (management roles)
-  { permission: 'role_read', path: '/staff', priority: 100 },
+  { permission: 'staff_read', path: '/staff', priority: 100 },
   { permission: 'hostel_create', path: '', priority: 90 }, // Hostel management (stays on main)
   
   // Mid priority routes (operational)
@@ -23,14 +23,14 @@ const PERMISSION_ROUTE_MAP: RouteMap[] = [
   { permission: 'room_read', path: '/rooms', priority: 70 },
   { permission: 'complaint_read', path: '/complaints', priority: 60 },
   { permission: 'visitor_read', path: '/visitors', priority: 50 },
-  { permission: 'warden_read', path: '/wardens', priority: 40 },
+  { permission: 'staff_read', path: '/staff', priority: 40 },
   
   // Lower priority routes (reporting)
-  { permission: 'report_read', path: '/reports', priority: 30 },
-  { permission: 'analytics_read', path: '/analytics', priority: 20 },
+  { permission: 'view_reports', path: '/reports', priority: 30 },
+  { permission: 'view_analytics', path: '/analytics', priority: 20 },
   
   // Dashboard access (lowest priority - only if explicitly granted)
-  { permission: 'view_dashboard', path: '', priority: 10 },
+  { permission: 'hostel_read', path: '', priority: 10 },
   
   // Basic access (fallback)
   { permission: 'hostel_read', path: '', priority: 1 }
@@ -137,16 +137,14 @@ export function getAccessibleSidebarSections(user: AuthUser): string[] {
 
   // Map permissions to sidebar sections
   const permissionSectionMap: Record<string, string> = {
-    'view_dashboard': 'dashboard',
     'student_read': 'students',
     'room_read': 'rooms',
-    'role_read': 'staff',
+    'staff_read': 'staff',
     'complaint_read': 'complaints',
     'visitor_read': 'visitors',
-    'warden_read': 'wardens',
-    'report_read': 'reports',
-    'analytics_read': 'analytics',
-    'view_settings': 'settings'
+    'view_reports': 'reports',
+    'view_analytics': 'analytics',
+    'view_billing': 'billing'
   };
 
   // Add sections based on permissions

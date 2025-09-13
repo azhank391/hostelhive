@@ -18,11 +18,9 @@ import {
   UserIcon,
   BedIcon,
   XIcon,
-  MailIcon,
-  PhoneIcon,
-  MapPinIcon,
   RefreshCwIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  DownloadIcon
 } from 'lucide-react';
 
 // Custom type for students response to match backend structure
@@ -52,34 +50,20 @@ export default function HostelStudentsPage() {
   const params = useParams<{ hostelId: string }>();
   const hostelId = params?.hostelId || '';
   const { user, isLoading } = useAuth();
-  const { hasPermission, hasAnyPermission } = usePermissions();
+  const { hasPermission} = usePermissions();
 
   // Permission checks
   const canViewStudents = hasPermission('student_read');
   const canCreateStudents = hasPermission('student_create');
   const canUpdateStudents = hasPermission('student_update') || hasPermission('student_create'); // Allow create permission for updates
   const canDeleteStudents = hasPermission('student_delete');
-  const canAllocateRooms = hasPermission('room_allocate'); // ONLY allow if user has room_allocate permission
-  const canDeallocateRooms = hasPermission('room_deallocate'); // ONLY allow if user has room_deallocate permission
+  const canAllocateRooms = hasPermission('room_allocation_create'); // ONLY allow if user has room_allocation_create permission
+  const canDeallocateRooms = hasPermission('room_allocation_delete'); // ONLY allow if user has room_allocation_delete permission
   const canViewRooms = hasPermission('room_read'); // Required to view room information
-  const canManageStudentRooms = hasPermission('room_allocate');
+  const canManageStudentRooms = hasPermission('room_allocation_create');
   const canViewStudentRooms = hasPermission('room_read');
+  const canExportStudents = hasPermission('export_student_data');
   
-  // Debug logging for owner permissions
-  React.useEffect(() => {
-    if (canViewStudents) {
-      console.log('🔍 Student Page Permissions Debug:', {
-        canViewStudents,
-        canCreateStudents,
-        canUpdateStudents,
-        canDeleteStudents,
-        canManageStudentRooms,
-        canViewStudentRooms,
-        hasManageStudentRooms: hasPermission('room_allocate'),
-        hasAllocateRooms: hasPermission('room_allocate')
-      });
-    }
-  }, [canViewStudents, canCreateStudents, canUpdateStudents, canDeleteStudents, canManageStudentRooms, canViewStudentRooms, hasPermission]);
   
   // State management
   const [students, setStudents] = useState<StudentData[]>([]);
@@ -466,6 +450,51 @@ export default function HostelStudentsPage() {
     setSearchQuery(query);
   }, []);
 
+  // Export functionality
+  const handleExportStudents = useCallback(async (format: 'csv' | 'json' = 'csv') => {
+    if (!hostelId) return;
+    
+    try {
+      const response = await fetch(`/api/hostels/${hostelId}/students/export?format=${format}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to export student data');
+      }
+      
+      if (format === 'csv') {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `students-${hostelId}-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      } else {
+        const data = await response.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `students-${hostelId}-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }
+      
+      notification.success('Student data exported successfully!');
+    } catch (err) {
+      console.error('Error exporting students:', err);
+      notification.error('Failed to export student data');
+    }
+  }, [hostelId]);
+
   const clearSearch = useCallback(() => {
     setSearchQuery('');
   }, []);
@@ -575,6 +604,18 @@ export default function HostelStudentsPage() {
             <RefreshCwIcon size={16} className={`mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
+          
+          {/* Export button - only if user has export permission */}
+          {canExportStudents && (
+            <Button 
+              variant="outline" 
+              className="flex items-center justify-center px-4 py-2 w-full sm:w-auto"
+              onClick={() => handleExportStudents('csv')}
+            >
+              <DownloadIcon size={16} className="mr-2" />
+              Export CSV
+            </Button>
+          )}
           
           {/* Show Add New Student button only if user has student_create permission */}
           {canCreateStudents && (
@@ -1035,7 +1076,7 @@ export default function HostelStudentsPage() {
       </PermissionGate>
 
       {/* Edit Student Modal - Using student_create permission as fallback */}
-      <PermissionGate permission="student_create">
+      <PermissionGate permission="student_update">
         {showEditModal && editingStudent && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
@@ -1102,7 +1143,7 @@ export default function HostelStudentsPage() {
       </PermissionGate>
 
       {/* Room Allocation Modal */}
-      <PermissionGate permission="room_allocate">
+      <PermissionGate permission="room_allocation_create">
         {showRoomAllocationModal && selectedStudent && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">

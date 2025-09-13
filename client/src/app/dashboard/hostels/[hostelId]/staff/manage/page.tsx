@@ -15,9 +15,9 @@ export default function ManageStaffPage() {
   const { hasHostel } = useCurrentHostelId();
 
   // Permission checks for staff management
-  const canCreateStaff = hasPermission('warden_create');
-  const canUpdateStaff = hasPermission('warden_update');
-  const canDeleteStaff = hasPermission('warden_delete');
+  const canCreateStaff = hasPermission('staff_create');
+  const canUpdateStaff = hasPermission('staff_update');
+  const canDeleteStaff = hasPermission('staff_delete');
   
   // Can manage staff if they have any of the management permissions
   const canManageStaff = canCreateStaff || canUpdateStaff || canDeleteStaff;

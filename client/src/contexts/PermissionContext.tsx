@@ -1,7 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
-import { apiClient } from '../lib/api';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { apiClient } from '../lib/api-client';
 import { useAuth } from './AuthContext';
 
 /**
@@ -70,33 +70,47 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
   /**
    * Fetch user permissions from the backend
    */
-    const fetchUserPermissions = useCallback(async () => {
-    if (!user) {
-      setPermissions([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    
+  const fetchUserPermissions = async () => {
     try {
-      const response = await apiClient.get(`/rbac/user-permissions?t=${Date.now()}`) as any;
+      setLoading(true);
+      setError(null);
       
-      if (response?.data?.permissions && Array.isArray(response.data.permissions)) {
-        setPermissions(response.data.permissions);
-        setError(null);
-      } else {
-        setPermissions([]);
-        setError('Invalid permissions format received');
+      const response = await apiClient.get(`/rbac/user-permissions?t=${Date.now()}`);
+      
+      // The apiClient.get returns the parsed JSON response directly
+      const resp = response as any;
+      
+      if (!resp) {
+        throw new Error('No response received from permissions API');
       }
-    } catch (err) {
-      console.error('❌ Failed to fetch user permissions:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load permissions');
+      
+      // Check for the expected response format: {success: true, data: {role, permissions}}
+      if (resp.success && resp.data && resp.data.role && resp.data.permissions) {
+        setUserRole(resp.data.role);
+        setPermissions(resp.data.permissions);
+      } else {
+        console.error('❌ Invalid response format:', resp);
+        throw new Error('Invalid response format from permissions API');
+      }
+    } catch (error: any) {
+      console.error('❌ Failed to fetch user permissions:', error);
+      
+      // Set a clear error message
+      if (error.response?.status === 401) {
+        setError('Authentication required. Please log in again.');
+      } else if (error.response?.status === 403) {
+        setError('Access denied. Insufficient permissions.');
+      } else {
+        setError('Failed to load user permissions. Please try again.');
+      }
+      
+      // Reset state on error
+      setUserRole(null);
       setPermissions([]);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  };
 
   /**
    * Check if user has a specific permission (local check)
@@ -136,13 +150,6 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
       return false;
     } catch (error: any) {
       console.error('❌ Failed to check permission:', error);
-      
-      // Handle password change requirement gracefully
-      if (error?.code === 'PASSWORD_CHANGE_REQUIRED' && error?.requiresPasswordChange) {
-        console.log('🔍 Password change required during permission check');
-        return false; // Deny permission until password is changed
-      }
-      
       return false;
     }
   };
@@ -164,13 +171,6 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
       return false;
     } catch (error: any) {
       console.error('❌ Failed to check any permission:', error);
-      
-      // Handle password change requirement gracefully
-      if (error?.code === 'PASSWORD_CHANGE_REQUIRED' && error?.requiresPasswordChange) {
-        console.log('🔍 Password change required during any permission check');
-        return false; // Deny permission until password is changed
-      }
-      
       return false;
     }
   };
@@ -192,13 +192,6 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
       return false;
     } catch (error: any) {
       console.error('❌ Failed to check all permissions:', error);
-      
-      // Handle password change requirement gracefully
-      if (error?.code === 'PASSWORD_CHANGE_REQUIRED' && error?.requiresPasswordChange) {
-        console.log('🔍 Password change required during all permissions check');
-        return false; // Deny permission until password is changed
-      }
-      
       return false;
     }
   };

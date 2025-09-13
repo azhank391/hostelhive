@@ -55,8 +55,8 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
     id: 'staff',
     name: 'Staff Management',
     icon: ShieldIcon,
-    path: '/staff',
-    permission: 'role_read' // Using actual database permission
+    path: '/dashboard/hostels/:hostelId/staff/manage',
+    permission: 'staff_read' // Updated to use staff permission instead of role permission
   },
   {
     id: 'complaints',
@@ -77,14 +77,14 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
     name: 'Billing',
     icon: CreditCardIcon,
     path: '/billing',
-    permission: 'billing_read' // Using actual database permission
+    permission: 'view_billing'
   },
   {
     id: 'reports',
     name: 'Reports',
     icon: FileTextIcon,
     path: '/reports',
-    permission: 'report_read' // Using actual database permission
+    permission: 'view_reports'
   }
 ];
 

@@ -12,16 +12,18 @@ import { Modal } from '@/components/modals/Modal';
 import { Input } from '@/components/ui/Input';
 import { notification } from '@/lib/toast';
 import { 
-  UsersIcon, 
-  PlusIcon, 
-  SearchIcon,
-  EyeIcon,
-  EditIcon,
-  TrashIcon,
-  LogOutIcon,
-  CalendarIcon,
-  UserIcon
+  Users as UsersIcon, 
+  UserPlus as PlusIcon, 
+  Search as SearchIcon,
+  Eye as EyeIcon,
+  Edit as EditIcon,
+  Trash as TrashIcon,
+  LogOut as LogOutIcon,
+  Calendar as CalendarIcon,
+  User as UserIcon,
+  Download as DownloadIcon
 } from 'lucide-react';
+import { downloadExport } from '@/lib/download';
 
 interface VisitorLog {
   id: string;
@@ -29,6 +31,8 @@ interface VisitorLog {
   relation: string;
   checkIn: string;
   checkOut?: string;
+  // createdAt is always provided by backend (Sequelize timestamps); make required for type safety
+  createdAt: string;
   studentId: string;
   hostelId: string;
   student?: {
@@ -38,21 +42,15 @@ interface VisitorLog {
     allocations?: Array<{
       id: string;
       status: string;
-      room: {
-        id: string;
-        roomNumber: string;
-      };
+      room?: {
+        roomNumber?: string;
+        block?: string;
+        capacity?: number;
+      }
     }>;
   };
-  room?: {
-    id: string;
-    number: string;
-  };
-  createdAt: string;
-  updatedAt: string;
 }
 
-// Helper function to get status from checkOut field
 const getVisitorStatus = (visitor: VisitorLog): 'checked_in' | 'checked_out' | 'pending' => {
   if (visitor.checkOut) {
     return 'checked_out';
@@ -88,7 +86,7 @@ export default function VisitorsPage() {
   const canViewVisitors = hasPermission('visitor_read');
   const canCreateVisitors = hasPermission('visitor_create');
   const canManageVisitors = hasPermission('visitor_update');
-  const canCheckoutVisitors = hasPermission('visitor_checkout');
+  const canCheckoutVisitors = hasPermission('visitor_update');
   const canViewVisitorStats = hasPermission('view_visitor_stats');
   const canExportVisitorData = hasPermission('export_visitor_data');
   
@@ -493,28 +491,34 @@ export default function VisitorsPage() {
     }
   }, [hasHostel, hostelId, refreshVisitors]);
 
-  const handleDeleteVisitor = useCallback(async () => {
-    if (!selectedVisitor || !hasHostel || !hostelId) return;
-    
-    // Add confirmation dialog
-    if (!confirm(`Are you sure you want to delete visitor ${selectedVisitor.visitorName}? This action cannot be undone.`)) {
+  const handleDeleteVisitor = useCallback(async (visitor?: VisitorLog) => {
+    // Accept an explicit visitor (from row action) or fall back to selectedVisitor (from modal)
+    const target = visitor || selectedVisitor;
+    if (!target || !hasHostel || !hostelId) return;
+
+    // Ensure selectedVisitor is set when deleting from the row button (without opening view modal first)
+    if (!selectedVisitor) {
+      setSelectedVisitor(target);
+    }
+
+    if (!confirm(`Are you sure you want to delete visitor ${target.visitorName}? This action cannot be undone.`)) {
       return;
     }
-    
+
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/hostels/${hostelId}/visitors/${selectedVisitor.id}`, {
+      const response = await fetch(`/api/hostels/${hostelId}/visitors/${target.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         }
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to delete visitor');
       }
-      
+
       notification.success('Visitor deleted successfully!');
       setIsViewModalOpen(false);
       setSelectedVisitor(null);
@@ -558,6 +562,18 @@ export default function VisitorsPage() {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   }, []);
+
+  // Export functionality
+  const handleExportVisitors = useCallback(async (format: 'csv' | 'json' = 'csv') => {
+    if (!hasHostel || !hostelId) return;
+    try {
+      await downloadExport({ url: `/api/hostels/${hostelId}/visitors/export`, format, filename: `visitors-${hostelId}` });
+      notification.success(`Visitor data exported as ${format.toUpperCase()}!`);
+    } catch (err) {
+      console.error('Error exporting visitors:', err);
+      notification.error('Failed to export visitor data');
+    }
+  }, [hasHostel, hostelId]);
 
   // Check if user has permission to view visitors
   if (!canViewVisitors) {
@@ -615,12 +631,21 @@ export default function VisitorsPage() {
           </p>
         </div>
         
-        <PermissionGate permission="visitor_create">
-          <Button variant="primary" className="flex items-center" onClick={() => setIsCreateModalOpen(true)}>
-            <PlusIcon size={16} className="mr-2" />
-            Add New Visitor
-          </Button>
-        </PermissionGate>
+        <div className="flex space-x-3">
+          <PermissionGate permission="export_visitor_data">
+            <Button variant="outline" className="flex items-center" onClick={() => handleExportVisitors('csv')}>
+              <DownloadIcon size={16} className="mr-2" />
+              Export CSV
+            </Button>
+          </PermissionGate>
+          
+          <PermissionGate permission="visitor_create">
+            <Button variant="primary" className="flex items-center" onClick={() => setIsCreateModalOpen(true)}>
+              <PlusIcon size={16} className="mr-2" />
+              Add New Visitor
+            </Button>
+          </PermissionGate>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -840,7 +865,7 @@ export default function VisitorsPage() {
                           <EditIcon size={14} />
                         </Button>
                       </PermissionGate>
-                      <PermissionGate permission="visitor_checkout">
+                      <PermissionGate permission="visitor_update">
                         {getVisitorStatus(visitor) === 'checked_in' && (
                           <Button 
                             variant="primary" 
@@ -852,11 +877,11 @@ export default function VisitorsPage() {
                           </Button>
                         )}
                       </PermissionGate>
-                      <PermissionGate permission="visitor_update">
+                      <PermissionGate permission="visitor_delete">
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          onClick={() => handleViewVisitor(visitor)}
+                          onClick={() => handleDeleteVisitor(visitor)} 
                           className="text-red-600 hover:text-red-700"
                         >
                           <TrashIcon size={14} />
@@ -1215,14 +1240,14 @@ export default function VisitorsPage() {
             <Button variant="outline" onClick={() => setIsViewModalOpen(false)}>
               Close
             </Button>
-            <PermissionGate permission="visitor_checkout">
+            <PermissionGate permission="visitor_update">
               {selectedVisitor && getVisitorStatus(selectedVisitor) === 'checked_in' && (
                 <Button variant="primary" onClick={() => handleCheckOutVisitor(selectedVisitor)} disabled={isSubmitting}>
                   {isSubmitting ? 'Checking Out...' : 'Check Out Visitor'}
                 </Button>
               )}
             </PermissionGate>
-            <PermissionGate permission="visitor_update">
+            <PermissionGate permission="visitor_delete">
               <Button variant="outline" onClick={() => handleDeleteVisitor()} disabled={isSubmitting} className="text-red-600 hover:text-red-700">
                 {isSubmitting ? 'Deleting...' : 'Delete Visitor'}
               </Button>

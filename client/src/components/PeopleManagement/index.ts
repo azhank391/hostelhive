@@ -1,7 +1,0 @@
-export { PeopleManagement } from './PeopleManagement';
-
-
-
-
-
-

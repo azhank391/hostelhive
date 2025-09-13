@@ -1553,7 +1553,18 @@ exports.exportVisitorLogs = async (req, res) => {
         {
           model: User,
           as: "student",
-          attributes: ["name", "email"],
+          attributes: ["id","name", "email"],
+          include: [
+            {
+              model: RoomAllocation,
+              as: 'allocations',
+              where: { status: 'active' },
+              required: false,
+              include: [
+                { model: Room, as: 'room', attributes: ['roomNumber','block','capacity'] }
+              ]
+            }
+          ]
         },
       ],
       order: [["checkIn", "DESC"]],
@@ -1562,14 +1573,20 @@ exports.exportVisitorLogs = async (req, res) => {
     if (format === "csv") {
       // Convert to CSV format
       const csvData = [
-        ["Visitor Name", "Relation", "Student Name", "Check In", "Check Out"],
-        ...visitorLogs.map((log) => [
-          log.visitorName,
-          log.relation,
-          log.student?.name || "N/A",
-          log.checkIn?.toISOString() || "N/A",
-          log.checkOut?.toISOString() || "Not checked out",
-        ]),
+        ["Visitor Name", "Relation", "Student Name", "Student Email", "Room Number", "Room Block", "Check In", "Check Out"],
+        ...visitorLogs.map((log) => {
+          const allocation = log.student?.allocations?.[0];
+            return [
+              (log.visitorName||'').replace(/\n|\r|,/g,' '),
+              (log.relation||'').replace(/\n|\r|,/g,' '),
+              log.student?.name || "N/A",
+              log.student?.email || "N/A",
+              allocation?.room?.roomNumber || 'N/A',
+              allocation?.room?.block || 'N/A',
+              log.checkIn?.toISOString() || "N/A",
+              log.checkOut?.toISOString() || "Not checked out"
+            ];
+        }),
       ];
 
       const csvString = csvData.map((row) => row.join(",")).join("\n");
@@ -1582,14 +1599,238 @@ exports.exportVisitorLogs = async (req, res) => {
       res.send(csvString);
     } else {
       // Return JSON format
-      res.json({
-        count: visitorLogs.length,
-        visitorLogs,
+      const serialized = visitorLogs.map(v => {
+        const allocation = v.student?.allocations?.[0];
+        return {
+          id: v.id,
+          visitorName: v.visitorName,
+          relation: v.relation,
+            student: v.student ? {
+              id: v.student.id,
+              name: v.student.name,
+              email: v.student.email,
+              room: allocation ? {
+                roomNumber: allocation.room?.roomNumber,
+                block: allocation.room?.block,
+                capacity: allocation.room?.capacity
+              } : null
+            } : null,
+          checkIn: v.checkIn,
+          checkOut: v.checkOut
+        };
       });
+      res.json({ count: serialized.length, visitorLogs: serialized });
     }
   } catch (err) {
     console.error("Error exporting visitor logs:", err);
     res.status(500).json({ message: "Failed to export visitor logs" });
+  }
+};
+
+// ✅ Export Students Data
+exports.exportStudents = async (req, res) => {
+  try {
+    // Extract hostelId from URL parameters or JWT token
+    const hostelId = getHostelIdFromRequest(req);
+    const { format = "json" } = req.query;
+
+    const students = await User.findAll({
+      where: { 
+        hostelId,
+        role: 'student'
+      },
+      include: [
+        {
+          model: RoomAllocation,
+          as: "roomAllocation",
+          include: [
+            {
+              model: Room,
+              as: "room",
+              attributes: ["roomNumber", "type"],
+            },
+          ],
+        },
+      ],
+      order: [["name", "ASC"]],
+    });
+
+    if (format === "csv") {
+      // Convert to CSV format
+      const csvData = [
+        ["Name", "Email", "Phone", "Room Number", "Room Type", "Registration Date"],
+        ...students.map((student) => [
+          student.name,
+          student.email,
+          student.phone || "N/A",
+          student.roomAllocation?.room?.roomNumber || "Not allocated",
+          student.roomAllocation?.room?.type || "N/A",
+          student.createdAt?.toISOString().split('T')[0] || "N/A",
+        ]),
+      ];
+
+      const csvString = csvData.map((row) => row.join(",")).join("\n");
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="students-${hostelId}.csv"`
+      );
+      res.send(csvString);
+    } else {
+      // Return JSON format
+      res.json({
+        count: students.length,
+        students,
+      });
+    }
+  } catch (err) {
+    console.error("Error exporting students:", err);
+    res.status(500).json({ message: "Failed to export students" });
+  }
+};
+
+// ✅ Export Complaints Data
+exports.exportComplaints = async (req, res) => {
+  try {
+    const hostelId = getHostelIdFromRequest(req);
+    const { format = 'csv' } = req.query;
+
+    const complaints = await Complaint.findAll({
+      where: { hostelId },
+      include: [
+        { model: User, as: 'user', attributes: ['name','email','role'] }
+      ],
+      order: [['createdAt','DESC']]
+    });
+
+    if (format === 'csv') {
+      const header = ['ID','Title','Description','Status','Priority','Author Name','Author Email','Created'];
+      const rows = complaints.map(c => [
+        c.id,
+        (c.title||'').replace(/\n|\r|,/g,' '),
+        (c.description||'').replace(/\n|\r|,/g,' '),
+        c.status,
+        c.priority || 'N/A',
+        c.user?.name || 'N/A',
+        c.user?.email || 'N/A',
+        c.createdAt?.toISOString() || 'N/A'
+      ]);
+      const csv = [header,...rows].map(r=>r.join(',')).join('\n');
+      res.setHeader('Content-Type','text/csv');
+      res.setHeader('Content-Disposition',`attachment; filename="complaints-${hostelId}.csv"`);
+      return res.send(csv);
+    }
+
+    return res.json({ count: complaints.length, complaints });
+  } catch (err) {
+    console.error('Error exporting complaints:', err);
+    return res.status(500).json({ message: 'Failed to export complaints' });
+  }
+};
+
+// ✅ Export Rooms Data
+exports.exportRooms = async (req, res) => {
+  try {
+    const hostelId = getHostelIdFromRequest(req);
+    const { format = 'csv' } = req.query;
+    // Fetch rooms first
+    const rooms = await Room.findAll({
+      where: { hostelId },
+      order: [['roomNumber','ASC']]
+    });
+
+    // Fetch active allocations with student & room
+    const roomIds = rooms.map(r => r.id);
+    const allocations = await RoomAllocation.findAll({
+      where: { roomId: { [Op.in]: roomIds }, status: 'active' },
+      include: [
+        { model: User, as: 'user', attributes: ['id','name','email','role'], where: { role: 'student' } },
+        { model: Room, as: 'room', attributes: ['id','roomNumber','capacity','block'] }
+      ]
+    });
+    const allocationsByRoom = {};
+    allocations.forEach(a => {
+      if (!allocationsByRoom[a.roomId]) allocationsByRoom[a.roomId] = [];
+      allocationsByRoom[a.roomId].push(a);
+    });
+
+    if (format === 'csv') {
+      const header = ['ID','Room Number','Block','Capacity','Occupied','Available','Students','Created'];
+      const rows = rooms.map(r => {
+        const list = allocationsByRoom[r.id] || [];
+        const occupied = list.length;
+        const students = list.map(a => (a.user?.name||'').replace(/\n|\r|,/g,' ')).join('; ');
+        const available = Math.max(0, (r.capacity||0) - occupied);
+        return [
+          r.id,
+          r.roomNumber,
+          r.block || 'N/A',
+          r.capacity,
+          occupied,
+          available,
+          students || 'None',
+          r.createdAt?.toISOString() || 'N/A'
+        ];
+      });
+      const csv = [header, ...rows].map(r => r.join(',')).join('\n');
+      res.setHeader('Content-Type','text/csv');
+      res.setHeader('Content-Disposition',`attachment; filename="rooms-${hostelId}.csv"`);
+      return res.send(csv);
+    }
+    const enriched = rooms.map(r => {
+      const list = allocationsByRoom[r.id] || [];
+      return {
+        id: r.id,
+        roomNumber: r.roomNumber,
+        block: r.block,
+        capacity: r.capacity,
+        occupied: list.length,
+        available: Math.max(0,(r.capacity||0)-list.length),
+        students: list.map(a => ({ id: a.user?.id, name: a.user?.name, email: a.user?.email })),
+        createdAt: r.createdAt
+      };
+    });
+    return res.json({ count: enriched.length, rooms: enriched });
+  } catch (err) {
+    console.error('Error exporting rooms:', err);
+    return res.status(500).json({ message: 'Failed to export rooms' });
+  }
+};
+
+// ✅ Export Staff Data
+exports.exportStaff = async (req, res) => {
+  try {
+    const hostelId = getHostelIdFromRequest(req);
+    const { format = 'csv' } = req.query;
+
+    const staff = await User.findAll({
+      where: { hostelId, role: { [Op.ne]: 'student' } },
+      attributes: ['id','name','email','phone','role','createdAt','isActive'],
+      order: [['name','ASC']]
+    });
+
+    if (format === 'csv') {
+      const header = ['ID','Name','Email','Phone','Role','Active','Created'];
+      const rows = staff.map(s => [
+        s.id,
+        (s.name||'').replace(/\n|\r|,/g,' '),
+        s.email,
+        s.phone || 'N/A',
+        s.role,
+        s.isActive ? 'YES' : 'NO',
+        s.createdAt?.toISOString() || 'N/A'
+      ]);
+      const csv = [header,...rows].map(r=>r.join(',')).join('\n');
+      res.setHeader('Content-Type','text/csv');
+      res.setHeader('Content-Disposition',`attachment; filename="staff-${hostelId}.csv"`);
+      return res.send(csv);
+    }
+
+    return res.json({ count: staff.length, staff });
+  } catch (err) {
+    console.error('Error exporting staff:', err);
+    return res.status(500).json({ message: 'Failed to export staff' });
   }
 };
 

@@ -3,7 +3,7 @@
  *
  * Single, fine-tuned resolver that ensures any action permission automatically
  * gets the corresponding view permission for sidebar visibility.
- * 
+ *
  * FIXES:
  * - Removed overly broad cross-dependencies
  * - Made dependencies more specific and operation-focused
@@ -31,65 +31,58 @@ class UnifiedDependencyResolver {
   static ACTION_TO_VIEW_MAPPING = {
     // Room Management Actions - only need room_read for sidebar
     room_create: "room_read",
-    room_update: "room_read", 
+    room_update: "room_read",
     room_delete: "room_read",
-    room_allocate: "room_read", // ONLY room_read, not student_read
-    room_deallocate: "room_read", // ONLY room_read, not student_read
+    room_allocation_create: "room_read", // ONLY room_read, not student_read
+    room_allocation_delete: "room_read", // ONLY room_read, not student_read
 
     // Student Management Actions - only need student_read for sidebar
     student_create: "student_read",
     student_update: "student_read",
     student_delete: "student_read",
-    student_export: "student_read",
-    student_room_assign: "student_read", // ONLY student_read, not room_read
+    export_student_data: "student_read",
+    manage_student_rooms: "student_read",
 
     // Complaint Management Actions
     complaint_create: "complaint_read",
     complaint_update: "complaint_read",
     complaint_delete: "complaint_read",
-    complaint_handle: "complaint_read",
-    complaint_stats_read: "complaint_read",
+    view_complaint_stats: "complaint_read",
+    export_complaint_data: "complaint_read",
 
     // Visitor Management Actions
     visitor_create: "visitor_read",
     visitor_update: "visitor_read",
     visitor_delete: "visitor_read",
-    visitor_checkout: "visitor_read", // ONLY visitor_read, not student_read
-    visitor_export: "visitor_read",
-    visitor_stats_read: "visitor_read",
+    export_visitor_data: "visitor_read",
 
-    // Warden Management Actions
-    warden_create: "warden_read",
-    warden_update: "warden_read",
-    warden_delete: "warden_read",
-    warden_role_assign: "warden_read", // ONLY warden_read, not role_read
+    // Staff Management Actions
+    staff_create: "staff_read",
+    staff_update: "staff_read",
+    staff_delete: "staff_read",
+    role_assign: "staff_read",
+    export_staff_data: "staff_read",
 
-    // Role/Staff Management Actions
-    role_create: "role_read",
-    role_update: "role_read",
-    role_delete: "role_read",
-    role_assign: "role_read",
-    permission_manage: "role_read",
 
     // Reports Actions
-    analytics_read: "report_read",
-    data_export: "report_read",
-    export_data: "report_read",
+    view_reports: "view_reports",
+    view_analytics: "view_reports",
+    view_billing: "view_reports",
 
     // Billing Actions
-    billing_manage: "billing_read",
+    manage_billing: "view_reports",
 
     // Hostel Management Actions
     hostel_create: "hostel_read",
     hostel_update: "hostel_read",
     hostel_delete: "hostel_read",
-    hostel_stats_read: "hostel_read",
+    view_hostel_stats: "hostel_read",
     hostel_settings_update: "hostel_read",
 
     // Profile Management Actions
-    profile_create: "profile_read",
-    profile_update: "profile_read",
-    profile_delete: "profile_read",
+    manage_profile: "view_profile",
+    change_password: "view_profile",
+    view_own_data: "view_profile",
   };
 
   /**
@@ -100,12 +93,18 @@ class UnifiedDependencyResolver {
   static CROSS_DEPENDENCIES = {
     // These are the ONLY operations that truly need cross-resource access
     // All others should be explicit choices by the admin
-    
+
     // Room allocation APIs specifically need both resources
     "POST /hostels/:hostelId/room-allocations": ["student_read", "room_read"],
-    "PUT /hostels/:hostelId/room-allocations/:id": ["student_read", "room_read"],
-    "DELETE /hostels/:hostelId/room-allocations/:id": ["student_read", "room_read"],
-    
+    "PUT /hostels/:hostelId/room-allocations/:id": [
+      "student_read",
+      "room_read",
+    ],
+    "DELETE /hostels/:hostelId/room-allocations/:id": [
+      "student_read",
+      "room_read",
+    ],
+
     // Student room assignment API specifically needs room access
     "POST /hostels/:hostelId/students/:studentId/assign-room": ["room_read"],
     "DELETE /hostels/:hostelId/students/:studentId/assign-room": ["room_read"],
@@ -196,7 +195,7 @@ class UnifiedDependencyResolver {
   /**
    * Get API-specific dependencies (used only for specific endpoint analysis)
    * This replaces the broad cross-dependencies with endpoint-specific ones
-   * @param {string} endpoint - The specific API endpoint 
+   * @param {string} endpoint - The specific API endpoint
    * @returns {Array<string>} Array of endpoint-specific dependencies
    */
   static getEndpointSpecificDependencies(endpoint) {
@@ -270,7 +269,7 @@ class UnifiedDependencyResolver {
     const allDependencies = new Set();
 
     // Add the original permissions first
-    permissionNames.forEach(permission => allDependencies.add(permission));
+    permissionNames.forEach((permission) => allDependencies.add(permission));
 
     // Then add only their minimal dependencies
     for (const permissionName of permissionNames) {
@@ -302,7 +301,7 @@ class UnifiedDependencyResolver {
   static async testScenario(scenario) {
     const scenarios = {
       "student-only": ["student_read", "student_create", "student_update"],
-      "visitor-only": ["visitor_read", "visitor_create", "visitor_checkout"],
+      "visitor-only": ["visitor_read", "visitor_create", "visitor_update"],
       "room-only": ["room_read", "room_create", "room_update"],
     };
 

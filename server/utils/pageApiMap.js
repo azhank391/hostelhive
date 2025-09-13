@@ -229,8 +229,7 @@ function getPagesByFunctionality() {
     'room_read': ['rooms'],
     'visitor_read': ['visitors'],
     'complaint_read': ['complaints'],
-    'warden_management': ['wardens'],
-    'staff_management': ['staff'],
+    'staff_read': ['staff'],
     'hostel_read': ['hostel-dashboard', 'hostel-list']
   };
 }

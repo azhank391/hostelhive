@@ -11,10 +11,11 @@
     "seed:undo": "sequelize-cli db:seed:undo:all",
     "seed:superadmin": "node seed-superadmin.js",
     "test:auth": "node test-integrated-auth.js",
-    "check-db": "node check-database.js"
+  "check-db": "node check-database.js",
+  "audit:permissions": "node scripts/permission-audit.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "Muhammad Azhan",
   "license": "ISC",
   "description": "",
   "dependencies": {

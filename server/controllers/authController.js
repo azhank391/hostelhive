@@ -811,12 +811,10 @@ exports.setActiveHostel = async (req, res) => {
         },
       });
     } else {
-      res
-        .status(400)
-        .json({
-          message:
-            "Only owners, superadmins, and staff with hostel access can switch hostels",
-        });
+      res.status(400).json({
+        message:
+          "Only owners, superadmins, and staff with hostel access can switch hostels",
+      });
     }
   } catch (error) {
     console.error("Error setting active hostel:", error);
@@ -939,7 +937,7 @@ exports.changePassword = async (req, res) => {
     // Generate a new token with updated requiresPasswordChange field
     const jwt = require("jsonwebtoken");
     const updatedUser = await User.findByPk(userId);
-    
+
     const tokenPayload = {
       id: updatedUser.id,
       name: updatedUser.name,
@@ -947,7 +945,7 @@ exports.changePassword = async (req, res) => {
       role: updatedUser.role,
       hostelId: updatedUser.hostelId,
       requiresPasswordChange: false, // Updated value
-      permissions: req.user.permissions || [] // Preserve existing permissions
+      permissions: req.user.permissions || [], // Preserve existing permissions
     };
 
     const newToken = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
@@ -957,7 +955,7 @@ exports.changePassword = async (req, res) => {
     res.json({
       success: true,
       message: "Password changed successfully",
-      token: newToken // Return new token
+      token: newToken, // Return new token
     });
   } catch (error) {
     console.error("Error changing password:", error);

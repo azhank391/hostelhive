@@ -8,8 +8,8 @@ import { CreateHostelModal } from '@/components/modals/CreateHostelModal'
 import { Input } from '@/components/ui/Input'
 import toast from '@/lib/toast'
 import { useHostel } from '@/context/HostelContext'
-import { superadminApi } from '@/lib/api'
-import Link from 'next/link'
+// import { superadminApi } from '@/lib/api'
+// import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGate } from '@/components/PermissionGate'
@@ -63,11 +63,11 @@ export const HostelManagement = React.memo(() => {
   const { hasPermission } = usePermissions()
   
   // Permission checks
-  const canViewHostels = hasPermission('hostel_read') || hasPermission('hostel_read')
+  const canViewHostels = hasPermission('hostel_read')
   const canCreateHostels = hasPermission('hostel_create')
   const canUpdateHostels = hasPermission('hostel_update')
   const canDeleteHostels = hasPermission('hostel_delete')
-  const canManageHostelSettings = hasPermission('hostel_settings_update')
+  // const canManageHostelSettings = hasPermission('hostel_settings_update')
   
   // State management
   const [hostels, setHostels] = useState<Hostel[]>([])

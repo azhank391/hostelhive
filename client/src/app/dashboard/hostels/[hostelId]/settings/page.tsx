@@ -54,8 +54,9 @@ export default function HostelSettingsPage() {
   const hostelId = params?.hostelId as string;
 
   // Permission checks
-  const canViewSettings = hasPermission('view_settings');
-  const canUpdateProfile = hasPermission('profile_update');
+  // Map legacy/placeholder permissions to actual defined permission constants
+  const canViewSettings = hasPermission('hostel_read');
+  const canUpdateProfile = hasPermission('manage_profile');
   const canUpdateHostelSettings = hasPermission('hostel_settings_update');
 
   // Theme state

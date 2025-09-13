@@ -109,7 +109,7 @@ router.get(
  */
 router.get(
   "/:hostelId/stats",
-  requirePermission("hostel_stats_read"),
+  requirePermission("view_hostel_stats"),
   adminController.getHostelStats
 );
 
@@ -175,12 +175,23 @@ router.delete(
 /**
  * @route POST /api/hostels/:hostelId/visitors/:visitorId/checkout
  * @desc Checkout visitor
- * @access Private (Users with visitor_checkout permission)
+ * @access Private (Users with visitor_update permission)
  */
 router.post(
   "/:hostelId/visitors/:visitorId/checkout",
-  requirePermission("visitor_checkout"),
+  requirePermission("visitor_update"),
   adminController.checkoutVisitor
+);
+
+/**
+ * @route GET /api/hostels/:hostelId/visitors/export?format=csv|json
+ * @desc Export visitor logs (hostel scoped)
+ * @access Private (Users with export_visitor_data permission)
+ */
+router.get(
+  "/:hostelId/visitors/export",
+  requirePermission("export_visitor_data"),
+  adminController.exportVisitorLogs
 );
 
 // ========================================
@@ -231,6 +242,17 @@ router.delete(
   adminController.deleteStudent
 );
 
+/**
+ * @route GET /api/hostels/:hostelId/students/export
+ * @desc Export students data
+ * @access Private (Users with export_student_data permission)
+ */
+router.get(
+  "/:hostelId/students/export",
+  requirePermission("export_student_data"),
+  adminController.exportStudents
+);
+
 // ========================================
 // COMPLAINT MANAGEMENT ROUTES
 // ========================================
@@ -264,7 +286,7 @@ router.post(
  */
 router.post(
   "/:hostelId/complaints/:complaintId/resolve",
-  requirePermission("complaint_resolve"),
+  requirePermission("complaint_update"),
   adminController.resolveComplaint
 );
 
@@ -288,6 +310,17 @@ router.delete(
   "/:hostelId/complaints/:complaintId",
   requirePermission("complaint_delete"),
   adminController.deleteComplaint
+);
+
+/**
+ * @route GET /api/hostels/:hostelId/complaints/export?format=csv|json
+ * @desc Export complaints for a hostel
+ * @access Private (Users with export_complaint_data permission)
+ */
+router.get(
+  "/:hostelId/complaints/export",
+  requirePermission("export_complaint_data"),
+  adminController.exportComplaints
 );
 
 // ========================================
@@ -349,6 +382,17 @@ router.get(
   adminController.getRoomStudents
 );
 
+/**
+ * @route GET /api/hostels/:hostelId/rooms/export?format=csv|json
+ * @desc Export rooms list
+ * @access Private (Users with export_room_data permission)
+ */
+router.get(
+  "/:hostelId/rooms/export",
+  requirePermission("export_room_data"),
+  adminController.exportRooms
+);
+
 // ========================================
 // ROOM ALLOCATION ROUTES
 // ========================================
@@ -356,22 +400,22 @@ router.get(
 /**
  * @route POST /api/hostels/:hostelId/room-allocations
  * @desc Allocate room to student
- * @access Private (Users with room_allocate permission)
+ * @access Private (Users with room_allocation_create permission)
  */
 router.post(
   "/:hostelId/room-allocations",
-  requirePermission("room_allocate"),
+  requirePermission("room_allocation_create"),
   adminController.allocateRoom
 );
 
 /**
  * @route DELETE /api/hostels/:hostelId/room-allocations/:allocationId
  * @desc Deallocate room from student
- * @access Private (Users with room_deallocate permission)
+ * @access Private (Users with room_allocation_delete permission)
  */
 router.delete(
   "/:hostelId/room-allocations/:allocationId",
-  requirePermission("room_deallocate"),
+  requirePermission("room_allocation_delete"),
   adminController.deallocateRoom
 );
 
@@ -382,44 +426,44 @@ router.delete(
 /**
  * @route GET /api/hostels/:hostelId/wardens
  * @desc Get all wardens for hostel
- * @access Private (Users with warden_read permission)
+ * @access Private (Users with staff_read permission)
  */
 router.get(
   "/:hostelId/wardens",
-  requirePermission("warden_read"),
+  requirePermission("staff_read"),
   adminController.getAllWardens
 );
 
 /**
  * @route POST /api/hostels/:hostelId/wardens
  * @desc Create new warden
- * @access Private (Users with warden_create permission)
+ * @access Private (Users with staff_create permission)
  */
 router.post(
   "/:hostelId/wardens",
-  requirePermission("warden_create"),
+  requirePermission("staff_create"),
   adminController.createWarden
 );
 
 /**
  * @route PUT /api/hostels/:hostelId/wardens/:wardenId
  * @desc Update warden
- * @access Private (Users with warden_update permission)
+ * @access Private (Users with staff_update permission)
  */
 router.put(
   "/:hostelId/wardens/:wardenId",
-  requirePermission("warden_update"),
+  requirePermission("staff_update"),
   adminController.updateWarden
 );
 
 /**
  * @route DELETE /api/hostels/:hostelId/wardens/:wardenId
  * @desc Delete warden
- * @access Private (Users with warden_delete permission)
+ * @access Private (Users with staff_delete permission)
  */
 router.delete(
   "/:hostelId/wardens/:wardenId",
-  requirePermission("warden_delete"),
+  requirePermission("staff_delete"),
   adminController.deleteWarden
 );
 
@@ -430,56 +474,67 @@ router.delete(
 /**
  * @route GET /api/hostels/:hostelId/staff
  * @desc Get all staff members for hostel
- * @access Private (Users with role_read permission)
+ * @access Private (Users with staff_read permission)
  */
 router.get(
   "/:hostelId/staff",
-  requirePermission("role_read"),
+  requirePermission("staff_read"),
   adminController.getAllStaff
 );
 
 /**
  * @route POST /api/hostels/:hostelId/staff
  * @desc Create new staff member
- * @access Private (Users with role_create permission)
+ * @access Private (Users with staff_create permission)
  */
 router.post(
   "/:hostelId/staff",
-  requirePermission("role_create"),
+  requirePermission("staff_create"),
   adminController.createStaff
 );
 
 /**
  * @route PUT /api/hostels/:hostelId/staff/:staffId
  * @desc Update staff member
- * @access Private (Users with role_update permission)
+ * @access Private (Users with staff_update permission)
  */
 router.put(
   "/:hostelId/staff/:staffId",
-  requirePermission("role_update"),
+  requirePermission("staff_update"),
   adminController.updateStaff
 );
 
 /**
  * @route DELETE /api/hostels/:hostelId/staff/:staffId
  * @desc Delete staff member
- * @access Private (Users with role_delete permission)
+ * @access Private (Users with staff_delete permission)
  */
 router.delete(
   "/:hostelId/staff/:staffId",
-  requirePermission("role_delete"),
+  requirePermission("staff_delete"),
   adminController.deleteStaff
 );
 
 /**
  * @route PATCH /api/hostels/:hostelId/staff/:staffId/status
  * @desc Toggle staff member active status
- * @access Private (Users with role_update permission)
+ * @access Private (Users with staff_update permission)
  */
 router.patch(
   "/:hostelId/staff/:staffId/status",
-  requirePermission("role_update"),
+  requirePermission("staff_update"),
   adminController.toggleStaffStatus
+);
+
+/**
+ * @route GET /api/hostels/:hostelId/staff/export?format=csv|json
+ * @desc Export staff list
+ * @access Private (Users with export_staff_data permission)
+ */
+router.get(
+  "/:hostelId/staff/export",
+  requirePermission("export_staff_data"),
+  adminController.exportStaff
 );
 
 module.exports = router;

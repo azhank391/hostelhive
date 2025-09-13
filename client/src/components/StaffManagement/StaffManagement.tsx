@@ -20,7 +20,8 @@ import {
   MailIcon,
   PhoneIcon,
   ChevronDownIcon,
-  MoreVerticalIcon
+  MoreVerticalIcon,
+  DownloadIcon
 } from 'lucide-react';
 
 interface StaffMember {
@@ -93,9 +94,8 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
     title: "Core Access",
     description: "Essential permissions required for basic functionality",
     permissions: [
-      'view_dashboard',    // Basic dashboard access
-      'hostel_read',       // View hostel information
-      'view_settings'      // Access settings
+      'hostel_read',       // View hostel information (basic access)
+      'view_hostel_stats'  // Hostel stats (read-only analytics)
     ],
     icon: "🏠",
     required: true
@@ -109,8 +109,8 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
       'student_read',         // View student details
       'student_create',       // Add new students  
       'student_update',       // Edit student information
-      'student_room_assign',  // Assign rooms to students
-      'student_export',       // Export student data
+      'manage_student_rooms', // Assign/change rooms
+      'export_student_data',  // Export student data
       'student_delete'        // Remove students (HIGH PRIVILEGE)
     ],
     icon: "👥",
@@ -128,8 +128,9 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
       'room_read',        // View room details
       'room_create',      // Create new rooms
       'room_update',      // Update room information
-      'room_allocate',    // Assign rooms to students
-      'room_deallocate',  // Remove room assignments
+      'room_allocation_create', // Assign rooms to students
+      'room_allocation_update', // Update room assignments
+      'room_allocation_delete', // Remove room assignments
       'room_delete'       // Delete rooms (HIGH PRIVILEGE)
     ],
     icon: "🛏️",
@@ -146,10 +147,8 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
     permissions: [
       'visitor_read',       // View visitor logs
       'visitor_create',     // Create visitor entries
-      'visitor_update',     // Update visitor information
-      'visitor_checkout',   // Mark visitors as departed  
-      'visitor_stats_read', // View visitor statistics
-      'visitor_export',     // Export visitor data
+      'visitor_update',     // Update visitor information / checkout
+      'export_visitor_data', // Export visitor data
       'visitor_delete'      // Remove visitor records (HIGH PRIVILEGE)
     ],
     icon: "🚪",
@@ -165,10 +164,10 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
     description: "Handle student complaints and maintenance issues",
     permissions: [
       'complaint_read',       // View complaints
-      'complaint_create',     // Create complaints (usually for students)
-      'complaint_update',     // Update complaint details
-      'complaint_handle',     // Mark complaints as handled/resolved
-      'complaint_stats_read', // View complaint statistics
+      'complaint_create',     // Create complaints
+      'complaint_update',     // Update complaint details / resolve
+      'view_complaint_stats', // View complaint statistics
+      'export_complaint_data',// Export complaints
       'complaint_delete'      // Remove complaints (HIGH PRIVILEGE)
     ],
     icon: "📝",
@@ -178,40 +177,39 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
     }
   },
 
-  // Staff & Role Management
-  staff_role_management: {
-    title: "Staff & Role Management",
-    description: "Manage staff members, roles and permissions",
+  // Staff Management
+  staff_management: {
+    title: "Staff Management",
+    description: "Manage staff members and their accounts",
     permissions: [
-      'role_read',         // View staff and roles
-      'role_create',       // Create custom roles
-      'role_update',       // Update role details  
-      'role_assign',       // Assign roles to staff
-      'permission_manage', // Manage role permissions
-      'role_delete'        // Delete custom roles (HIGH PRIVILEGE)
+      'staff_read',         // View staff members
+      'staff_create',       // Create new staff members
+      'staff_update',       // Update staff information
+
+      'staff_delete'        // Delete staff members (HIGH PRIVILEGE)
     ],
     icon: "👨‍💼",
     dependencies: ['hostel_read'],
     highPrivilegeWarning: {
-      'role_delete': 'Allows deletion of custom roles. This affects ALL staff members who have this role and removes their access immediately.'
+      'staff_delete': 'Allows permanent removal of staff accounts. This immediately revokes their access to the system and cannot be undone.'
     }
   },
 
-  // Warden Management
-  warden_management: {
-    title: "Warden Management",
-    description: "Manage warden staff and their assignments", 
+  // Role Management
+  role_management: {
+    title: "Role Management",
+    description: "Manage role definitions and permissions", 
     permissions: [
-      'warden_read',        // View wardens
-      'warden_create',      // Add new wardens
-      'warden_update',      // Update warden information
-      'warden_role_assign', // Assign roles to wardens
-      'warden_delete'       // Remove wardens (HIGH PRIVILEGE)
+      'staff_read',         // View roles
+      'staff_create',       // Create custom roles
+      'staff_update',       // Update role details
+      'role_assign',        // Assign roles to staff
+      'staff_delete'        // Delete custom roles (HIGH PRIVILEGE)
     ],
     icon: "🛡️",
     dependencies: ['hostel_read'],
     highPrivilegeWarning: {
-      'warden_delete': 'Allows removal of warden accounts. This immediately revokes their access to the system.'
+      'staff_delete': 'Allows deletion of custom roles. This affects ALL staff members who have this role and removes their access immediately.'
     }
   },
 
@@ -220,11 +218,14 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
     title: "Reports & Analytics",
     description: "Access hostel reports, statistics and data exports",
     permissions: [
-      'report_read',       // View basic reports
-      'analytics_read',    // Access detailed analytics
-      'billing_read',      // View billing information
-      'data_export',       // Export hostel data
-      'hostel_stats_read'  // View hostel statistics
+      'view_reports',      // View basic reports
+      'view_analytics',    // Access analytics
+      'view_billing',      // View billing information
+      'export_room_data',  // Export rooms
+      'export_staff_data', // Export staff
+      'export_student_data', // Export students
+      'export_visitor_data', // Export visitors
+      'export_complaint_data' // Export complaints
     ],
     icon: "📊",
     dependencies: ['hostel_read'],
@@ -238,11 +239,10 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
     title: "Profile Management",
     description: "Manage user profiles and owner accounts",
     permissions: [
-      'profile_read',        // View profiles
-      'profile_create',      // Create new profiles
-      'profile_update',      // Update profile information
-      'view_owner_hostels',  // View owned hostels (owner-specific)
-      'profile_delete'       // Delete profiles (HIGH PRIVILEGE)
+      'manage_profile',    // Update own profile
+      'view_profile',      // View own profile
+      'change_password',   // Change password
+      'view_own_data'      // View own consolidated data
     ],
     icon: "👤", 
     dependencies: ['hostel_read'],
@@ -299,13 +299,13 @@ export const StaffManagement: React.FC = () => {
   const [permissionDisplayNames, setPermissionDisplayNames] = useState<Record<string, string>>({});
 
   // Use permission hook for cleaner permission checking
-  const canViewStaff = hasPermission('role_read');
-  const canManageStaff = hasPermission('role_update');
-  const canAssignRoles = hasPermission('role_assign');
+  const canViewStaff = hasPermission('staff_read');
+  const canManageStaff = hasPermission('staff_update');
   
-  const canCreateStaff = hasPermission('role_update');
-  const canDeleteStaff = hasPermission('role_update');
-  const canToggleStaffStatus = hasPermission('role_update');
+  const canCreateStaff = hasPermission('staff_create');
+  const canDeleteStaff = hasPermission('staff_delete');
+  const canToggleStaffStatus = hasPermission('staff_update');
+  const canExportStaff = hasPermission('export_staff_data');
 
   useEffect(() => {
     if (canViewStaff) {
@@ -388,13 +388,13 @@ export const StaffManagement: React.FC = () => {
     permissions.forEach(permission => {
       
       // Room allocation/deallocation dependencies
-      if (permission === 'room_allocate' || permission === 'room_deallocate' || permission === 'room_allocate') {
+      if (permission === 'room_allocation_create' || permission === 'room_allocation_update' || permission === 'room_allocation_delete') {
         allPermissions.add('student_read'); // Need to access Students page
         allPermissions.add('room_read'); // Need to access Room Management
       }
       
       // Student room assignment dependencies  
-      if (permission === 'student_room_assign') {
+      if (permission === 'manage_student_rooms') {
         allPermissions.add('student_read'); // Need to access Students page
         allPermissions.add('room_read'); // Need to access Room Management
       }
@@ -419,9 +419,9 @@ export const StaffManagement: React.FC = () => {
         allPermissions.add('room_read');
       }
       
-      // Role management requires role read access
-      if (permission.includes('role_') && (permission.includes('create') || permission.includes('update') || permission.includes('delete') || permission.includes('assign'))) {
-        allPermissions.add('role_read');
+      // Role management requires staff read access
+      if (permission.includes('staff_') && (permission.includes('create') || permission.includes('update') || permission.includes('delete') || permission.includes('assign'))) {
+        allPermissions.add('staff_read');
       }
       
     });
@@ -630,8 +630,9 @@ export const StaffManagement: React.FC = () => {
       const response = await apiClient.post(`/rbac/hostels/${hostelId}/roles`, roleDataWithPermissions);
       const newRole = (response as any).data;
       
-      // Solution 1: Immediately update local state for better performance
+      // Update local state
       setAvailableRoles(prevRoles => [...prevRoles, newRole]);
+      setCustomRoles(prevRoles => [...prevRoles, newRole]);
       
       notification.success('Custom role created successfully');
       setShowCreateRoleForm(false);
@@ -641,7 +642,6 @@ export const StaffManagement: React.FC = () => {
       setSelectedGroups(new Set());
       setExpandedCategories(new Set());
       
-      fetchCustomRoles(); // Still refresh custom roles list for the management table
     } catch (error: any) {
       console.error('Failed to create role:', error);
       notification.error(error.response?.data?.message || 'Failed to create custom role');
@@ -985,9 +985,9 @@ export const StaffManagement: React.FC = () => {
       const permissions = new Set(currentPermissions);
       
       // Always include core permissions
-      permissions.add('view_dashboard');
+  permissions.add('hostel_read');
       permissions.add('hostel_read');
-      permissions.add('view_settings');
+  permissions.add('view_hostel_stats');
       
       setEditingRolePermissions(permissions);
       setIsEditingPermissions(true);
@@ -1165,18 +1165,83 @@ export const StaffManagement: React.FC = () => {
                 Manage your hostel staff and their permissions
               </p>
             </div>
-            <div className="flex space-x-3">
-              {(user?.permissions || []).includes('role_create') && (
+            <div className="flex space-x-3 items-center">
+              {canExportStaff && (
+                <div className="flex items-center space-x-2 mr-4">
+                  <button
+                    onClick={async () => {
+                      const hostelId = getHostelIdSafe();
+                      if (!hostelId) return notification.error('No hostel selected');
+                      try {
+                        const resp = await fetch(`/api/hostels/${hostelId}/staff/export?format=csv`, {
+                          headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+                        });
+                        if (!resp.ok) throw new Error('Failed');
+                        const blob = await resp.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `staff-${hostelId}-${new Date().toISOString().split('T')[0]}.csv`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                        notification.success('Staff exported (CSV)');
+                      } catch (e) {
+                        console.error(e);
+                        notification.error('Export failed');
+                      }
+                    }}
+                    className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    <DownloadIcon className="h-4 w-4 mr-2" /> CSV
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const hostelId = getHostelIdSafe();
+                      if (!hostelId) return notification.error('No hostel selected');
+                      try {
+                        const resp = await fetch(`/api/hostels/${hostelId}/staff/export?format=json`, {
+                          headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+                        });
+                        if (!resp.ok) throw new Error('Failed');
+                        const data = await resp.json();
+                        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `staff-${hostelId}-${new Date().toISOString().split('T')[0]}.json`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                        notification.success('Staff exported (JSON)');
+                      } catch (e) {
+                        console.error(e);
+                        notification.error('Export failed');
+                      }
+                    }}
+                    className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    <DownloadIcon className="h-4 w-4 mr-2" /> JSON
+                  </button>
+                </div>
+              )}
+              {canCreateStaff && (
                 <button
                   onClick={() => setShowCreateRoleForm(true)}
                   className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                   disabled={loadingOperations.size > 0}
                 >
-                  <SettingsIcon className="h-4 w-4 mr-2" />
+                  {loadingOperations.has('createRole') ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700 mr-2"></div>
+                  ) : (
+                    <ShieldIcon className="h-4 w-4 mr-2" />
+                  )}
                   Create Role
                 </button>
               )}
-              {(user?.permissions || []).includes('warden_update') && (
+              {(user?.permissions || []).includes('staff_create') && (
                 <button
                   onClick={() => setShowCreateForm(true)}
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
@@ -1195,7 +1260,7 @@ export const StaffManagement: React.FC = () => {
         </div>
 
         {/* Statistics Cards */}
-        <PermissionGate permission="warden_update">
+        <PermissionGate permission="staff_read">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-5">
@@ -1288,7 +1353,7 @@ export const StaffManagement: React.FC = () => {
                   : "No staff members have been added yet."
                 }
               </p>
-              <PermissionGate permission="role_update">
+              <PermissionGate permission="staff_create">
                 <div className="mt-6">
                   <button
                     onClick={() => setShowCreateForm(true)}
@@ -1316,7 +1381,7 @@ export const StaffManagement: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Role
                     </th>
-                    <PermissionGate permission="role_read">
+                    <PermissionGate permission="staff_read">
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Permissions
                       </th>
@@ -1324,7 +1389,7 @@ export const StaffManagement: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <PermissionGate permissions={['role_update', 'role_assign']} requireAll={false}>
+                    <PermissionGate permissions={['staff_update', 'role_assign']} requireAll={false}>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
                       </th>
@@ -1371,7 +1436,7 @@ export const StaffManagement: React.FC = () => {
                           )}
                         </div>
                       </td>
-                      <PermissionGate permission="role_read">
+                      <PermissionGate permission="staff_read">
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-900">
                             {member.permissions?.length || 0} permission{(member.permissions?.length || 0) !== 1 ? 's' : ''}
@@ -1392,7 +1457,7 @@ export const StaffManagement: React.FC = () => {
                         </span>
                       </td>
                       <PermissionGate 
-                        permissions={['role_update', 'role_assign']} 
+                        permissions={['staff_update', 'role_assign']} 
                         requireAll={false}
                         fallback={
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -1402,7 +1467,7 @@ export const StaffManagement: React.FC = () => {
                           </td>
                         }
                       >
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <td className="px-6 py-4 whitespace-nowraptext-right text-sm font-medium">
                           <div className="relative dropdown-container" style={{ zIndex: openDropdown === member.id ? 9999 : 'auto' }}>
                             <button
                               onClick={() => setOpenDropdown(openDropdown === member.id ? null : member.id)}
@@ -1418,7 +1483,7 @@ export const StaffManagement: React.FC = () => {
                                 <div className="fixed inset-0 z-[9998]" onClick={() => setOpenDropdown(null)}></div>
                                 <div className="absolute right-0 z-[9999] mt-2 w-48 bg-white rounded-md shadow-xl ring-1 ring-black ring-opacity-5 border border-gray-200">
                                   <div className="py-1" role="menu">
-                                  <PermissionGate permission="role_update">
+                                  <PermissionGate permission="staff_update">
                                     <button
                                       onClick={() => {
                                         setEditingStaff(member);
@@ -1442,11 +1507,11 @@ export const StaffManagement: React.FC = () => {
                                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                       role="menuitem"
                                     >
-                                      <ShieldIcon className="w-4 h-4 mr-3" />
+                                      <ShieldIcon className="w -4 h-4 mr-3" />
                                       Edit Role/Permissions
                                     </button>
                                   </PermissionGate>
-                                  <PermissionGate permission="role_update">
+                                  <PermissionGate permission="staff_update">
                                     <button
                                       onClick={() => {
                                         handleToggleStaffStatus(member.id, !member.isActive);
@@ -1468,7 +1533,7 @@ export const StaffManagement: React.FC = () => {
                                       {member.isActive ? 'Deactivate' : 'Activate'}
                                     </button>
                                   </PermissionGate>
-                                  <PermissionGate permission="role_update">
+                                  <PermissionGate permission="staff_delete">
                                     <button
                                       onClick={() => {
                                         handleDeleteStaff(member.id);
@@ -1502,8 +1567,8 @@ export const StaffManagement: React.FC = () => {
         </div>
 
         {/* Create/Edit Staff Form Modal */}
-        <PermissionGate permission="role_update">
-          {(showCreateForm || editingStaff) && (
+        {showCreateForm && (
+        <PermissionGate permissions={['staff_update', 'role_assign']} requireAll={false}>
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
             <div className="relative top-10 mx-auto p-6 border w-full max-w-md shadow-xl rounded-lg bg-white">
               <div className="mb-6">
@@ -1701,11 +1766,11 @@ export const StaffManagement: React.FC = () => {
                 </form>
             </div>
           </div>
-          )}
         </PermissionGate>
+        )}
 
         {/* Create Role Modal */}
-        <PermissionGate permission="role_update">
+        <PermissionGate permission="staff_create">
           {showCreateRoleForm && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
             <div className="relative top-10 mx-auto p-6 border w-full max-w-2xl shadow-xl rounded-lg bg-white">

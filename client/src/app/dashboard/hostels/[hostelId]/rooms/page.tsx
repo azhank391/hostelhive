@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import type { Room, User } from '@/lib/types';
 import { notification } from '@/lib/toast';
+import { downloadExport } from '@/lib/download';
 import { 
   BedIcon, 
   PlusIcon, 
@@ -20,7 +21,8 @@ import {
   UserIcon,
   HomeIcon,
   CheckCircleIcon,
-  XIcon
+  XIcon,
+  DownloadIcon
 } from 'lucide-react';
 
 export default function HostelRoomsPage() {
@@ -34,8 +36,9 @@ export default function HostelRoomsPage() {
   const canCreateRooms = hasPermission('room_create');
   const canUpdateRooms = hasPermission('room_update');
   const canDeleteRooms = hasPermission('room_delete');
-  const canAllocateRooms = hasPermission('room_allocate');
-  const canDeallocateRooms = hasPermission('room_deallocate');
+  const canAllocateRooms = hasPermission('room_allocation_create');
+  const canDeallocateRooms = hasPermission('room_allocation_delete');
+  const canExportRooms = hasPermission('export_room_data');
   
   // State management
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -161,6 +164,20 @@ export default function HostelRoomsPage() {
   const clearSearch = useCallback(() => {
     setSearchQuery('');
   }, []);
+
+  // Export rooms
+  const handleExportRooms = useCallback(async (format: 'csv' | 'json' = 'csv') => {
+    if (!hostelId) return;
+    try {
+      await downloadExport({ url: `/api/hostels/${hostelId}/rooms/export`, format, filename: `rooms-${hostelId}` });
+      notification.success(`Rooms exported as ${format.toUpperCase()}`);
+    } catch (e) {
+      console.error(e);
+      notification.error('Failed to export rooms');
+    }
+  }, [hostelId]);
+
+  // Render header actions (export) - we add an export button near filters/search
 
   // CRUD Operations
   const handleCreateRoom = async () => {
@@ -700,6 +717,26 @@ export default function HostelRoomsPage() {
         <>
           {/* Desktop Table View */}
           <Card className="overflow-hidden hidden md:block">
+                {canExportRooms && (
+                  <div className="flex justify-end px-6 pt-4">
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => handleExportRooms('csv')}
+                        className="flex items-center"
+                      >
+                        <DownloadIcon size={16} className="mr-2" /> Export CSV
+                      </Button>
+                      <Button
+                        variant="text"
+                        onClick={() => handleExportRooms('json')}
+                        className="flex items-center"
+                      >
+                        <DownloadIcon size={16} className="mr-2" /> JSON
+                      </Button>
+                    </div>
+                  </div>
+                )}
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -747,9 +784,7 @@ export default function HostelRoomsPage() {
                               <div className="text-sm font-medium text-gray-900">
                                 Room {room.roomNumber}
                               </div>
-                              <div className="text-sm text-gray-500">
-                                ID: {room.id}
-                              </div>
+                              {/* Internal ID intentionally hidden to reduce clutter */}
                             </div>
                           </div>
                         </td>
@@ -1219,7 +1254,7 @@ export default function HostelRoomsPage() {
                               </p>
                             </div>
                             {/* Only show Remove button if user has allocate_rooms permission */}
-                            {hasPermission('room_allocate') && (
+                            {hasPermission('room_allocation_create') && (
                               <Button
                                 variant="outline"
                                 size="sm"

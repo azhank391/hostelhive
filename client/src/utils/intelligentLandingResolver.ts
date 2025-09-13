@@ -25,12 +25,13 @@ export class IntelligentLandingResolver {
    * Defines the order of sections to check for landing pages
    */
   private static SECTION_PRIORITIES = [
+    // Dashboard removed as explicit permission; hostel_read implies base dashboard
     {
       section: 'dashboard',
-      permission: 'view_dashboard',
+      permission: 'hostel_read',
       path: '/dashboard',
       autoExpand: null,
-      description: 'Full Dashboard Access'
+      description: 'Base Dashboard Access'
     },
     {
       section: 'students',
@@ -62,21 +63,21 @@ export class IntelligentLandingResolver {
     },
     {
       section: 'staff',
-      permission: 'role_read',
+      permission: 'staff_read',
       path: '/dashboard/staff',
       autoExpand: 'staff',
       description: 'Staff Management'
     },
     {
       section: 'reports',
-      permission: 'report_read',
+      permission: 'view_reports',
       path: '/dashboard/reports',
       autoExpand: 'reports',
       description: 'Reports & Analytics'
     },
     {
       section: 'billing',
-      permission: 'billing_read',
+      permission: 'view_billing',
       path: '/dashboard/billing',
       autoExpand: 'billing',
       description: 'Billing Management'
@@ -177,7 +178,7 @@ export class IntelligentLandingResolver {
    * @returns Boolean indicating dashboard access
    */
   static hasDashboardAccess(permissions: UserPermissions): boolean {
-    return permissions['view_dashboard'] === true;
+  return permissions['hostel_read'] === true;
   }
 
   /**

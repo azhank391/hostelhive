@@ -112,7 +112,7 @@ export const HostelManagementGate: React.FC<{ children: ReactNode; fallback?: Re
   fallback = null 
 }) => (
   <PermissionGate
-    permissions={['hostel_update', 'hostel_read', 'hostel_settings_update', 'hostel_stats_read']}
+    permissions={['hostel_read', 'hostel_update', 'hostel_settings_update', 'view_hostel_stats']}
     fallback={fallback}
   >
     {children}
@@ -127,7 +127,7 @@ export const StudentManagementGate: React.FC<{ children: ReactNode; fallback?: R
   fallback = null 
 }) => (
   <PermissionGate
-    permissions={['student_update', 'student_read', 'student_room_assign', 'room_read']}
+    permissions={['student_read', 'student_update', 'manage_student_rooms', 'room_read']}
     fallback={fallback}
   >
     {children}
@@ -142,7 +142,7 @@ export const RoomManagementGate: React.FC<{ children: ReactNode; fallback?: Reac
   fallback = null 
 }) => (
   <PermissionGate
-    permissions={['room_update', 'room_read', 'room_allocate', 'room_deallocate']}
+    permissions={['room_update', 'room_read', 'room_allocation_create', 'room_allocation_delete']}
     fallback={fallback}
   >
     {children}
@@ -172,7 +172,7 @@ export const VisitorManagementGate: React.FC<{ children: ReactNode; fallback?: R
   fallback = null 
 }) => (
   <PermissionGate
-    permissions={['visitor_create', 'visitor_read', 'visitor_update', 'visitor_checkout']}
+    permissions={['visitor_create', 'visitor_read', 'visitor_update']}
     fallback={fallback}
   >
     {children}
@@ -187,7 +187,8 @@ export const WardenManagementGate: React.FC<{ children: ReactNode; fallback?: Re
   fallback = null 
 }) => (
   <PermissionGate
-    permissions={['warden_update', 'warden_read', 'warden_role_assign']}
+    // Warden now only has staff_read (no staff CRUD or role assignment)
+    permissions={['staff_read']}
     fallback={fallback}
   >
     {children}
@@ -202,7 +203,7 @@ export const RoleManagementGate: React.FC<{ children: ReactNode; fallback?: Reac
   fallback = null 
 }) => (
   <PermissionGate
-    permissions={['role_update', 'role_read', 'role_assign']}
+    permissions={['staff_read', 'staff_update', 'role_assign']}
     fallback={fallback}
   >
     {children}
@@ -217,7 +218,8 @@ export const SystemAdminGate: React.FC<{ children: ReactNode; fallback?: ReactNo
   fallback = null 
 }) => (
   <PermissionGate
-    permission="super_admin"
+    // Use canonical system-level permission (superadmin holds manage_system)
+    permission="manage_system"
     fallback={fallback}
   >
     {children}
@@ -247,7 +249,7 @@ export const BasicUserGate: React.FC<{ children: ReactNode; fallback?: ReactNode
   fallback = null 
 }) => (
   <PermissionGate
-    permissions={['profile_read', 'view_dashboard', 'complaint_create', 'complaint_read', 'visitor_create', 'visitor_read']}
+    permissions={['manage_profile', 'view_profile', 'complaint_create', 'complaint_read', 'visitor_create', 'visitor_read']}
     fallback={fallback}
   >
     {children}
