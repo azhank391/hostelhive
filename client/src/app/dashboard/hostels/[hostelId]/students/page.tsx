@@ -60,8 +60,7 @@ export default function HostelStudentsPage() {
   const canAllocateRooms = hasPermission('room_allocation_create'); // ONLY allow if user has room_allocation_create permission
   const canDeallocateRooms = hasPermission('room_allocation_delete'); // ONLY allow if user has room_allocation_delete permission
   const canViewRooms = hasPermission('room_read'); // Required to view room information
-  const canManageStudentRooms = hasPermission('room_allocation_create');
-  const canViewStudentRooms = hasPermission('room_read');
+  const canViewStudentRooms = hasPermission('view_student_rooms');
   const canExportStudents = hasPermission('export_student_data');
   
   
@@ -605,16 +604,26 @@ export default function HostelStudentsPage() {
             {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
           
-          {/* Export button - only if user has export permission */}
+          {/* Export buttons - only if user has export permission */}
           {canExportStudents && (
-            <Button 
-              variant="outline" 
-              className="flex items-center justify-center px-4 py-2 w-full sm:w-auto"
-              onClick={() => handleExportStudents('csv')}
-            >
-              <DownloadIcon size={16} className="mr-2" />
-              Export CSV
-            </Button>
+            <>
+              <Button 
+                variant="outline" 
+                className="flex items-center justify-center px-4 py-2 w-full sm:w-auto"
+                onClick={() => handleExportStudents('csv')}
+              >
+                <DownloadIcon size={16} className="mr-2" />
+                Export CSV
+              </Button>
+              <Button 
+                variant="outline" 
+                className="flex items-center justify-center px-4 py-2 w-full sm:w-auto"
+                onClick={() => handleExportStudents('json')}
+              >
+                <DownloadIcon size={16} className="mr-2" />
+                Export JSON
+              </Button>
+            </>
           )}
           
           {/* Show Add New Student button only if user has student_create permission */}
@@ -743,9 +752,11 @@ export default function HostelStudentsPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Contact
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Room
-                      </th>
+                      {canViewStudentRooms && (
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Room
+                        </th>
+                      )}
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
                       </th>
@@ -771,44 +782,46 @@ export default function HostelStudentsPage() {
                             <div className="text-sm text-gray-500">{(student as any).phone}</div>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {student.roomNumber ? (
-                            <div className="flex items-center space-x-2">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                Room {student.roomNumber}
-                              </span>
-                              {canDeallocateRooms && (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  className="px-2 py-1 text-xs hover:bg-red-50 hover:border-red-300 hover:text-red-600"
-                                  onClick={() => handleRoomDeallocation(student.id)}
-                                  disabled={isDeleting === student.id}
-                                >
-                                  {isDeleting === student.id ? (
-                                    <LoadingSpinner size="sm" className="text-red-600" />
-                                  ) : (
-                                    '×'
-                                  )}
-                                </Button>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm text-gray-500">Not assigned</span>
-                              {canAllocateRooms && (
-                                <Button 
-                                  variant="primary" 
-                                  size="sm" 
-                                  className="text-xs"
-                                  onClick={() => openRoomAllocationModal(student)}
-                                >
-                                  Allocate
-                                </Button>
-                              )}
-                            </div>
-                          )}
-                        </td>
+                        {canViewStudentRooms && (
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {student.roomNumber ? (
+                              <div className="flex items-center space-x-2">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  Room {student.roomNumber}
+                                </span>
+                                {canDeallocateRooms && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="px-2 py-1 text-xs hover:bg-red-50 hover:border-red-300 hover:text-red-600"
+                                    onClick={() => handleRoomDeallocation(student.id)}
+                                    disabled={isDeleting === student.id}
+                                  >
+                                    {isDeleting === student.id ? (
+                                      <LoadingSpinner size="sm" className="text-red-600" />
+                                    ) : (
+                                      '×'
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm text-gray-500">Not assigned</span>
+                                {canAllocateRooms && (
+                                  <Button 
+                                    variant="primary" 
+                                    size="sm" 
+                                    className="text-xs"
+                                    onClick={() => openRoomAllocationModal(student)}
+                                  >
+                                    Allocate
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        )}
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="relative inline-block text-left">
                             <select

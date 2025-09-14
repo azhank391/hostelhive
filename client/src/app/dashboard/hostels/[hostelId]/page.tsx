@@ -11,7 +11,7 @@ import { useCurrentHostelId } from '@/lib/context-aware-api';
 import { adminApi } from '@/lib/api';
 import { useHostel } from '@/context/HostelContext';
 import { STORAGE_KEYS } from '@/lib/config';
-import { CompactHostelSelector } from '@/components/HostelSelector';
+// import { CompactHostelSelector } from '@/components/HostelSelector';
 import type { DashboardStats, Complaint } from '@/lib/types';
 import { 
   BuildingIcon, 

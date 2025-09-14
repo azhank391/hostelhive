@@ -5,10 +5,18 @@ import { Button } from '../ui/Button';
 import { AlertCircleIcon, MessageSquareIcon } from 'lucide-react';
 
 interface ComplaintFormProps {
-  hasRoom: boolean;
-  onSubmit: (data: { title: string; description: string; priority: string }) => void;
+  onSubmit: (data: {
+    title: string;
+    description: string;
+    priority?: "low" | "medium" | "high" | "urgent";
+  }) => void;
   onCancel: () => void;
-  initialData?: { title: string; description: string; priority: string };
+  hasRoom: boolean;
+  initialData?: { 
+    title: string; 
+    description: string; 
+    priority?: "low" | "medium" | "high" | "urgent"; // <-- Fix here
+  };
   isEditMode?: boolean;
 }
 

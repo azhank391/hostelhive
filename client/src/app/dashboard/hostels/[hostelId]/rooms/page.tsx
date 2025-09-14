@@ -1253,8 +1253,8 @@ export default function HostelRoomsPage() {
                                 Student
                               </p>
                             </div>
-                            {/* Only show Remove button if user has allocate_rooms permission */}
-                            {hasPermission('room_allocation_create') && (
+                            {/* Only show Remove button if user has room_allocation_delete permission */}
+                            {hasPermission('room_allocation_delete') && (
                               <Button
                                 variant="outline"
                                 size="sm"

@@ -20,8 +20,7 @@ import {
   CheckCircleIcon,
   RefreshCwIcon,
   BedIcon,
-  TrendingUpIcon,
-  TrashIcon
+  TrendingUpIcon
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -96,7 +95,7 @@ interface DashboardStats {
  */
 export const StudentDashboard = React.memo(() => {
   const { user } = useAuth()
-  const { getHostelId, hasHostel } = useCurrentHostelId()
+  const { hostelId, hasHostel } = useCurrentHostelId()
   const studentApi = useStudentApiWithHostel()
   
   // State management
@@ -192,133 +191,59 @@ export const StudentDashboard = React.memo(() => {
   // 🚀 PERFORMANCE: Optimized complaint submission
   const handleNewComplaint = useCallback(async (complaintData: { 
     title: string; 
-    description: string; 
-    priority: string; 
+    description: string;
+    priority?: 'low' | 'medium' | 'high' | 'urgent';
   }) => {
     if (!hasHostel) {
       notification.error('Please select a hostel first')
       return
     }
 
-    // Debug: Log the received complaint data
-    console.log('Received complaint data:', complaintData)
-
-    // Store the complaint data for potential revert
-    const tempComplaint: StudentComplaint = {
-      id: `temp-${Date.now()}`,
-      title: complaintData.title,
-      description: complaintData.description,
-      status: 'pending',
-      priority: complaintData.priority as 'low' | 'medium' | 'high' | 'urgent',
-      createdAt: new Date().toISOString()
-    }
-
-    // OPTIMISTIC UPDATE FIRST - immediate UI feedback
-    console.log('Creating optimistic complaint:', tempComplaint)
-    console.log('Complaint title:', tempComplaint.title)
-    console.log('Complaint description:', tempComplaint.description)
-    setDashboardData(prev => {
-      if (!prev) return prev
-      const updatedData = {
-        ...prev,
-        complaints: prev.complaints ? {
-          ...prev.complaints,
-          total: prev.complaints.total + 1,
-          pending: prev.complaints.pending + 1,
-          recent: [tempComplaint, ...prev.complaints.recent.slice(0, 4)]
-        } : {
-          total: 1,
-          pending: 1,
-          resolved: 0,
-          recent: [tempComplaint]
-        }
-      }
-             console.log('Updated dashboard data:', updatedData)
-       console.log('Recent complaints:', updatedData.complaints?.recent)
-       return updatedData
-    })
-    
-    // Close modal immediately for better UX
-    setIsComplaintModalOpen(false)
-    
     try {
-      // API call in background
       await studentApi.lodgeComplaint(complaintData)
       
-      // API succeeded - keep optimistic update
+      // Optimistic update - add temporary complaint
+      setDashboardData(prev => {
+        if (!prev) return prev
+        const newComplaint: StudentComplaint = {
+          id: `temp-${Date.now()}`,
+          title: complaintData.title,
+          description: complaintData.description,
+          status: 'pending',
+          priority: complaintData.priority || 'medium',
+          createdAt: new Date().toISOString()
+        }
+        
+        return {
+          ...prev,
+          complaints: prev.complaints ? {
+            ...prev.complaints,
+            total: prev.complaints.total + 1,
+            pending: prev.complaints.pending + 1,
+            recent: [newComplaint, ...prev.complaints.recent.slice(0, 4)]
+          } : {
+            total: 1,
+            pending: 1,
+            resolved: 0,
+            recent: [newComplaint]
+          }
+        }
+      })
+      
+      setIsComplaintModalOpen(false)
       notification.success('Complaint submitted successfully!')
       
-      // NO fetchAllData() - let optimistic updates persist!
+      // Refresh data after optimistic update
+      setTimeout(() => {
+        fetchAllData()
+      }, 1000)
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to submit complaint'
       console.error('Failed to submit complaint:', error)
       notification.error('Failed to submit complaint', { description: errorMessage })
-      
-      // Revert optimistic update on error
-      setDashboardData(prev => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          complaints: prev.complaints ? {
-            ...prev.complaints,
-            total: Math.max(0, prev.complaints.total - 1),
-            pending: Math.max(0, prev.complaints.pending - 1),
-            recent: prev.complaints.recent.filter(complaint => complaint.id !== tempComplaint.id)
-          } : prev.complaints
-        }
-      })
     }
-  }, [hasHostel, studentApi])
-
-  // 🚀 PERFORMANCE: Optimized complaint deletion
-  const handleDeleteComplaint = useCallback(async (complaintId: string) => {
-    if (!hasHostel) {
-      notification.error('Please select a hostel first')
-      return
-    }
-
-    if (!window.confirm('Are you sure you want to delete this complaint?')) return
-
-    // Store original data for potential revert
-    const originalComplaints = dashboardData?.complaints
-
-    try {
-      // Optimistic update - remove complaint immediately
-      setDashboardData(prev => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          complaints: prev.complaints ? {
-            ...prev.complaints,
-            total: Math.max(0, prev.complaints.total - 1),
-            pending: prev.complaints.pending - (prev.complaints.recent.find(c => c.id === complaintId)?.status === 'pending' ? 1 : 0),
-            resolved: prev.complaints.resolved - (prev.complaints.recent.find(c => c.id === complaintId)?.status === 'resolved' ? 1 : 0),
-            recent: prev.complaints.recent.filter(complaint => complaint.id !== complaintId)
-          } : prev.complaints
-        }
-      })
-
-      // Make API call in background
-      try {
-        await studentApi.deleteComplaint(complaintId)
-        notification.success('Complaint deleted successfully!')
-        // NO fetchAllData() - let optimistic updates persist!
-      } catch (apiError) {
-        // Revert optimistic update on API error
-        setDashboardData(prev => {
-          if (!prev) return prev
-          return {
-            ...prev,
-            complaints: originalComplaints
-          }
-        })
-        notification.error('Failed to delete complaint')
-      }
-    } catch (error) {
-      notification.error('Failed to delete complaint')
-    }
-  }, [hasHostel, studentApi, dashboardData?.complaints])
+  }, [hasHostel, studentApi, fetchAllData])
 
   // 🚀 PERFORMANCE: Optimized visitor registration
   const handleNewVisitor = useCallback(async (visitorData: { 
@@ -332,36 +257,34 @@ export const StudentDashboard = React.memo(() => {
       return
     }
 
-    // Store visitor data for potential revert
-    const tempVisitor: VisitorLog = {
-      id: `temp-${Date.now()}`,
-      visitorName: visitorData.visitorName,
-      relation: visitorData.relation,
-      checkIn: new Date().toISOString(),
-      checkOut: null,
-      createdAt: new Date().toISOString(),
-      purpose: visitorData.purpose,
-      contactNumber: visitorData.contactNumber
-    }
-
-    // OPTIMISTIC UPDATE FIRST - immediate UI feedback
-    setVisitorLogs(prev => [tempVisitor, ...prev])
-    setDashboardData(prev => prev ? {
-      ...prev,
-      todaysVisitors: (prev.todaysVisitors || 0) + 1
-    } : prev)
-    
-    // Close modal immediately for better UX
-    setIsVisitorModalOpen(false)
-    
     try {
-      // API call in background
       await studentApi.createVisitorLog(visitorData)
       
-      // API succeeded - keep optimistic update
+      // Optimistic update - add new visitor
+      const newVisitor: VisitorLog = {
+        id: `temp-${Date.now()}`,
+        visitorName: visitorData.visitorName,
+        relation: visitorData.relation,
+        checkIn: new Date().toISOString(),
+        checkOut: null,
+        createdAt: new Date().toISOString(),
+        purpose: visitorData.purpose,
+        contactNumber: visitorData.contactNumber
+      }
+      
+      setVisitorLogs(prev => [newVisitor, ...prev])
+      setDashboardData(prev => prev ? {
+        ...prev,
+        todaysVisitors: (prev.todaysVisitors || 0) + 1
+      } : prev)
+      
+      setIsVisitorModalOpen(false)
       notification.success('Visitor registered successfully!')
       
-      // NO fetchAllData() - let optimistic updates persist!
+      // Refresh data after optimistic update
+      setTimeout(() => {
+        fetchAllData()
+      }, 1000)
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to register visitor'
@@ -369,13 +292,9 @@ export const StudentDashboard = React.memo(() => {
       notification.error('Failed to register visitor', { description: errorMessage })
       
       // Revert optimistic update on error
-      setVisitorLogs(prev => prev.filter(visitor => visitor.id !== tempVisitor.id))
-      setDashboardData(prev => prev ? {
-        ...prev,
-        todaysVisitors: Math.max(0, (prev.todaysVisitors || 0) - 1)
-      } : prev)
+      fetchAllData()
     }
-  }, [hasHostel, dashboardData?.room, studentApi])
+  }, [hasHostel, dashboardData?.room, studentApi, fetchAllData])
 
   // 🎯 PERFORMANCE: Memoized modal handlers
   const openComplaintModal = useCallback(() => setIsComplaintModalOpen(true), [])
@@ -496,7 +415,7 @@ export const StudentDashboard = React.memo(() => {
                 </p>
                 {dashboardData?.room && (
                   <p className="text-sm text-gray-500">
-                    {dashboardData.room.occupied}/{dashboardData.room.capacity} {dashboardData.room.occupied === 1 ? 'student' : 'students'} occupied
+                    {dashboardData.room.occupied}/{dashboardData.room.capacity} occupied
                   </p>
                 )}
               </div>
@@ -567,11 +486,11 @@ export const StudentDashboard = React.memo(() => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Capacity:</span>
-                  <span className="font-medium">{dashboardData.room.capacity} {dashboardData.room.capacity === 1 ? 'student' : 'students'}</span>
+                  <span className="font-medium">{dashboardData.room.capacity} students</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Currently Occupied:</span>
-                  <span className="font-medium">{dashboardData.room.occupied} {dashboardData.room.occupied === 1 ? 'student' : 'students'}</span>
+                  <span className="font-medium">{dashboardData.room.occupied} students</span>
                 </div>
                 {dashboardData.room.floor && (
                   <div className="flex justify-between">
@@ -593,18 +512,9 @@ export const StudentDashboard = React.memo(() => {
               </div>
             ) : (
               <div className="text-center py-8">
-                <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <BedIcon className="h-6 w-6 text-yellow-600" />
-                </div>
-                <p className="text-gray-600 font-medium mb-1">No room allocated</p>
-                <p className="text-sm text-gray-500 mb-4">You haven't been assigned to a room yet</p>
-                <Button 
-                  size="sm"
-                  onClick={() => window.location.href = `/dashboard/hostels/${getHostelId()}/complaints`}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  Request Room Assignment
-                </Button>
+                <BedIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-600">No room assigned</p>
+                <p className="text-sm text-gray-500">Contact administration for room assignment</p>
               </div>
             )}
           </Card>
@@ -625,32 +535,18 @@ export const StudentDashboard = React.memo(() => {
                 {dashboardData.complaints.recent.slice(0, 3).map((complaint) => (
                   <div key={complaint.id} className="border rounded-lg p-3 hover:bg-gray-50 transition-colors">
                     <div className="flex items-center justify-between mb-1">
-                      <h4 className="font-medium text-sm">
-                        {complaint.title}
-                      </h4>
-                      <div className="flex items-center space-x-2">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          complaint.status === 'resolved' 
-                            ? 'bg-green-100 text-green-800'
-                            : complaint.status === 'in_progress'
-                            ? 'bg-blue-100 text-blue-800'  
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {complaint.status.replace('_', ' ')}
-                        </span>
-                        <Button
-                          onClick={() => handleDeleteComplaint(complaint.id)}
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700 h-6 w-6 p-0"
-                        >
-                          <TrashIcon className="h-3 w-3" />
-                        </Button>
-                      </div>
+                      <h4 className="font-medium text-sm">{complaint.title}</h4>
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        complaint.status === 'resolved' 
+                          ? 'bg-green-100 text-green-800'
+                          : complaint.status === 'in_progress'
+                          ? 'bg-blue-100 text-blue-800'  
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {complaint.status.replace('_', ' ')}
+                      </span>
                     </div>
-                    <p className="text-sm text-gray-600 line-clamp-2">
-                      {complaint.description}
-                    </p>
+                    <p className="text-sm text-gray-600 line-clamp-2">{complaint.description}</p>
                     <p className="text-xs text-gray-500 mt-1">
                       {new Date(complaint.createdAt).toLocaleDateString()}
                     </p>

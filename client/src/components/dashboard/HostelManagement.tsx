@@ -67,7 +67,7 @@ export const HostelManagement = React.memo(() => {
   const canCreateHostels = hasPermission('hostel_create')
   const canUpdateHostels = hasPermission('hostel_update')
   const canDeleteHostels = hasPermission('hostel_delete')
-  // const canManageHostelSettings = hasPermission('hostel_settings_update')
+  const canManageHostelSettings = hasPermission('hostel_settings_update')
   
   // State management
   const [hostels, setHostels] = useState<Hostel[]>([])

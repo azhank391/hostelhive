@@ -23,7 +23,7 @@ const { requirePermission } = require("../middleware/permissionMiddleware");
 router.get(
   "/dashboard",
   verifyToken,
-  requirePermission("view_dashboard"),
+  requirePermission("view_own_data"),
   getDashboardSummary
 );
 
@@ -77,23 +77,18 @@ router.get("/my-hostel", verifyToken, async (req, res) => {
 router.get(
   "/profile",
   verifyToken,
-  requirePermission("profile_read"),
+  requirePermission("view_profile"), // Changed from "profile_read"
   getMyProfile
 );
 router.put(
   "/profile",
   verifyToken,
-  requirePermission("profile_update"),
+  requirePermission("manage_profile"), // Changed from "profile_update"
   updateMyProfile
 );
 
 // Room Details
-router.get(
-  "/room",
-  verifyToken,
-  requirePermission("student_room_read"),
-  getMyRoom
-);
+router.get("/room", verifyToken, requirePermission("view_own_data"), getMyRoom);
 
 // Complaint Management
 router.post(
@@ -149,13 +144,13 @@ router.put(
 router.delete(
   "/visitor-logs/:id",
   verifyToken,
-  requirePermission("visitor_delete"),
+  requirePermission("visitor_delete"), // Ensure this is added
   deleteMyVisitorLog
 ); // ✅ NEW
 router.put(
   "/visitor-logs/:id/checkout",
   verifyToken,
-  requirePermission("visitor_checkout"),
+  requirePermission("visitor_update"), // Changed from "visitor_checkout"
   checkoutMyVisitor
 ); // ✅ NEW
 

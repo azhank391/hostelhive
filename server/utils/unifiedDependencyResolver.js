@@ -63,7 +63,6 @@ class UnifiedDependencyResolver {
     role_assign: "staff_read",
     export_staff_data: "staff_read",
 
-
     // Reports Actions
     view_reports: "view_reports",
     view_analytics: "view_reports",

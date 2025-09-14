@@ -746,6 +746,7 @@ export const StudentVisitorLogs = React.memo(() => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex justify-end space-x-2">
+                              {/* Checkout button only for active visitors */}
                               {log.status === 'active' && (
                                 <Button
                                   onClick={() => handleCheckOut(log.id)}
@@ -756,23 +757,26 @@ export const StudentVisitorLogs = React.memo(() => {
                                   <LogOutIcon className="h-4 w-4" />
                                 </Button>
                               )}
+                              {/* Edit button: disabled and faded if not active */}
                               <Button
-                                onClick={() => handleEditLog(log)}
+                                onClick={() => log.status === 'active' && handleEditLog(log)}
                                 variant="outline"
                                 size="sm"
-                                disabled={actionLoading === log.id}
+                                disabled={log.status !== 'active' || actionLoading === log.id}
+                                className={log.status !== 'active' ? "opacity-50 cursor-not-allowed" : ""}
                               >
                                 <EditIcon className="h-4 w-4" />
                               </Button>
-                                                             <Button
-                                 onClick={() => handleDeleteLog(log.id)}
-                                 variant="outline"
-                                 size="sm"
-                                 className="text-red-600 hover:text-red-700"
-                                 disabled={actionLoading === log.id}
-                               >
-                                 <TrashIcon className="h-4 w-4" />
-                               </Button>
+                              {/* Delete button: disabled and faded if not active */}
+                              <Button
+                                onClick={() => log.status === 'active' && handleDeleteLog(log.id)}
+                                variant="outline"
+                                size="sm"
+                                className={`text-red-600 hover:text-red-700 ${log.status !== 'active' ? "opacity-50 cursor-not-allowed" : ""}`}
+                                disabled={log.status !== 'active' || actionLoading === log.id}
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </Button>
                             </div>
                           </td>
                         </tr>

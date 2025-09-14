@@ -87,6 +87,7 @@ export default function VisitorsPage() {
   const canCreateVisitors = hasPermission('visitor_create');
   const canManageVisitors = hasPermission('visitor_update');
   const canCheckoutVisitors = hasPermission('visitor_update');
+  const canDeleteVisitors = hasPermission('visitor_delete');
   const canViewVisitorStats = hasPermission('view_visitor_stats');
   const canExportVisitorData = hasPermission('export_visitor_data');
   
@@ -636,6 +637,13 @@ export default function VisitorsPage() {
             <Button variant="outline" className="flex items-center" onClick={() => handleExportVisitors('csv')}>
               <DownloadIcon size={16} className="mr-2" />
               Export CSV
+            </Button>
+          </PermissionGate>
+          
+          <PermissionGate permission="export_visitor_data">
+            <Button variant="outline" className="flex items-center" onClick={() => handleExportVisitors('json')}>
+              <DownloadIcon size={16} className="mr-2" />
+              Export JSON
             </Button>
           </PermissionGate>
           

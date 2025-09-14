@@ -60,6 +60,7 @@ export function ManageStudentsGate({ children, fallback }: { children: React.Rea
   )
 }
 
+
 export function ManageRoomsGate({ children, fallback }: { children: React.ReactNode; fallback?: React.ReactNode }) {
   return (
     <PermissionGate permission="room_update" fallback={fallback}>

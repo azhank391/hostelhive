@@ -301,10 +301,10 @@ export const StaffManagement: React.FC = () => {
   // Use permission hook for cleaner permission checking
   const canViewStaff = hasPermission('staff_read');
   const canManageStaff = hasPermission('staff_update');
-  
   const canCreateStaff = hasPermission('staff_create');
   const canDeleteStaff = hasPermission('staff_delete');
   const canToggleStaffStatus = hasPermission('staff_update');
+  const canAssignRoles = hasPermission('role_assign');
   const canExportStaff = hasPermission('export_staff_data');
 
   useEffect(() => {
@@ -1682,22 +1682,35 @@ export const StaffManagement: React.FC = () => {
                       <label className="block text-sm font-semibold text-gray-800 mb-2">
                         Staff Role <span className="text-red-500">*</span>
                       </label>
-                      <select
-                        name="roleId"
-                        defaultValue={editingStaff?.role?.id || ''}
-                        required
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors bg-white"
-                      >
-                        <option value="">Choose a role for this staff member</option>
-                        {availableRoles
-                          .filter(role => role && role.id) // Ensure role has valid id
-                          .map((role, index) => (
-                          <option key={`${role.id}-${index}`} value={role.id}>
-                            {role.displayName} {role.isSystemRole ? '(System)' : '(Custom)'}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-xs text-gray-500">Determines what permissions this staff member will have</p>
+                      {canAssignRoles ? (
+                        <select
+                          name="roleId"
+                          defaultValue={editingStaff?.role?.id || ''}
+                          required
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors bg-white"
+                        >
+                          <option value="">Choose a role for this staff member</option>
+                          {availableRoles
+                            .filter(role => role && role.id) // Ensure role has valid id
+                            .map((role, index) => (
+                            <option key={`${role.id}-${index}`} value={role.id}>
+                              {role.displayName} {role.isSystemRole ? '(System)' : '(Custom)'}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm bg-gray-100 text-gray-600 sm:text-sm">
+                          {editingStaff?.role?.displayName || 'No role assigned'} 
+                          {editingStaff?.role?.isSystemRole ? ' (System)' : editingStaff?.role ? ' (Custom)' : ''}
+                          <input type="hidden" name="roleId" value={editingStaff?.role?.id || ''} />
+                        </div>
+                      )}
+                      <p className="mt-1 text-xs text-gray-500">
+                        {canAssignRoles 
+                          ? "Determines what permissions this staff member will have"
+                          : "You don't have permission to change roles"
+                        }
+                      </p>
                     </div>
                     
                     {!editingStaff && (
