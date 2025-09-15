@@ -501,7 +501,7 @@ exports.createStudent = async (req, res) => {
       password: hashedPassword,
       phone: phone || null,
       role: "student",
-      role_id: studentRole.id, // Set the RBAC role ID (snake_case for database)
+      roleId: studentRole.id, // Set the RBAC role ID
       hostelId,
       isActive: true,
       // Only students need to change their default password
@@ -739,7 +739,7 @@ exports.createWarden = async (req, res) => {
       password: hashedPassword,
       phone,
       role: "warden", // Always set to "warden"
-      role_id: wardenRole.id, // Set the RBAC role ID (snake_case for database)
+      roleId: wardenRole.id, // Set the RBAC role ID
       hostelId,
       requiresPasswordChange: true, // Force password change on first login
     });

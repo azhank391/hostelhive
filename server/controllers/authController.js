@@ -36,7 +36,7 @@ exports.registerOwner = async (req, res) => {
       email,
       password: hashedPassword,
       role: "owner", // Fixed role for owners
-      role_id: ownerRole.id, // Set the RBAC role ID (snake_case for database)
+      roleId: ownerRole.id, // Set the RBAC role ID
       hostelId: null, // Will be set when they create a hostel
     });
 
@@ -110,7 +110,7 @@ exports.registerUser = async (req, res) => {
       email,
       password: hashedPassword,
       role,
-      role_id: systemRole.id, // Set the RBAC role ID (snake_case for database)
+      roleId: systemRole.id, // Set the RBAC role ID
       hostelId,
     });
 

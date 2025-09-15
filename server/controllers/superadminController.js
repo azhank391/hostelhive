@@ -462,12 +462,24 @@ exports.createOwner = async (req, res) => {
     const bcrypt = require("bcrypt");
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Find the owner system role
+    const { Role } = require("../models");
+    const ownerRole = await Role.findOne({
+      where: { name: "owner", isSystemRole: true },
+    });
+
+    if (!ownerRole) {
+      console.error("❌ Owner system role not found in database");
+      return res.status(500).json({ message: "System configuration error" });
+    }
+
     // Create owner
     const owner = await User.create({
       name,
       email,
       password: hashedPassword,
       role: "owner",
+      roleId: ownerRole.id, // Set the RBAC role ID
       hostelId: null,
     });
 

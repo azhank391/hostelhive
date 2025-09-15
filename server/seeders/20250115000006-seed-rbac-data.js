@@ -484,7 +484,7 @@ module.exports = {
     const wardenPermissions = [
       // Hostel information (read-only)
       "view_hostel_stats",
-      "hostel_read",  // used for the warden dashbaord page
+      "hostel_read", // used for the warden dashbaord page
 
       // Room management
       "room_create",
