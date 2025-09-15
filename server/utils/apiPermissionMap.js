@@ -152,7 +152,7 @@ const API_PERMISSION_MAP = {
   // ========================================
   // Student self-service (canonical permissions)
   "GET /api/student/dashboard": ["hostel_read"], // dashboard access now tied to hostel visibility
-  "GET /api/student/profile": ["view_profile"],
+  "GET /api/student/profile": ["view_own_data"],
   "PUT /api/student/profile": ["manage_profile"],
   "GET /api/student/room": ["view_student_rooms"],
   "POST /api/student/complaints": ["complaint_create"],

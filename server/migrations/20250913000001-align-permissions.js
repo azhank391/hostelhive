@@ -92,7 +92,7 @@ module.exports = {
       "visitor_stats_read",
       "student_export",
       "hostel_stats_read",
-      "complaint_resolve",
+      "complaint_update",
       "data_export",
       "report_read",
       "analytics_read",

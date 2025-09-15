@@ -9,7 +9,7 @@ import { useAdminApiWithHostel, useCurrentHostelId } from '@/lib/context-aware-a
 import { usePermissions } from '@/contexts/PermissionContext';
 import { getAccessibleSidebarSections } from '@/lib/permission-routing';
 
-import { BuildingIcon, UsersIcon, LayoutDashboardIcon, BedIcon, SettingsIcon, HelpCircleIcon, XIcon, GraduationCapIcon, AlertCircleIcon, UserCheckIcon, CreditCardIcon, BarChart3Icon, EyeIcon, UserPlusIcon, MessageCircleIcon, FileTextIcon, ShieldIcon } from 'lucide-react';
+import { BuildingIcon, LayoutDashboardIcon, BedIcon, SettingsIcon, HelpCircleIcon, XIcon, GraduationCapIcon, AlertCircleIcon, UserCheckIcon, CreditCardIcon, BarChart3Icon, EyeIcon, UserPlusIcon, MessageCircleIcon, FileTextIcon, ShieldIcon } from 'lucide-react';
 
 interface SidebarProps {
   mobile?: boolean;
@@ -71,20 +71,14 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
     icon: UserCheckIcon,
     path: '/visitors',
     permission: 'visitor_read' // Using actual database permission
-  },
+  }, 
+  //this is owner dashboard page
   {
     id: 'billing',
     name: 'Billing',
     icon: CreditCardIcon,
     path: '/billing',
     permission: 'view_billing'
-  },
-  {
-    id: 'reports',
-    name: 'Reports',
-    icon: FileTextIcon,
-    path: '/reports',
-    permission: 'view_reports'
   }
 ];
 
@@ -218,23 +212,17 @@ export const Sidebar = memo(({
     return items.filter(item => {
       // Map item IDs to section names for filtering
       const sectionMap: Record<string, string> = {
-        'rooms': 'rooms',
-        'students': 'students', 
-        'staff': 'staff',
+        'students': 'students',
+        'staff': 'staff', 
         'complaints': 'complaints',
+        'rooms': 'rooms',
         'visitors': 'visitors',
-        'billing': 'billing',
-        'reports': 'reports'
+        'billing': 'billing'
       };
       
       const section = sectionMap[item.id];
       if (section) {
         return accessibleSections.includes(section);
-      }
-      
-      // For superadmin-only items
-      if (item.id === 'billing' || item.id === 'reports') {
-        return user.role === 'superadmin';
       }
       
       // Default: use permission check
@@ -250,7 +238,7 @@ export const Sidebar = memo(({
     }
     
     // For custom roles, only show if they have dashboard access or are an owner
-    return hasPermission('view_dashboard') || isOwner;
+    return hasPermission('view_dashboard_owner') || isOwner;
   }, [user?.role, hasPermission, isOwner]);
 
   // Check if there are any visible items in GENERAL section
@@ -258,7 +246,7 @@ export const Sidebar = memo(({
     let itemCount = 0;
     
     // Dashboard item
-    if (user?.role === 'superadmin' || user?.role === 'owner' || user?.role === 'warden' || user?.role === 'student' || hasPermission('view_dashboard')) {
+    if (user?.role === 'superadmin' || user?.role === 'owner' || user?.role === 'warden' || user?.role === 'student' || hasPermission('view_dashboard_owner')) {
       itemCount++;
     }
     
@@ -382,18 +370,13 @@ export const Sidebar = memo(({
         itemPath = `/dashboard/${user?.role}/visitors`;
       }
     } else if (item.id === 'billing') {
-      // Billing is superadmin-only
+      // Billing is available to users with view_billing permission
       if (isSuperadmin) {
         itemPath = '/dashboard/superadmin/billing';
+      } else if (currentHostelId) {
+        itemPath = `/dashboard/hostels/${currentHostelId}/billing`;
       } else {
-        itemPath = '/dashboard/superadmin/billing'; // Fallback, but should not be shown
-      }
-    } else if (item.id === 'reports') {
-      // Reports is superadmin-only
-      if (isSuperadmin) {
-        itemPath = '/dashboard/superadmin/analytics';
-      } else {
-        itemPath = '/dashboard/superadmin/analytics'; // Fallback, but should not be shown
+        itemPath = `/dashboard/${user?.role}/billing`;
       }
     }
     
@@ -456,7 +439,7 @@ export const Sidebar = memo(({
             </p>
             <nav className="mt-2 lg:mt-1 space-y-2 sm:space-y-1">
               {/* Dashboard access - only show if user has explicit dashboard permission */}
-              {(user?.role === 'superadmin' || user?.role === 'owner' || user?.role === 'warden' || user?.role === 'student' || hasPermission('view_dashboard')) && (
+              {(user?.role === 'superadmin' || user?.role === 'owner' || user?.role === 'warden' || user?.role === 'student' || hasPermission('view_dashboard_owner')) && (
                 <NavItem 
                   to={
                     isSuperadmin ? '/dashboard/superadmin' : 

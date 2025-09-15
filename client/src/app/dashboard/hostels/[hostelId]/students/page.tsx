@@ -60,7 +60,7 @@ export default function HostelStudentsPage() {
   const canAllocateRooms = hasPermission('room_allocation_create'); // ONLY allow if user has room_allocation_create permission
   const canDeallocateRooms = hasPermission('room_allocation_delete'); // ONLY allow if user has room_allocation_delete permission
   const canViewRooms = hasPermission('room_read'); // Required to view room information
-  const canViewStudentRooms = hasPermission('view_student_rooms');
+  const canViewStudentRooms = hasPermission('room_allocation_read');
   const canExportStudents = hasPermission('export_student_data');
   
   

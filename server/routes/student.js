@@ -77,7 +77,7 @@ router.get("/my-hostel", verifyToken, async (req, res) => {
 router.get(
   "/profile",
   verifyToken,
-  requirePermission("view_profile"), // Changed from "profile_read"
+  requirePermission("view_own_data"), // Changed from "profile_read"
   getMyProfile
 );
 router.put(

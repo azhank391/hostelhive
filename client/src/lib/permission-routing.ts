@@ -24,10 +24,7 @@ const PERMISSION_ROUTE_MAP: RouteMap[] = [
   { permission: 'complaint_read', path: '/complaints', priority: 60 },
   { permission: 'visitor_read', path: '/visitors', priority: 50 },
   { permission: 'staff_read', path: '/staff', priority: 40 },
-  
-  // Lower priority routes (reporting)
-  { permission: 'view_reports', path: '/reports', priority: 30 },
-  { permission: 'view_analytics', path: '/analytics', priority: 20 },
+  { permission: 'view_billing', path: '/billing', priority: 30 },
   
   // Dashboard access (lowest priority - only if explicitly granted)
   { permission: 'hostel_read', path: '', priority: 10 },
@@ -142,8 +139,6 @@ export function getAccessibleSidebarSections(user: AuthUser): string[] {
     'staff_read': 'staff',
     'complaint_read': 'complaints',
     'visitor_read': 'visitors',
-    'view_reports': 'reports',
-    'view_analytics': 'analytics',
     'view_billing': 'billing'
   };
 

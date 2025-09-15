@@ -94,8 +94,7 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
     title: "Core Access",
     description: "Essential permissions required for basic functionality",
     permissions: [
-      'hostel_read',       // View hostel information (basic access)
-      'view_hostel_stats'  // Hostel stats (read-only analytics)
+      'hostel_read'        // View hostel information (basic access)
     ],
     icon: "🏠",
     required: true
@@ -109,7 +108,6 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
       'student_read',         // View student details
       'student_create',       // Add new students  
       'student_update',       // Edit student information
-      'manage_student_rooms', // Assign/change rooms
       'export_student_data',  // Export student data
       'student_delete'        // Remove students (HIGH PRIVILEGE)
     ],
@@ -166,7 +164,6 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
       'complaint_read',       // View complaints
       'complaint_create',     // Create complaints
       'complaint_update',     // Update complaint details / resolve
-      'view_complaint_stats', // View complaint statistics
       'export_complaint_data',// Export complaints
       'complaint_delete'      // Remove complaints (HIGH PRIVILEGE)
     ],
@@ -215,11 +212,9 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
 
   // Reports & Analytics
   reports_analytics: {
-    title: "Reports & Analytics",
-    description: "Access hostel reports, statistics and data exports",
+    title: "Reports & Analytics", 
+    description: "Access hostel data exports and billing information",
     permissions: [
-      'view_reports',      // View basic reports
-      'view_analytics',    // Access analytics
       'view_billing',      // View billing information
       'export_room_data',  // Export rooms
       'export_staff_data', // Export staff
@@ -231,23 +226,6 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
     dependencies: ['hostel_read'],
     highPrivilegeWarning: {
       'data_export': 'Allows bulk export of sensitive hostel data including student and financial information.'
-    }
-  },
-
-  // Profile & Owner Management
-  profile_management: {
-    title: "Profile Management",
-    description: "Manage user profiles and owner accounts",
-    permissions: [
-      'manage_profile',    // Update own profile
-      'view_profile',      // View own profile
-      'change_password',   // Change password
-      'view_own_data'      // View own consolidated data
-    ],
-    icon: "👤", 
-    dependencies: ['hostel_read'],
-    highPrivilegeWarning: {
-      'profile_delete': 'Allows permanent deletion of user profiles. This action cannot be undone and removes all user data.'
     }
   },
 
@@ -389,12 +367,6 @@ export const StaffManagement: React.FC = () => {
       
       // Room allocation/deallocation dependencies
       if (permission === 'room_allocation_create' || permission === 'room_allocation_update' || permission === 'room_allocation_delete') {
-        allPermissions.add('student_read'); // Need to access Students page
-        allPermissions.add('room_read'); // Need to access Room Management
-      }
-      
-      // Student room assignment dependencies  
-      if (permission === 'manage_student_rooms') {
         allPermissions.add('student_read'); // Need to access Students page
         allPermissions.add('room_read'); // Need to access Room Management
       }
@@ -985,9 +957,7 @@ export const StaffManagement: React.FC = () => {
       const permissions = new Set(currentPermissions);
       
       // Always include core permissions
-  permissions.add('hostel_read');
-      permissions.add('hostel_read');
-  permissions.add('view_hostel_stats');
+      // permissions.add('hostel_read');
       
       setEditingRolePermissions(permissions);
       setIsEditingPermissions(true);

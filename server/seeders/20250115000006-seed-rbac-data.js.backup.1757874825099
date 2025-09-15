@@ -9,26 +9,7 @@ function generateUUID() {
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    console.log("🌱 Starting RBAC data seeding with permission updates...");
-
-    // ==========================================
-    // 0. CLEAN UP EXISTING RBAC DATA
-    // ==========================================
-    console.log("🧹 Cleaning up existing RBAC data...");
-
-    // Delete existing role permissions (foreign key constraint)
-    await queryInterface.bulkDelete("RolePermissions", {});
-    console.log("   - Deleted existing role permissions");
-
-    // Delete existing system roles
-    await queryInterface.bulkDelete("Roles", { is_system_role: true });
-    console.log("   - Deleted existing system roles");
-
-    // Delete existing system permissions
-    await queryInterface.bulkDelete("Permissions", {
-      is_system_permission: true,
-    });
-    console.log("   - Deleted existing system permissions");
+    console.log("🌱 Starting RBAC data seeding...");
 
     // Generate UUIDs for system roles
     const ownerRoleId = generateUUID();
@@ -54,6 +35,9 @@ module.exports = {
         created_at: new Date(),
         updated_at: new Date(),
       },
+    ]);
+
+    await queryInterface.bulkInsert("Roles", [
       {
         id: studentRoleId,
         name: "student",
@@ -66,6 +50,9 @@ module.exports = {
         created_at: new Date(),
         updated_at: new Date(),
       },
+    ]);
+
+    await queryInterface.bulkInsert("Roles", [
       {
         id: wardenRoleId,
         name: "warden",
@@ -78,6 +65,9 @@ module.exports = {
         created_at: new Date(),
         updated_at: new Date(),
       },
+    ]);
+
+    await queryInterface.bulkInsert("Roles", [
       {
         id: superadminRoleId,
         name: "superadmin",
@@ -94,62 +84,68 @@ module.exports = {
     console.log("✅ System roles created successfully");
 
     // ==========================================
-    // 2. INSERT NEW PERMISSIONS WITH IMPROVED NAMING
+    // 2. INSERT PERMISSIONS
     // ==========================================
-    console.log("🔐 Creating system permissions with improved naming...");
+    console.log("🔐 Creating system permissions...");
 
     const permissions = [
-      // 1. for students
+      // 1. Authentication & Profile Management
+      {
+        name: "manage_profile",
+        display_name: "Manage Profile",
+        description: "Update own profile information",
+        category: "profile",
+      },
+      {
+        name: "view_profile",
+        display_name: "View Profile",
+        description: "View own profile information",
+        category: "profile",
+      },
+      {
+        name: "change_password",
+        display_name: "Change Password",
+        description: "Change own password",
+        category: "profile",
+      },
       {
         name: "view_own_data",
         display_name: "View Own Data",
         description: "View own data (room, complaints, visitors)",
         category: "profile",
       },
-      // for dashboard access of owners/wardens/custom roles
-      {
-        name: "view_hostel_stats",
-        display_name: "View Dashboard for Wardens",
-        description: "Access dashboard and analytics",
-        category: "dashboard",
-      },
 
       // 2. Hostel Management
       {
-        name: "hostel_create",
-        display_name: "Create Hostel",
-        description: "Create new hostel",
-        category: "hostel",
-      },
-      {
-        name: "hostel_read",
-        display_name: "View Hostel Page",
-        description: "View hostel information and settings",
-        category: "hostel",
-      },
-      {
         name: "hostel_update",
-        display_name: "Update Hostel Information",
+        display_name: "Manage Hostel",
         description: "Create, update, and delete hostel information",
         category: "hostel",
       },
       {
-        name: "hostel_settings_update",
-        display_name: "Change Hostel Settings",
+        name: "hostel_read",
+        display_name: "View Hostel",
+        description: "View hostel information and settings",
+        category: "hostel",
+      },
+      {
+        name: "manage_hostel_settings",
+        display_name: "Manage Hostel Settings",
         description: "Update hostel settings, subdomain, etc.",
         category: "hostel",
       },
       {
-        name: "hostel_delete",
-        display_name: "Delete Hostel",
-        description: "Delete existing hostel",
+        name: "view_hostel_stats",
+        display_name: "View Hostel Stats",
+        description: "View hostel statistics and analytics",
         category: "hostel",
       },
+
       // 3. Room Management
       {
-        name: "room_create",
-        display_name: "Create Rooms",
-        description: "Create new rooms",
+        name: "room_update",
+        display_name: "Manage Rooms",
+        description: "Create, update, and delete rooms",
         category: "rooms",
       },
       {
@@ -159,21 +155,15 @@ module.exports = {
         category: "rooms",
       },
       {
-        name: "room_update",
-        display_name: "Manage Rooms",
-        description: "Create, update, and delete rooms",
-        category: "rooms",
-      },
-      {
-        name: "room_delete",
-        display_name: "Delete Rooms",
-        description: "Delete existing rooms",
-        category: "rooms",
-      },
-      {
-        name: "room_allocation_create",
+        name: "room_allocate",
         display_name: "Allocate Rooms",
         description: "Assign rooms to students",
+        category: "rooms",
+      },
+      {
+        name: "room_deallocate",
+        display_name: "Deallocate Rooms",
+        description: "Remove room assignments",
         category: "rooms",
       },
       {
@@ -182,24 +172,12 @@ module.exports = {
         description: "View room allocation details",
         category: "rooms",
       },
-      {
-        name: "room_allocation_delete",
-        display_name: "Deallocate Rooms",
-        description: "Remove room assignments",
-        category: "rooms",
-      },
-      {
-        name: "export_room_data",
-        display_name: "Export Room Data",
-        description: "Export room information",
-        category: "rooms",
-      },
 
       // 4. Student Management
       {
-        name: "student_create",
-        display_name: "Create Students",
-        description: "Create new student records",
+        name: "student_update",
+        display_name: "Manage Students",
+        description: "Create, update, and delete student records",
         category: "students",
       },
       {
@@ -209,15 +187,15 @@ module.exports = {
         category: "students",
       },
       {
-        name: "student_update",
-        display_name: "Manage Students",
-        description: "Create, update, and delete student records",
+        name: "manage_student_rooms",
+        display_name: "Manage Student Rooms",
+        description: "Assign/change student rooms",
         category: "students",
       },
       {
-        name: "student_delete",
-        display_name: "Delete Students",
-        description: "Delete student records",
+        name: "view_student_rooms",
+        display_name: "View Student Rooms",
+        description: "View student room assignments",
         category: "students",
       },
       {
@@ -253,15 +231,15 @@ module.exports = {
         category: "staff",
       },
       {
-        name: "role_assign",
-        display_name: "Assign Roles",
-        description: "Assign roles to staff members",
+        name: "staff_status_toggle",
+        display_name: "Toggle Staff Status",
+        description: "Activate/deactivate staff members",
         category: "staff",
       },
       {
-        name: "export_staff_data",
-        display_name: "Export Staff Data",
-        description: "Export staff information",
+        name: "staff_assign",
+        display_name: "Assign Staff",
+        description: "Assign staff members to roles and hostels",
         category: "staff",
       },
 
@@ -292,14 +270,8 @@ module.exports = {
       },
       {
         name: "view_complaint_stats",
-        display_name: "View Complaint Analytics",
+        display_name: "View Complaint Stats",
         description: "View complaint analytics",
-        category: "complaints",
-      },
-      {
-        name: "export_complaint_data",
-        display_name: "Export Complaint Data",
-        description: "Export complaint data",
         category: "complaints",
       },
 
@@ -323,9 +295,15 @@ module.exports = {
         category: "visitors",
       },
       {
-        name: "visitor_delete",
-        display_name: "Delete Visitors",
-        description: "Delete visitor logs",
+        name: "visitor_checkout",
+        display_name: "Checkout Visitors",
+        description: "Check out visitors",
+        category: "visitors",
+      },
+      {
+        name: "view_visitor_stats",
+        display_name: "View Visitor Stats",
+        description: "View visitor analytics",
         category: "visitors",
       },
       {
@@ -337,6 +315,24 @@ module.exports = {
 
       // 8. Reports & Analytics
       {
+        name: "view_reports",
+        display_name: "View Reports",
+        description: "View various reports",
+        category: "reports",
+      },
+      {
+        name: "export_data",
+        display_name: "Export Data",
+        description: "Export data in various formats",
+        category: "reports",
+      },
+      {
+        name: "view_analytics",
+        display_name: "View Analytics",
+        description: "View analytics dashboards",
+        category: "reports",
+      },
+      {
         name: "view_billing",
         display_name: "View Billing",
         description: "View billing information",
@@ -345,13 +341,13 @@ module.exports = {
 
       // 9. System Administration (Superadmin only)
       {
-        name: "system_stats_read",
-        display_name: "View System Stats",
-        description: "View system-wide statistics",
+        name: "manage_system",
+        display_name: "Manage System",
+        description: "System-wide management",
         category: "system",
       },
       {
-        name: "hostel_global_manage",
+        name: "manage_all_hostels",
         display_name: "Manage All Hostels",
         description: "Manage all hostels in system",
         category: "system",
@@ -363,21 +359,15 @@ module.exports = {
         category: "system",
       },
       {
-        name: "owner_manage",
-        display_name: "Create Owners",
-        description: "Create and manage owners",
-        category: "system",
-      },
-      {
-        name: "billing_manage",
+        name: "manage_billing",
         display_name: "Manage Billing",
         description: "Manage billing and payments",
         category: "system",
       },
       {
-        name: "billing_read",
-        display_name: "View Billing",
-        description: "View billing information",
+        name: "manage_owners",
+        display_name: "Manage Owners",
+        description: "Create and manage owners",
         category: "system",
       },
     ];
@@ -392,7 +382,6 @@ module.exports = {
           display_name: permission.display_name,
           description: permission.description,
           category: permission.category,
-          operation: permission.operation || null,
           is_system_permission: true,
           created_at: new Date(),
           updated_at: new Date(),
@@ -409,31 +398,32 @@ module.exports = {
     // ==========================================
     console.log("🔗 Mapping roles to permissions...");
 
-    // Owner permissions - Full hostel management
+    // Owner gets hostel-level permissions (NOT system-level)
     const ownerPermissions = [
-      // Profile management (Dashboard access)
+      // Profile management
+      "manage_profile",
+      "view_profile",
+      "change_password",
+      "view_own_data",
+
       // Hostel management
-      "hostel_create",
-      "hostel_read",
       "hostel_update",
-      "hostel_delete",
-      "hostel_settings_update",
+      "hostel_read",
+      "manage_hostel_settings",
       "view_hostel_stats",
 
       // Room management
-      "room_create",
-      "room_read",
       "room_update",
-      "room_delete",
-      "room_allocation_create",
-      "room_allocation_delete",
+      "room_read",
+      "room_allocate",
+      "room_deallocate",
       "room_allocation_read",
 
       // Student management
-      "student_create",
-      "student_read",
       "student_update",
-      "student_delete",
+      "student_read",
+      "manage_student_rooms",
+      "view_student_rooms",
       "export_student_data",
 
       // Staff management
@@ -441,7 +431,8 @@ module.exports = {
       "staff_read",
       "staff_update",
       "staff_delete",
-      "role_assign",
+      "staff_status_toggle",
+      "staff_assign",
 
       // Complaint management
       "complaint_create",
@@ -449,140 +440,137 @@ module.exports = {
       "complaint_update",
       "complaint_delete",
       "view_complaint_stats",
-      "export_complaint_data",
 
       // Visitor management
       "visitor_create",
       "visitor_read",
       "visitor_update",
-      "visitor_delete",
+      "visitor_checkout",
+      "view_visitor_stats",
       "export_visitor_data",
 
-      // Reports & Analytics the section will be implemted later
+      // Reports & Analytics (hostel-level only)
+      "view_reports",
+      "export_data",
+      "view_analytics",
       "view_billing",
     ];
 
-    // Student permissions - Basic access only
-    const studentPermissions = [
-      // For their dashboard
-      "view_own_data",
-
-      // Complaints - students can create and view their own
-      "complaint_create",
-      "complaint_read",
-      "complaint_update", // to update their own complaints
-      "complaint_delete", // to delete their own complaints
-
-      // Visitors - students can manage their visitors
-      "visitor_create",
-      "visitor_read",
-      "visitor_update",
-      "visitor_delete",
-    ];
-
-    // Warden permissions - Day-to-day hostel management
-    const wardenPermissions = [
-      // Hostel information (read-only)
-      "view_hostel_stats",
-      "hostel_read",  // used for the warden dashbaord page
-
-      // Room management
-      "room_create",
-      "room_read",
-      "room_update",
-      "room_delete",
-      "room_allocation_create",
-      "room_allocation_delete",
-      "room_allocation_read",
-      "export_room_data",
-
-      // Student management
-      "student_create",
-      "student_read",
-      "student_update",
-      "student_delete",
-      "export_student_data",
-
-      // Complaint management
-      "complaint_read",
-      "complaint_update", // Can resolve complaints
-      "view_complaint_stats",
-      "export_complaint_data",
-      "complaint_delete",
-
-      // Visitor management
-      "visitor_create",
-      "visitor_read",
-      "visitor_update",
-      "visitor_delete",
-      "export_visitor_data",
-    ];
-
-    // Superadmin gets ALL permissions
-    const superadminPermissions = Object.keys(permissionIds);
-
-    // Function to assign permissions to a role
-    async function assignPermissionsToRole(roleId, permissionNames, roleName) {
-      let assignedCount = 0;
-
-      for (const permissionName of permissionNames) {
-        if (permissionIds[permissionName]) {
-          await queryInterface.bulkInsert("RolePermissions", [
-            {
-              id: generateUUID(),
-              role_id: roleId,
-              permission_id: permissionIds[permissionName],
-              created_at: new Date(),
-            },
-          ]);
-          assignedCount++;
-        }
+    for (const permissionName of ownerPermissions) {
+      if (permissionIds[permissionName]) {
+        await queryInterface.bulkInsert("RolePermissions", [
+          {
+            id: generateUUID(),
+            role_id: ownerRoleId,
+            permission_id: permissionIds[permissionName],
+            created_at: new Date(),
+          },
+        ]);
       }
-
-      console.log(`✅ ${roleName}: ${assignedCount} permissions assigned`);
-      return assignedCount;
     }
 
-    // Assign permissions to each role
-    const ownerCount = await assignPermissionsToRole(
-      ownerRoleId,
-      ownerPermissions,
-      "Owner"
-    );
-    const studentCount = await assignPermissionsToRole(
-      studentRoleId,
-      studentPermissions,
-      "Student"
-    );
-    const wardenCount = await assignPermissionsToRole(
-      wardenRoleId,
-      wardenPermissions,
-      "Warden"
-    );
-    const superadminCount = await assignPermissionsToRole(
-      superadminRoleId,
-      superadminPermissions,
-      "Superadmin"
-    );
+    // Student gets basic permissions
+    const studentPermissions = [
+      "manage_profile",
+      "view_profile",
+      "change_password",
+      "view_own_data",
+      "complaint_create",
+      "complaint_read",
+      "visitor_create",
+      "visitor_read",
+    ];
+
+    for (const permissionName of studentPermissions) {
+      if (permissionIds[permissionName]) {
+        await queryInterface.bulkInsert("RolePermissions", [
+          {
+            id: generateUUID(),
+            role_id: studentRoleId,
+            permission_id: permissionIds[permissionName],
+            created_at: new Date(),
+          },
+        ]);
+      }
+    }
+
+    // Warden gets hostel management permissions
+    const wardenPermissions = [
+      "manage_profile",
+      "view_profile",
+      "change_password",
+      "view_own_data",
+      "hostel_read",
+      "view_hostel_stats",
+      "room_update",
+      "room_read",
+      "room_allocate",
+      "room_deallocate",
+      "room_allocation_read",
+      "student_update",
+      "student_read",
+      "manage_student_rooms",
+      "view_student_rooms",
+      "complaint_create",
+      "complaint_read",
+      "complaint_update",
+      "visitor_create",
+      "visitor_read",
+      "visitor_update",
+      "visitor_checkout",
+      "view_visitor_stats",
+      "view_reports",
+    ];
+
+    for (const permissionName of wardenPermissions) {
+      if (permissionIds[permissionName]) {
+        await queryInterface.bulkInsert("RolePermissions", [
+          {
+            id: generateUUID(),
+            role_id: wardenRoleId,
+            permission_id: permissionIds[permissionName],
+            created_at: new Date(),
+          },
+        ]);
+      }
+    }
+
+    // Superadmin gets all permissions (system-wide access)
+    const superadminPermissions = Object.values(permissionIds);
+    for (const permissionId of superadminPermissions) {
+      await queryInterface.bulkInsert("RolePermissions", [
+        {
+          id: generateUUID(),
+          role_id: superadminRoleId,
+          permission_id: permissionId,
+          created_at: new Date(),
+        },
+      ]);
+    }
 
     console.log("✅ RBAC data seeding completed successfully!");
     console.log("📊 Summary:");
     console.log(
       "   - 4 system roles created (owner, student, warden, superadmin)"
     );
+    console.log(`   - ${permissions.length} permissions created`);
     console.log(
-      `   - ${permissions.length} permissions created with improved naming`
+      `   - Owner has ${ownerPermissions.length} permissions (hostel-level only)`
     );
-    console.log(`   - Owner: ${ownerCount} permissions assigned`);
-    console.log(`   - Student: ${studentCount} permissions assigned`);
-    console.log(`   - Warden: ${wardenCount} permissions assigned`);
-    console.log(`   - Superadmin: ${superadminCount} permissions assigned`);
+    console.log(
+      `   - Student has ${studentPermissions.length} permissions (basic access)`
+    );
+    console.log(
+      `   - Warden has ${wardenPermissions.length} permissions (hostel management)`
+    );
+    console.log(
+      `   - Superadmin has ${permissions.length} permissions (system-wide access)`
+    );
   },
 
   async down(queryInterface, Sequelize) {
     console.log("🗑️ Removing RBAC data...");
 
-    // Delete in reverse order due to foreign key constraints
     await queryInterface.bulkDelete("RolePermissions", {});
     await queryInterface.bulkDelete("Permissions", {
       is_system_permission: true,

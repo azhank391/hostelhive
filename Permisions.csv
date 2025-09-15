@@ -1,45 +1,51 @@
 id,name,display_name,description,category,is_system_permission,created_at,updated_at,operation
-0a205466-1938-4050-bbe9-d14a2a637fcc,visitor_update,"Manage Visitors","Update, delete visitor logs",visitors,1,"2025-09-13 15:53:00","2025-09-13 15:53:00",NULL
-17e31a93-2b2d-425c-bfff-0ab80639a5b5,complaint_delete,"Delete Complaints","Delete complaints",complaints,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-1b3df1e8-a142-4135-a492-05d6345b0648,manage_owners,"Manage Owners","Create and manage owners",system,1,"2025-09-13 15:53:00","2025-09-13 15:53:00",NULL
-294b14ca-afe2-44a3-b27c-966165861c9b,staff_delete,"Delete Staff","Delete staff members",staff,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-324330b7-d3ee-43b7-8501-d8de09245d30,room_allocate,"Allocate Rooms","Assign rooms to students",rooms,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-3349861a-9e70-4e0a-852d-47f89382e905,view_profile,"View Profile","View own profile information",profile,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-4141c8fe-ee0f-44e7-8b14-4969aef81625,manage_hostel_settings,"Manage Hostel Settings","Update hostel settings, subdomain, etc.",hostel,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-42cd9a1a-265f-4d22-b6f9-50f4c0d04f41,visitor_create,"Create Visitors","Create visitor logs",visitors,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-536b2ff9-add3-43d5-8c6a-44c03a1d424e,complaint_read,"View Complaints","View complaint details",complaints,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-55fa7daa-958d-4a11-a120-a5b57c5b8fff,staff_status_toggle,"Toggle Staff Status","Activate/deactivate staff members",staff,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-5be5d09f-3374-48cc-a9db-d9b28fb8b3d0,hostel_update,"Manage Hostel","Create, update, and delete hostel information",hostel,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-5d350ba2-09b4-4981-a8b5-0c4d345101c7,view_billing,"View Billing","View billing information",reports,1,"2025-09-13 15:53:00","2025-09-13 15:53:00",NULL
-63428f53-8ec5-4b72-a77d-345eba0a792e,manage_profile,"Manage Profile","Update own profile information",profile,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-63ee970d-0aab-4109-8f46-932f7866a7ea,room_deallocate,"Deallocate Rooms","Remove room assignments",rooms,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-6b474db8-c97d-4efe-9874-83dae5756089,room_read,"View Rooms","View room information and availability",rooms,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-6c59e264-5c02-47f2-9764-2271bdc7e88d,manage_billing,"Manage Billing","Manage billing and payments",system,1,"2025-09-13 15:53:00","2025-09-13 15:53:00",NULL
-6cf8f742-f488-41b4-8cdd-18728629d571,visitor_checkout,"Checkout Visitors","Check out visitors",visitors,1,"2025-09-13 15:53:00","2025-09-13 15:53:00",NULL
-6ebbde9b-a8b2-4265-a6e0-240a1b886827,view_visitor_stats,"View Visitor Stats","View visitor analytics",visitors,1,"2025-09-13 15:53:00","2025-09-13 15:53:00",NULL
-730e23f5-a042-4202-8f06-d4fdb2273350,export_student_data,"Export Student Data","Export student information",students,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-74a5ce0a-6b44-413f-a263-4adfefffc6dd,view_reports,"View Reports","View various reports",reports,1,"2025-09-13 15:53:00","2025-09-13 15:53:00",NULL
-752675c0-963f-441c-a6ff-927c00832fa6,student_read,"View Students","View student information and records",students,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-81c0b260-ee82-49ce-88fe-c2a062552023,view_hostel_stats,"View Hostel Stats","View hostel statistics and analytics",hostel,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-8926beb6-6bfd-4885-9320-ff430f408c70,complaint_create,"Create Complaints","Create new complaints",complaints,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-94e088d7-32ac-4c88-b172-29ae3165f35d,view_own_data,"View Own Data","View own data (room, complaints, visitors)",profile,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-976b8cf6-91b6-4ef3-aba4-7697570e1c6f,manage_all_hostels,"Manage All Hostels","Manage all hostels in system",system,1,"2025-09-13 15:53:00","2025-09-13 15:53:00",NULL
-9c6f97e2-fd48-488a-b2f2-da3114f9a5d8,manage_system,"Manage System","System-wide management",system,1,"2025-09-13 15:53:00","2025-09-13 15:53:00",NULL
-9ded7773-8dbe-4e11-ac20-3f82279151ff,visitor_read,"View Visitors","View visitor details",visitors,1,"2025-09-13 15:53:00","2025-09-13 15:53:00",NULL
-c33106f8-c906-48bf-ae91-dbb6f93957be,staff_assign,"Assign Staff","Assign staff members to roles and hostels",staff,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-c5bdcc6c-7a3e-4a78-b7fd-0cb84201c783,staff_update,"Update Staff","Update staff information",staff,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-c97381e0-26d0-4302-bb2d-2d68ea2a2d66,export_visitor_data,"Export Visitor Data","Export visitor logs",visitors,1,"2025-09-13 15:53:00","2025-09-13 15:53:00",NULL
-cb774d08-e777-4e48-b903-126eacdda851,export_data,"Export Data","Export data in various formats",reports,1,"2025-09-13 15:53:00","2025-09-13 15:53:00",NULL
-d20171e3-ac79-4870-9742-36c6dc761f6c,view_system_stats,"View System Stats","View system-wide statistics",system,1,"2025-09-13 15:53:00","2025-09-13 15:53:00",NULL
-d719a0e9-30a1-4f1b-884f-4ea8136ab1f5,manage_student_rooms,"Manage Student Rooms","Assign/change student rooms",students,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-db1d2414-1061-4f3a-be82-82e13fd388f6,hostel_read,"View Hostel","View hostel information and settings",hostel,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-e0f82af5-125a-4f7a-b4dc-ca822f95ba62,complaint_update,"Handle Complaints","Resolve, update complaint status",complaints,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-e5c0fb8d-2b55-4f2f-a12e-9759372e1302,staff_create,"Create Staff","Create new staff members",staff,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-eb9f5253-a94c-4348-82e2-2b37d1bcd941,change_password,"Change Password","Change own password",profile,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-ecbadc19-e7ec-4cbb-89ff-a4d3fcfaa73f,view_analytics,"View Analytics","View analytics dashboards",reports,1,"2025-09-13 15:53:00","2025-09-13 15:53:00",NULL
-ed7a6d42-12d7-4070-b0c8-f97a6469c831,room_allocation_read,"View Room Allocations","View room allocation details",rooms,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-ed7b592a-80fc-4d7b-bf8f-a3812a184f93,staff_read,"View Staff","View staff details and lists",staff,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-f228604d-8a72-4121-830e-256925097780,view_complaint_stats,"View Complaint Stats","View complaint analytics",complaints,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-f92c0dc3-9ef0-43b4-bb9e-8181198e719c,room_update,"Manage Rooms","Create, update, and delete rooms",rooms,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-fb51fcd5-3fcb-4640-8096-d9fdd13efdd9,student_update,"Manage Students","Create, update, and delete student records",students,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
-fd05b198-a178-49ea-92eb-402d097cee76,view_student_rooms,"View Student Rooms","View student room assignments",students,1,"2025-09-13 15:52:59","2025-09-13 15:52:59",NULL
+07df8b88-4d09-4a87-8c38-3f9fbb98ca4b,manage_all_hostels,"Manage All Hostels","Manage all hostels in system",system,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+132b2c70-797d-4abe-9caf-bfdd06fb5b11,export_visitor_data,"Export Visitor Data","Export visitor logs",visitors,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+13999af6-e1b3-445c-9d02-dfea1f288e82,manage_student_rooms,"Manage Student Rooms","Assign/change student rooms",students,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+1a35b97b-a157-45da-b41e-01b30f9d25c5,staff_assign,"Assign Staff","Assign staff members to roles and hostels",staff,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+2ca07e5c-789e-4ff3-914d-ebd5dab1a75e,complaint_read,"View Complaints","View complaint details",complaints,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+31f467c4-d272-42d2-a527-2a356fbe8845,complaint_update,"Handle Complaints","Resolve, update complaint status",complaints,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+3413d73d-a91f-4187-8887-eb098e8fdcf6,hostel_create,"Create Hostel","Create new hostel",hostel,1,"2025-09-14 20:05:53","2025-09-14 20:05:53",NULL
+35cc832a-31d5-4f5e-ad94-87b3b488d229,view_hostel_stats,"View Hostel Stats","View hostel statistics and analytics",hostel,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+36fcf6c1-413e-4f74-9f66-b6d8784471c6,staff_update,"Update Staff","Update staff information",staff,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+3d91431f-e136-4823-8ffc-59d44127e7e7,room_read,"View Rooms","View room information and availability",rooms,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+41aed764-401f-4a8e-beca-456b31fa21a9,export_data,"Export Data","Export data in various formats",reports,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+461f7003-c6ab-4e18-ac71-7c51add45a9e,student_update,"Manage Students","Create, update, and delete student records",students,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+467a94b9-7451-4062-bb90-0c9e55ca41cf,room_update,"Manage Rooms","Create, update, and delete rooms",rooms,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+56c11267-c582-4b38-8ef4-5ab544e9ff92,visitor_checkout,"Checkout Visitors","Check out visitors",visitors,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+5afc81fa-7ace-4bf4-b970-c414ceadd1a1,visitor_create,"Create Visitors","Create visitor logs",visitors,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+602924fc-9446-4820-a00a-ab79f7857437,visitor_delete,"Delete Visitors","Delete visitor logs",visitors,1,"2025-09-15 01:14:40","2025-09-15 01:14:40",NULL
+63b94588-47fb-42ca-bdf1-0e81e3f34fcb,view_complaint_stats,"View Complaint Stats","View complaint analytics",complaints,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+64eb96d9-e87a-48f1-abdb-1cf74bb429d0,student_delete,"Delete Students","Delete student records",students,1,"2025-09-15 01:14:40","2025-09-15 01:14:40",NULL
+69e35385-555e-481c-833e-349aa17bf66e,staff_delete,"Delete Staff","Delete staff members",staff,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+6bca417a-4a15-4b92-bd36-cd1b026f3f5e,room_allocation_read,"View Room Allocations","View room allocation details",rooms,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+6f2b5f63-b81a-40bc-8c57-8f108e5734e0,visitor_update,"Manage Visitors","Update, delete visitor logs",visitors,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+73be3500-d9ea-4470-a6eb-abe7a943307d,manage_system,"Manage System","System-wide management",system,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+76941d6f-09b6-4c33-ac6a-87268c001581,staff_create,"Create Staff","Create new staff members",staff,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+787f87bf-e9bf-4b9f-906b-3afaf663ba81,staff_status_toggle,"Toggle Staff Status","Activate/deactivate staff members",staff,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+7a3d087a-1324-4365-aed5-93e63872e60b,student_read,"View Students","View student information and records",students,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+7b54a160-b583-4175-b1ea-25fa2e64a6fc,staff_read,"View Staff","View staff details and lists",staff,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+8ec62714-7bc9-42e7-b732-66d5cc9614c2,view_system_stats,"View System Stats","View system-wide statistics",system,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+8faf9b1b-7415-47a2-acec-d80ff4f3bc8f,view_reports,"View Reports","View various reports",reports,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+9179edc9-37a5-44e7-9a93-d4cd30e9be3b,manage_hostel_settings,"Manage Hostel Settings","Update hostel settings, subdomain, etc.",hostel,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+94235f63-6037-4768-a471-ce9d40769edf,room_allocate,"Allocate Rooms","Assign rooms to students",rooms,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+9c4e519b-ffaf-4f3e-8f64-e5acec5517fc,manage_owners,"Manage Owners","Create and manage owners",system,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+a41dc2ad-3020-493c-8ddf-3cc772715f86,manage_billing,"Manage Billing","Manage billing and payments",system,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+a4f7444e-5959-4dca-b0a2-624fa10ffdd9,hostel_read,"View Hostel","View hostel information and settings",hostel,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+a61d8d22-a23a-47c4-9e70-f3992e471255,student_create,"Create Students","Create new student records",students,1,"2025-09-15 01:14:40","2025-09-15 01:14:40",NULL
+a80c96ae-96e8-4c23-a90b-e4b42d8e562c,view_student_rooms,"View Student Rooms","View student room assignments",students,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+b6e51b6a-5578-42f2-8e49-bd124362f135,view_billing,"View Billing","View billing information",reports,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+bea2fc65-ee3f-4cec-94e9-6821ebf927cc,view_own_data,"View Own Data","View own data (room, complaints, visitors)",profile,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+c05da853-1305-46c0-b869-a39f14164ed6,room_create,"Create Rooms","Create new rooms",rooms,1,"2025-09-15 01:14:40","2025-09-15 01:14:40",NULL
+cc8f1e33-df7c-4f26-a632-9375279e5488,export_student_data,"Export Student Data","Export student information",students,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+ccb35289-f23d-4905-82a1-ccdfbd2973f4,change_password,"Change Password","Change own password",profile,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+dd22c325-1896-486b-8b8e-b500fd43ebde,complaint_create,"Create Complaints","Create new complaints",complaints,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+e0682aee-2071-492d-9e46-85da8ed6058f,view_profile,"View Profile","View own profile information",profile,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+e1e32f40-c722-4246-ab5a-ef20e77e1d6e,view_analytics,"View Analytics","View analytics dashboards",reports,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+e2f8bca8-fad1-4964-81e8-7ecdda04d1fc,room_delete,"Delete Rooms","Delete existing rooms",rooms,1,"2025-09-15 01:14:40","2025-09-15 01:14:40",NULL
+e3bf3030-9cf3-47b1-8627-9388529e4cf9,manage_profile,"Manage Profile","Update own profile information",profile,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+e9d32267-e5fd-4287-8f87-60d1749ed4c3,hostel_update,"Manage Hostel","Create, update, and delete hostel information",hostel,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+ef0c7ba1-ffcb-4e6a-ae20-4eea20b1dd4c,visitor_read,"View Visitors","View visitor details",visitors,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+ef2557f2-2a01-41f0-8195-2f9e18cb5a6b,complaint_delete,"Delete Complaints","Delete complaints",complaints,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+f1a8f2b6-bd53-48e5-9de4-b1893588860c,room_deallocate,"Deallocate Rooms","Remove room assignments",rooms,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL
+f74e995d-182d-4d21-be87-c72853175c29,view_visitor_stats,"View Visitor Stats","View visitor analytics",visitors,1,"2025-09-14 19:38:04","2025-09-14 19:38:04",NULL

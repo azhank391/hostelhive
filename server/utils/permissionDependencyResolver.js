@@ -427,7 +427,7 @@ class PermissionDependencyResolver {
       console.log(`🔍 Getting page dependencies for: ${pageName}`);
 
       const pageDependencies = {
-        dashboard: ["view_dashboard"],
+        dashboard: ["view_dashboard_owner"],
         rooms: ["room_read"],
         students: ["student_read"],
         visitors: ["visitor_read"],

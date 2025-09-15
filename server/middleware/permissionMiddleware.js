@@ -313,7 +313,7 @@ const requireProfileManagement = requirePermission('manage_profile');
  * Check for basic view permissions (any user with basic access)
  * @returns {Function} Express middleware function
  */
-const requireBasicAccess = requireAnyPermission(['view_own_data', 'view_profile']);
+const requireBasicAccess = requireAnyPermission(['view_own_data']);
 
 /**
  * Check for owner role OR specific permission (for special cases like creating first hostel)

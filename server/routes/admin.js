@@ -136,25 +136,25 @@ router.delete(
 router.get(
   "/wardens",
   verifyToken,
-  requirePermission("warden_read"),
+  requirePermission("staff_read"),
   getAllWardens
 );
 router.post(
   "/wardens",
   verifyToken,
-  requirePermission("warden_create"),
+  requirePermission("staff_create"),
   createWarden
 );
 router.put(
   "/wardens/:id",
   verifyToken,
-  requirePermission("warden_update"),
+  requirePermission("staff_update"),
   updateWarden
 );
 router.delete(
   "/wardens/:id",
   verifyToken,
-  requirePermission("warden_delete"),
+  requirePermission("staff_delete"),
   deleteWarden
 );
 
@@ -188,7 +188,7 @@ router.put(
 router.put(
   "/complaints/:id/resolve",
   verifyToken,
-  requirePermission("complaint_resolve"),
+  requirePermission("complaint_update"),
   resolveComplaint
 );
 router.put(

@@ -78,7 +78,7 @@ export default function DashboardPage() {
         }
         
         // Fallback: If owner or has view_dashboard permission, go to owner dashboard
-        if (user?.role === 'owner' || (user?.permissions?.includes('view_dashboard'))) {
+        if (user?.role === 'owner' || (user?.permissions?.includes('view_dashboard_owner'))) {
           console.log('🎯 Dashboard: Redirecting to owner dashboard');
           router.replace('/dashboard/owner');
           return;
@@ -212,7 +212,7 @@ export default function DashboardPage() {
             }
             return;
           }
-          if (permissions.includes('view_dashboard')) {
+          if (permissions.includes('view_dashboard_owner')) {
             console.log('🎯 Custom role: Has dashboard permission, redirecting to owner dashboard');
             router.replace('/dashboard/owner');
             return;

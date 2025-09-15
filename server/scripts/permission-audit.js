@@ -230,7 +230,6 @@ async function run() {
         "view_analytics",
         "view_billing",
         "manage_profile",
-        "view_profile",
         "change_password",
         "view_own_data",
       ],
@@ -275,13 +274,11 @@ async function run() {
         "view_analytics",
         // Profile
         "manage_profile",
-        "view_profile",
         "change_password",
         "view_own_data",
       ],
       student: [
         "manage_profile",
-        "view_profile",
         "change_password",
         "view_own_data",
         "complaint_create",

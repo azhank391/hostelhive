@@ -127,7 +127,7 @@ export const StudentManagementGate: React.FC<{ children: ReactNode; fallback?: R
   fallback = null 
 }) => (
   <PermissionGate
-    permissions={['student_read', 'student_update', 'manage_student_rooms', 'room_read']}
+    permissions={['student_read', 'student_update', 'room_allocation_read', 'room_read']}
     fallback={fallback}
   >
     {children}
@@ -249,7 +249,7 @@ export const BasicUserGate: React.FC<{ children: ReactNode; fallback?: ReactNode
   fallback = null 
 }) => (
   <PermissionGate
-    permissions={['manage_profile', 'view_profile', 'complaint_create', 'complaint_read', 'visitor_create', 'visitor_read']}
+    permissions={['manage_profile', 'view_own_data', 'complaint_create', 'complaint_read', 'visitor_create', 'visitor_read']}
     fallback={fallback}
   >
     {children}

@@ -97,11 +97,11 @@ router.get("/context", verifyToken, async (req, res) => {
       });
     }
 
-    // If user is student → allow if they have "view_dashboard"
+    // If user is student → allow if they have "view_own_data"
     if (req.user.role === "student") {
-      if (!req.user.permissions?.includes("view_dashboard")) {
+      if (!req.user.permissions?.includes("view_own_data")) {
         return res.status(403).json({
-          message: "Access denied. Students need 'view_dashboard' permission.",
+          message: "Access denied. Students need 'view_own_data' permission.",
         });
       }
 

@@ -1,0 +1,6 @@
+id,name,display_name,description,is_system_role,hostel_id,created_by,created_at,updated_at
+02bc31c5-3872-44e4-bd27-c95c1dc6325e,student,Student,"Basic student access for viewing personal information and creating complaints",1,NULL,NULL,"2025-09-15 17:27:37","2025-09-15 17:27:37"
+3d4b3972-73c2-4c8f-a314-f5739d5d7089,custom_maintinance_manager,"Maintinance Manager","Maintain any complaints related to the hostel.",0,49ee1c0b-8073-4c44-a503-ab1949df394a,db336c4c-e65b-4d64-afde-69069520e589,"2025-09-13 19:36:49","2025-09-13 19:36:49"
+5c7b5e6a-56a9-45e3-8d9c-1469397611ba,superadmin,"Super Admin","System-wide administrative access across all hostels",1,NULL,NULL,"2025-09-15 17:27:37","2025-09-15 17:27:37"
+982161d2-9426-417e-99ba-57501864838b,warden,Warden,"Hostel management permissions for wardens (rooms, students, complaints)",1,NULL,NULL,"2025-09-15 17:27:37","2025-09-15 17:27:37"
+ea634e91-ff38-4983-919d-6445e5a00047,owner,Owner,"Full hostel management access with financial and administrative control",1,NULL,NULL,"2025-09-15 17:27:37","2025-09-15 17:27:37"

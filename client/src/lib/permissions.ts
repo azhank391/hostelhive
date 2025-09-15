@@ -6,11 +6,11 @@ export type Role = 'owner' | 'warden' | 'student' | 'superadmin';
 // Legacy role-based permissions (deprecated - use direct permission checking instead)
 const LEGACY_ROLE_PERMISSIONS: Record<Role, string[]> = {
   owner: [
-    'view_dashboard',
+    'view_dashboard_owner',
     'hostel_create',
     'hostel_read',
     'hostel_update',
-    'hostel_stats_read',
+    'view_hostel_stats',
     'student_create',
     'student_read',
     'student_update',
@@ -34,35 +34,46 @@ const LEGACY_ROLE_PERMISSIONS: Record<Role, string[]> = {
     'visitor_read',
     'visitor_update',
     'visitor_delete',
-    'visitor_update',
-    'role_create',
-    'role_read',
-    'role_update',
-    'role_delete',
+    'staff_create',
+    'staff_read',
+    'staff_update',
+    'staff_delete',
     'role_assign',
-    'view_reports',
-    'analytics_read',
-    'view_settings'
+    'view_billing'
   ],
   warden: [
-    'hostel_stats_read',
+    'view_hostel_stats',
     'student_update',
+    'student_read',
+    'student_delete',
+    'student_create',
+    'room_create',
+    'room_read',
+    'room_delete',
     'room_update',
     'room_allocation_read',
-    'view_reports',
-    'manage_complaints',
+    'room_allocation_create',
+    'room_allocation_delete',
     'visitor_update',
+    'visitor_create',
+    'visitor_read',
+    'visitor_delete',
+
     'complaint_read',
     'complaint_delete',
-    'complaint_handle',
-    'complaint_update'
+    'complaint_update',
+
   ],
   student: [
-    'view_reports',
-    'student_room_read',
-    'complaint_create', 
+    'complaint_delete',
+    'complaint_update',
     'complaint_read',
-    'view_dashboard'
+    'complaint_create',
+    'view_own_data',
+    'visitor_create',
+    'visitor_read',
+    'visitor_update',
+    'visitor_delete'
   ],
   superadmin: [
     'super_admin'

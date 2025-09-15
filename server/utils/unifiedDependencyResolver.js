@@ -79,9 +79,9 @@ class UnifiedDependencyResolver {
     hostel_settings_update: "hostel_read",
 
     // Profile Management Actions
-    manage_profile: "view_profile",
-    change_password: "view_profile",
-    view_own_data: "view_profile",
+    manage_profile: "view_own_data",
+    change_password: "view_own_data",
+    view_own_data: "view_own_data",
   };
 
   /**

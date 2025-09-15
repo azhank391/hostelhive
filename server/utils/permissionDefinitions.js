@@ -249,11 +249,6 @@ const PERMISSION_DEFINITIONS = {
     dependencies: [],
     category: "profile",
   },
-  view_profile: {
-    displayName: "View Profile",
-    dependencies: [],
-    category: "profile",
-  },
   change_password: {
     displayName: "Change Password",
     dependencies: [],
