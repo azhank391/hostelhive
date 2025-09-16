@@ -244,7 +244,7 @@ class RBACService {
    * Create a custom role for a hostel and attach permissions
    * payload: { name, displayName|display_name, description, permissions: [<permName|permId>] }
    */
-  async createCustomRole(hostelId, payload = {}, createdBy = null) {
+  async createCustomRole(hostelId, payload, createdBy) {
     try {
       console.log(
         `🔍 RBAC: Creating custom role '${
@@ -276,13 +276,13 @@ class RBACService {
       const role = await Role.create({
         id: uuidv4(),
         name: roleName,
-        displayName,
+        displayName, // model property, mapped to display_name
         description,
-        is_system_role: false,
-        hostel_id: hostelId,
-        created_by: createdBy,
-        created_at: new Date(),
-        updated_at: new Date(),
+        isSystemRole: false, // model property, mapped to is_system_role
+        hostelId, // model property, mapped to hostel_id
+        createdBy, // model property, mapped to created_by
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
 
       // attach permissions if provided
@@ -321,55 +321,62 @@ class RBACService {
         if (matchedPerms.length > 0) {
           const rpInserts = matchedPerms.map((p) => ({
             id: uuidv4(),
-            role_id: role.id,
-            permission_id: p.id,
-            created_at: new Date(),
-            updated_at: new Date(),
+            roleId: role.id, // use model property name
+            permissionId: p.id, // use model property name
+            createdAt: new Date(),
           }));
-          // bulk create role-permissions
-          await RolePermission.bulkCreate(rpInserts);
+          // bulk create role-permissions with model property names
+          await RolePermission.bulkCreate(rpInserts, {
+            fields: ["id", "roleId", "permissionId", "createdAt"],
+          });
         }
-      }
 
-      // reload role with permissions
-      const created = await Role.findByPk(role.id, {
-        include: [
-          {
-            model: Permission,
-            as: "permissions",
-            through: { attributes: [] },
-            attributes: ["id", "name", "display_name", "category", "operation"],
+        // reload role with permissions
+        const created = await Role.findByPk(role.id, {
+          include: [
+            {
+              model: Permission,
+              as: "permissions",
+              through: { attributes: [] },
+              attributes: [
+                "id",
+                "name",
+                "display_name",
+                "category",
+                "operation",
+              ],
+            },
+          ],
+        });
+
+        const plain =
+          typeof created.get === "function"
+            ? created.get({ plain: true })
+            : created;
+
+        return {
+          success: true,
+          role: {
+            id: plain.id,
+            name: plain.name,
+            displayName: plain.display_name,
+            description: plain.description,
+            isSystemRole: Boolean(plain.is_system_role),
           },
-        ],
-      });
-
-      const plain =
-        typeof created.get === "function"
-          ? created.get({ plain: true })
-          : created;
-
-      return {
-        success: true,
-        role: {
-          id: plain.id,
-          name: plain.name,
-          displayName: plain.display_name,
-          description: plain.description,
-          isSystemRole: Boolean(plain.is_system_role),
-        },
-        permissions: {
-          list: (plain.permissions || []).map((p) => ({
-            id: p.id,
-            name: p.name,
-            displayName: p.display_name,
-            category: p.category,
-            operation: p.operation,
-          })),
-          resolvedCount: (plain.permissions || []).length,
-          originalCount: (plain.permissions || []).length, // Adjust if you have original/dependency split
-          dependencies: [], // Adjust if you track dependencies
-        },
-      };
+          permissions: {
+            list: (plain.permissions || []).map((p) => ({
+              id: p.id,
+              name: p.name,
+              displayName: p.display_name,
+              category: p.category,
+              operation: p.operation,
+            })),
+            resolvedCount: (plain.permissions || []).length,
+            originalCount: (plain.permissions || []).length, // Adjust if you have original/dependency split
+            dependencies: [], // Adjust if you track dependencies
+          },
+        };
+      }
     } catch (error) {
       console.error("❌ RBAC: Error creating custom role:", error);
       throw error;

@@ -14,12 +14,12 @@ const {
 
 // ✅ Superadmin Login
 exports.loginSuperadmin = async (req, res) => {
-  console.log('🔍 DEBUG: Superadmin login request received');
-  console.log('🔍 DEBUG: Request headers:', req.headers);
-  console.log('🔍 DEBUG: Request body:', req.body);
-  console.log('🔍 DEBUG: Request body type:', typeof req.body);
-  console.log('🔍 DEBUG: Content-Type header:', req.headers['content-type']);
-  
+  console.log("🔍 DEBUG: Superadmin login request received");
+  console.log("🔍 DEBUG: Request headers:", req.headers);
+  console.log("🔍 DEBUG: Request body:", req.body);
+  console.log("🔍 DEBUG: Request body type:", typeof req.body);
+  console.log("🔍 DEBUG: Content-Type header:", req.headers["content-type"]);
+
   const { email, password } = req.body;
 
   try {
@@ -40,12 +40,10 @@ exports.loginSuperadmin = async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    res
-      .status(200)
-      .json({
-        token,
-        superadmin: { name: superadmin.name, email: superadmin.email },
-      });
+    res.status(200).json({
+      token,
+      superadmin: { name: superadmin.name, email: superadmin.email },
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -56,15 +54,15 @@ exports.loginSuperadmin = async (req, res) => {
 exports.getDashboardData = async (req, res) => {
   try {
     const totalHostels = await Hostel.count();
-    
+
     // Get paying owners (real users who generate revenue)
-    const payingOwners = await User.count({ 
-      where: { 
-        role: 'owner',
+    const payingOwners = await User.count({
+      where: {
+        role: "owner",
         // You can add additional conditions here if needed
-      } 
+      },
     });
-    
+
     // Get total rooms across all hostels
     const totalRooms = await Room.count();
 
@@ -89,17 +87,17 @@ exports.getDashboardData = async (req, res) => {
 
     // Calculate revenue metrics
     const planRevenue = {
-      'free': 0,
-      'basic': 29,
-      'premium': 49,
-      'enterprise': 99
+      free: 0,
+      basic: 29,
+      premium: 49,
+      enterprise: 99,
     };
-    
+
     const totalMonthlyRevenue = plans.reduce((total, plan) => {
       const planName = plan.plan;
       const count = parseInt(plan.count);
       const revenue = planRevenue[planName] || 0;
-      return total + (count * revenue);
+      return total + count * revenue;
     }, 0);
 
     // Hostel regional distribution by country

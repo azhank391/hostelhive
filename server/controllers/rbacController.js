@@ -176,9 +176,9 @@ const getPermissionDependencies = async (req, res) => {
  */
 const validatePermissionAssignment = async (req, res) => {
   try {
-    const { permissionNames } = req.body;
+    const { permissions } = req.body;
 
-    if (!Array.isArray(permissionNames)) {
+    if (!Array.isArray(permissions)) {
       return res.status(400).json({
         success: false,
         message: "Permission names must be an array",
@@ -186,18 +186,18 @@ const validatePermissionAssignment = async (req, res) => {
     }
 
     console.log(
-      `🔍 Validating permission assignment for ${permissionNames.length} permissions`
+      `🔍 Validating permission assignment for ${permissions.length} permissions`
     );
 
     // Validate that all permissions exist
     const validation = { isValid: true, missingPermissions: [] };
     const { Permission } = require("../models");
     const existingPermissions = await Permission.findAll({
-      where: { name: permissionNames },
+      where: { name: permissions },
       attributes: ["name"],
     });
     const existingNames = existingPermissions.map((p) => p.name);
-    validation.missingPermissions = permissionNames.filter(
+    validation.missingPermissions = permissions.filter(
       (name) => !existingNames.includes(name)
     );
     if (validation.missingPermissions.length > 0) {
@@ -257,22 +257,21 @@ const getSystemRoles = async (req, res) => {
  * @access Private (Users with manage_roles permission)
  */
 const createCustomRole = async (req, res) => {
-  console.log("[RBAC] Incoming role creation payload:", req.body);
   try {
-    const { name, displayName, description, permissionNames } = req.body;
-    const createdById = req.user.id;
+    const createdBy = req.user.id;
     const hostelId = req.params.hostelId;
+    const { name, displayName, description, permissions } = req.body;
 
     console.log(
-      `🔍 Creating custom role '${displayName}' for hostel: ${hostelId} by user: ${createdById}`
+      `🔍 Creating custom role '${displayName}' for hostel: ${hostelId} by user: ${createdBy}`
     );
 
     // Validate required fields
     if (
       !name ||
       !displayName ||
-      !permissionNames ||
-      permissionNames.length === 0
+      !permissions ||
+      permissions.length === 0
     ) {
       return res.status(400).json({
         success: false,
@@ -281,7 +280,7 @@ const createCustomRole = async (req, res) => {
     }
 
     // Validate permission names are provided
-    if (!Array.isArray(permissionNames)) {
+    if (!Array.isArray(permissions)) {
       return res.status(400).json({
         success: false,
         message: "Permission names must be an array",
@@ -296,13 +295,19 @@ const createCustomRole = async (req, res) => {
         name,
         displayName,
         description,
-        hostelId,
-        permissionNames,
+        permissions,
       },
-      createdById,
+      createdBy
     );
 
     if (!result.success) {
+      // If the error is a unique constraint violation, show a user-friendly message
+      if (result.error && result.error.toLowerCase().includes('unique') && result.error.toLowerCase().includes('role')) {
+        return res.status(409).json({
+          success: false,
+          message: 'A role with this name already exists for this hostel. Please choose a different name.'
+        });
+      }
       return res.status(400).json({
         success: false,
         message: result.error,
@@ -327,11 +332,12 @@ const createCustomRole = async (req, res) => {
   } catch (error) {
     console.error("❌ Error creating custom role:", error);
 
-    // Handle specific error cases
-    if (error.message.includes("already exists")) {
+
+    // Handle Sequelize unique constraint error for duplicate role name/hostel
+    if (error.name === 'SequelizeUniqueConstraintError' || (error.parent && error.parent.code === 'ER_DUP_ENTRY')) {
       return res.status(409).json({
         success: false,
-        message: error.message,
+        message: 'A role with this name already exists for this hostel. Please choose a different name.'
       });
     }
 
@@ -576,19 +582,19 @@ const checkPermission = async (req, res) => {
  */
 const checkAnyPermission = async (req, res) => {
   try {
-    const { permissionNames } = req.body;
+    const { permissions } = req.body;
     const userId = req.user.id;
 
     console.log(
-      `🔍 Checking any permission from [${permissionNames?.join(
+      `🔍 Checking any permission from [${permissions?.join(
         ", "
       )}] for user: ${userId}`
     );
 
     if (
-      !permissionNames ||
-      !Array.isArray(permissionNames) ||
-      permissionNames.length === 0
+      !permissions ||
+      !Array.isArray(permissions) ||
+      permissions.length === 0
     ) {
       return res.status(400).json({
         success: false,
@@ -598,11 +604,11 @@ const checkAnyPermission = async (req, res) => {
 
     const hasAnyPermission = await rbacService.hasAnyPermission(
       userId,
-      permissionNames
+      permissions
     );
 
     console.log(
-      `✅ Any permission check completed. User ${userId} has any of [${permissionNames.join(
+      `✅ Any permission check completed. User ${userId} has any of [${permissions.join(
         ", "
       )}]: ${hasAnyPermission}`
     );
@@ -611,7 +617,7 @@ const checkAnyPermission = async (req, res) => {
       success: true,
       data: {
         hasAnyPermission,
-        permissionNames,
+        permissions,
         userId,
       },
     });
@@ -632,19 +638,19 @@ const checkAnyPermission = async (req, res) => {
  */
 const checkAllPermissions = async (req, res) => {
   try {
-    const { permissionNames } = req.body;
+    const { permissions } = req.body;
     const userId = req.user.id;
 
     console.log(
-      `🔍 Checking all permissions from [${permissionNames?.join(
+      `🔍 Checking all permissions from [${permissions?.join(
         ", "
       )}] for user: ${userId}`
     );
 
     if (
-      !permissionNames ||
-      !Array.isArray(permissionNames) ||
-      permissionNames.length === 0
+      !permissions ||
+      !Array.isArray(permissions) ||
+      permissions.length === 0
     ) {
       return res.status(400).json({
         success: false,
@@ -654,11 +660,11 @@ const checkAllPermissions = async (req, res) => {
 
     const hasAllPermissions = await rbacService.hasAllPermissions(
       userId,
-      permissionNames
+      permissions
     );
 
     console.log(
-      `✅ All permissions check completed. User ${userId} has all of [${permissionNames.join(
+      `✅ All permissions check completed. User ${userId} has all of [${permissions.join(
         ", "
       )}]: ${hasAllPermissions}`
     );
@@ -667,7 +673,7 @@ const checkAllPermissions = async (req, res) => {
       success: true,
       data: {
         hasAllPermissions,
-        permissionNames,
+        permissions,
         userId,
       },
     });

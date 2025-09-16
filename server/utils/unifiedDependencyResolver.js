@@ -247,11 +247,11 @@ class UnifiedDependencyResolver {
   /**
    * 🎯 PHASE 3 INTEGRATION: Resolve permissions for multiple permissions at once
    * This method is used by PagePermissionResolver for batch permission resolution
-   * @param {Array<string>} permissionNames - Array of permission names to resolve
+   * @param {Array<string>} permissions - Array of permission names to resolve
    * @param {Object} options - Configuration options
    * @returns {Promise<Array<string>>} Array of resolved permission names
    */
-  static async resolvePermissions(permissionNames, options = {}) {
+  static async resolvePermissions(permissions, options = {}) {
     const context = {
       requestId: `batch_${Date.now()}_${Math.random()
         .toString(36)
@@ -261,17 +261,17 @@ class UnifiedDependencyResolver {
     };
 
     console.log(
-      `🧠 [UnifiedResolver] Batch resolving ${permissionNames.length} permissions:`,
-      permissionNames
+      `🧠 [UnifiedResolver] Batch resolving ${permissions.length} permissions:`,
+      permissions
     );
 
     const allDependencies = new Set();
 
     // Add the original permissions first
-    permissionNames.forEach((permission) => allDependencies.add(permission));
+    permissions.forEach((permission) => allDependencies.add(permission));
 
     // Then add only their minimal dependencies
-    for (const permissionName of permissionNames) {
+    for (const permissionName of permissions) {
       try {
         const dependencies = await this.getUnifiedDependencies(permissionName);
         dependencies.forEach((dep) => allDependencies.add(dep));
@@ -286,7 +286,7 @@ class UnifiedDependencyResolver {
     const resolvedPermissions = Array.from(allDependencies).sort();
 
     console.log(
-      `✅ [UnifiedResolver] Batch resolution complete: ${permissionNames.length} → ${resolvedPermissions.length} permissions`
+      `✅ [UnifiedResolver] Batch resolution complete: ${permissions.length} → ${resolvedPermissions.length} permissions`
     );
 
     return resolvedPermissions;

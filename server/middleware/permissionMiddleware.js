@@ -107,13 +107,13 @@ const requirePermission = (permissionName) => {
 
 /**
  * Check for multiple permissions (user must have at least one)
- * @param {string[]} permissionNames - Array of permission names
+ * @param {string[]} permissions - Array of permission names
  * @returns {Function} Express middleware function
  */
-const requireAnyPermission = (permissionNames) => {
+const requireAnyPermission = (permissions) => {
   return async (req, res, next) => {
     try {
-      console.log(`🔐 Permission Check: Checking any of [${permissionNames.join(', ')}] for user: ${req.user?.id}`);
+      console.log(`🔐 Permission Check: Checking any of [${permissions.join(', ')}] for user: ${req.user?.id}`);
       
       // Ensure user is authenticated
       if (!req.user || !req.user.id) {
@@ -129,26 +129,26 @@ const requireAnyPermission = (permissionNames) => {
       
       // Owner role should have all permissions (legacy support)
       if (userRole === 'owner') {
-        console.log(`✅ Owner Access Granted: User ${userId} has all permissions including any of [${permissionNames.join(', ')}]`);
+        console.log(`✅ Owner Access Granted: User ${userId} has all permissions including any of [${permissions.join(', ')}]`);
         return next();
       }
       
       // Superadmin has all permissions
       if (userRole === 'superadmin') {
-        console.log(`✅ Superadmin Access Granted: User ${userId} has all permissions including any of [${permissionNames.join(', ')}]`);
+        console.log(`✅ Superadmin Access Granted: User ${userId} has all permissions including any of [${permissions.join(', ')}]`);
         return next();
       }
       
       // For other roles, check RBAC permissions
       try {
-        const hasAnyPermission = await rbacService.hasAnyPermission(userId, permissionNames);
+        const hasAnyPermission = await rbacService.hasAnyPermission(userId, permissions);
         
         if (!hasAnyPermission) {
-          console.log(`❌ Permission Denied: User ${userId} lacks any of permissions [${permissionNames.join(', ')}]`);
+          console.log(`❌ Permission Denied: User ${userId} lacks any of permissions [${permissions.join(', ')}]`);
           return res.status(403).json({
             success: false,
-            message: `Access denied. Required permissions: ${permissionNames.join(' OR ')}`,
-            required_permissions: permissionNames,
+            message: `Access denied. Required permissions: ${permissions.join(' OR ')}`,
+            required_permissions: permissions,
             code: 'INSUFFICIENT_PERMISSIONS'
           });
         }
@@ -164,11 +164,11 @@ const requireAnyPermission = (permissionNames) => {
         }
         
         // For unknown roles or RBAC failures, deny access
-        console.log(`❌ Permission Denied: User ${userId} with role ${userRole} lacks any of permissions [${permissionNames.join(', ')}] - RBAC failed and no legacy support`);
+        console.log(`❌ Permission Denied: User ${userId} with role ${userRole} lacks any of permissions [${permissions.join(', ')}] - RBAC failed and no legacy support`);
         return res.status(403).json({
           success: false,
-          message: `Access denied. Required permissions: ${permissionNames.join(' OR ')}`,
-          required_permissions: permissionNames,
+          message: `Access denied. Required permissions: ${permissions.join(' OR ')}`,
+          required_permissions: permissions,
           code: 'INSUFFICIENT_PERMISSIONS'
         });
       }
@@ -185,13 +185,13 @@ const requireAnyPermission = (permissionNames) => {
 
 /**
  * Check for multiple permissions (user must have all)
- * @param {string[]} permissionNames - Array of permission names
+ * @param {string[]} permissions - Array of permission names
  * @returns {Function} Express middleware function
  */
-const requireAllPermissions = (permissionNames) => {
+const requireAllPermissions = (permissions) => {
   return async (req, res, next) => {
     try {
-      console.log(`🔐 Permission Check: Checking all of [${permissionNames.join(', ')}] for user: ${req.user?.id}`);
+      console.log(`🔐 Permission Check: Checking all of [${permissions.join(', ')}] for user: ${req.user?.id}`);
       
       // Ensure user is authenticated
       if (!req.user || !req.user.id) {
@@ -207,26 +207,26 @@ const requireAllPermissions = (permissionNames) => {
       
       // Owner role should have all permissions (legacy support)
       if (userRole === 'owner') {
-        console.log(`✅ Owner Access Granted: User ${userId} has all permissions including all of [${permissionNames.join(', ')}]`);
+        console.log(`✅ Owner Access Granted: User ${userId} has all permissions including all of [${permissions.join(', ')}]`);
         return next();
       }
       
       // Superadmin has all permissions
       if (userRole === 'superadmin') {
-        console.log(`✅ Superadmin Access Granted: User ${userId} has all permissions including all of [${permissionNames.join(', ')}]`);
+        console.log(`✅ Superadmin Access Granted: User ${userId} has all permissions including all of [${permissions.join(', ')}]`);
         return next();
       }
       
       // For other roles, check RBAC permissions
       try {
-        const hasAllPermissions = await rbacService.hasAllPermissions(userId, permissionNames);
+        const hasAllPermissions = await rbacService.hasAllPermissions(userId, permissions);
         
         if (!hasAllPermissions) {
-          console.log(`❌ Permission Denied: User ${userId} lacks all of permissions [${permissionNames.join(', ')}]`);
+          console.log(`❌ Permission Denied: User ${userId} lacks all of permissions [${permissions.join(', ')}]`);
           return res.status(403).json({
             success: false,
-            message: `Access denied. Required permissions: ${permissionNames.join(' AND ')}`,
-            required_permissions: permissionNames,
+            message: `Access denied. Required permissions: ${permissions.join(' AND ')}`,
+            required_permissions: permissions,
             code: 'INSUFFICIENT_PERMISSIONS'
           });
         }
@@ -242,11 +242,11 @@ const requireAllPermissions = (permissionNames) => {
         }
         
         // For unknown roles or RBAC failures, deny access
-        console.log(`❌ Permission Denied: User ${userId} with role ${userRole} lacks all of permissions [${permissionNames.join(', ')}] - RBAC failed and no legacy support`);
+        console.log(`❌ Permission Denied: User ${userId} with role ${userRole} lacks all of permissions [${permissions.join(', ')}] - RBAC failed and no legacy support`);
         return res.status(403).json({
           success: false,
-          message: `Access denied. Required permissions: ${permissionNames.join(' AND ')}`,
-          required_permissions: permissionNames,
+          message: `Access denied. Required permissions: ${permissions.join(' AND ')}`,
+          required_permissions: permissions,
           code: 'INSUFFICIENT_PERMISSIONS'
         });
       }

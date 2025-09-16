@@ -70,12 +70,12 @@ export const PermissionGate: React.FC<PermissionGateProps> = ({
     return checkPermission(permissionName);
   };
 
-  const hasAnyPermission = (permissionNames: Permission[]): boolean => {
-    return checkAnyPermission(permissionNames);
+  const hasAnyPermission = (permissions: Permission[]): boolean => {
+    return checkAnyPermission(permissions);
   };
 
-  const hasAllPermissions = (permissionNames: Permission[]): boolean => {
-    return checkAllPermissions(permissionNames);
+  const hasAllPermissions = (permissions: Permission[]): boolean => {
+    return checkAllPermissions(permissions);
   };
 
   let hasAccess = false;

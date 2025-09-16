@@ -155,11 +155,11 @@ module.exports = {
       }
     );
     
-    const existingPermissionNames = existingPermissions.map(p => p.name);
-    console.log(`📊 Found ${existingPermissionNames.length} existing permissions out of ${granularPermissions.length} total`);
+    const existingpermissions = existingPermissions.map(p => p.name);
+    console.log(`📊 Found ${existingpermissions.length} existing permissions out of ${granularPermissions.length} total`);
     
     // Only create permissions that don't exist
-    const newPermissions = granularPermissions.filter(p => !existingPermissionNames.includes(p.name));
+    const newPermissions = granularPermissions.filter(p => !existingpermissions.includes(p.name));
     console.log(`📝 Creating ${newPermissions.length} new permissions...`);
     
     for (const permission of newPermissions) {
@@ -468,7 +468,7 @@ module.exports = {
     await queryInterface.dropTable('PermissionDependencies');
     
     // Remove granular permissions (keep original permissions)
-    const granularPermissionNames = [
+    const granularpermissions = [
       'profile_create', 'profile_read', 'profile_update', 'profile_delete',
       'hostel_create', 'hostel_read', 'hostel_update', 'hostel_delete', 'hostel_settings_update', 'hostel_stats_read',
       'room_create', 'room_read', 'room_update', 'room_delete', 'room_allocate', 'room_deallocate', 'room_allocation_read',
@@ -483,7 +483,7 @@ module.exports = {
     
     await queryInterface.bulkDelete('Permissions', {
       name: {
-        [Sequelize.Op.in]: granularPermissionNames
+        [Sequelize.Op.in]: granularpermissions
       }
     });
     

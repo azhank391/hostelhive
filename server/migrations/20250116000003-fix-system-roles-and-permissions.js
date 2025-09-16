@@ -169,13 +169,13 @@ module.exports = {
     // 6. Insert role permissions
     const rolePermissions = [];
 
-    for (const [roleName, permissionNames] of Object.entries(
+    for (const [roleName, permissions] of Object.entries(
       systemRolePermissions
     )) {
       const roleId = roleMap[roleName];
       if (!roleId) continue;
 
-      for (const permissionName of permissionNames) {
+      for (const permissionName of permissions) {
         const permissionId = permissionMap[permissionName];
         if (permissionId) {
           rolePermissions.push({

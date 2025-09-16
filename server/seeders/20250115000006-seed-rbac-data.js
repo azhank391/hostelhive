@@ -522,10 +522,10 @@ module.exports = {
     const superadminPermissions = Object.keys(permissionIds);
 
     // Function to assign permissions to a role
-    async function assignPermissionsToRole(roleId, permissionNames, roleName) {
+    async function assignPermissionsToRole(roleId, permissions, roleName) {
       let assignedCount = 0;
 
-      for (const permissionName of permissionNames) {
+      for (const permissionName of permissions) {
         if (permissionIds[permissionName]) {
           await queryInterface.bulkInsert("RolePermissions", [
             {

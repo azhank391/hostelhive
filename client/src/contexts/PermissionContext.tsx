@@ -35,15 +35,15 @@ interface Permission {
 interface PermissionContextType {
   userRole: UserRole | null;
   permissions: Permission[];
-  hasPermission: (permissionName: string) => boolean;
-  hasAnyPermission: (permissionNames: string[]) => boolean;
-  hasAllPermissions: (permissionNames: string[]) => boolean;
+  hasPermission: (permission: string) => boolean;
+  hasAnyPermission: (permissions: string[]) => boolean;
+  hasAllPermissions: (permissions: string[]) => boolean;
   loading: boolean;
   error: string | null;
   refreshPermissions: () => Promise<void>;
   checkPermission: (permissionName: string) => Promise<boolean>;
-  checkAnyPermission: (permissionNames: string[]) => Promise<boolean>;
-  checkAllPermissions: (permissionNames: string[]) => Promise<boolean>;
+  checkAnyPermission: (permissions: string[]) => Promise<boolean>;
+  checkAllPermissions: (permissions: string[]) => Promise<boolean>;
 }
 
 interface PermissionProviderProps {
@@ -122,15 +122,15 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
   /**
    * Check if user has any of the specified permissions (local check)
    */
-  const hasAnyPermission = (permissionNames: string[]): boolean => {
-    return permissionNames.some(name => permissions.some(p => p.name === name));
+ const hasAnyPermission = (permNames: string[]): boolean => {
+    return permNames.some(name => permissions.some(p => p.name === name));
   };
 
   /**
    * Check if user has all of the specified permissions (local check)
    */
-  const hasAllPermissions = (permissionNames: string[]): boolean => {
-    return permissionNames.every(name => permissions.some(p => p.name === name));
+  const hasAllPermissions = (permNames: string[]): boolean => {
+    return permNames.every(name => permissions.some(p => p.name === name));
   };
 
   /**
@@ -157,10 +157,10 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
   /**
    * Check any permission on the backend (for real-time validation)
    */
-  const checkAnyPermission = async (permissionNames: string[]): Promise<boolean> => {
+  const checkAnyPermission = async (permissions: string[]): Promise<boolean> => {
     try {
       const response = await apiClient.post('/rbac/check-any-permission', {
-        permissionNames
+        permissions
       });
       
       if ((response as any)?.data?.success) {
@@ -178,10 +178,10 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
   /**
    * Check all permissions on the backend (for real-time validation)
    */
-  const checkAllPermissions = async (permissionNames: string[]): Promise<boolean> => {
+  const checkAllPermissions = async (permissions: string[]): Promise<boolean> => {
     try {
       const response = await apiClient.post('/rbac/check-all-permissions', {
-        permissionNames
+        permissions
       });
       
       if ((response as any)?.data?.success) {
@@ -269,17 +269,17 @@ export const usePermission = (permissionName: string): boolean => {
 /**
  * Hook to check any of the specified permissions
  */
-export const useAnyPermission = (permissionNames: string[]): boolean => {
+export const useAnyPermission = (permissions: string[]): boolean => {
   const { hasAnyPermission } = usePermissions();
-  return hasAnyPermission(permissionNames);
+  return hasAnyPermission(permissions);
 };
 
 /**
  * Hook to check all of the specified permissions
  */
-export const useAllPermissions = (permissionNames: string[]): boolean => {
+export const useAllPermissions = (permissions: string[]): boolean => {
   const { hasAllPermissions } = usePermissions();
-  return hasAllPermissions(permissionNames);
+  return hasAllPermissions(permissions);
 };
 
 /**

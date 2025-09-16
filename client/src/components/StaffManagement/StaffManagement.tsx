@@ -517,7 +517,7 @@ export const StaffManagement: React.FC = () => {
 
       const response = await apiClient.get(`/rbac/hostels/${hostelId}/roles`);
       const roles = (response as any).data || [];
-
+      console.log("the response of fetchCustomRoles:", response);
       // Normalize display name and permission displayNames
       const normalized = roles.map((r: any) => ({
         ...r,
@@ -536,7 +536,7 @@ export const StaffManagement: React.FC = () => {
     }
   };
 
-  const fetchAvailableRoles = async () => {
+  const fetchAvailableRoles = async (retryCount = 0, maxRetries = 5, delayMs = 400) => {
     try {
       const hostelId = getHostelIdSafe();
       if (!hostelId) {
@@ -553,7 +553,7 @@ export const StaffManagement: React.FC = () => {
       const customRoles = (customRolesResponse as any).data || [];
 
       // Filter system roles to only include staff-appropriate roles (exclude student, owner)
-      const staffSystemRoles = systemRoles.filter((role: any) => 
+      const staffSystemRoles = systemRoles.filter((role: any) =>
         role.name === 'warden' || role.name === 'staff'
       );
 
@@ -581,9 +581,21 @@ export const StaffManagement: React.FC = () => {
           }))
         }))
       ];
+      console.log("the available roles are:", allAvailableRoles);
+
+      // If this is a retry after role creation, check if the new role is present (optional: pass expectedRoleName/id)
+      // For now, just retry if no custom roles found and retryCount < maxRetries
+      if (retryCount < maxRetries && customRoles.length === 0) {
+        await new Promise(res => setTimeout(res, delayMs));
+        return fetchAvailableRoles(retryCount + 1, maxRetries, delayMs);
+      }
 
       setAvailableRoles(allAvailableRoles);
     } catch (error: any) {
+      if (retryCount < maxRetries) {
+        await new Promise(res => setTimeout(res, delayMs));
+        return fetchAvailableRoles(retryCount + 1, maxRetries, delayMs);
+      }
       console.error('Failed to fetch available roles:', error);
       setAvailableRoles([]);
     }
@@ -652,24 +664,23 @@ export const StaffManagement: React.FC = () => {
       
       const roleDataWithPermissions = {
         ...roleData,
-        permissionNames: finalPermissions
+        permissions: finalPermissions
       };
 
-      const response = await apiClient.post(`/rbac/hostels/${hostelId}/roles`, roleDataWithPermissions);
-      const newRole = (response as any).data;
-      
-      // Update local state
-      setAvailableRoles(prevRoles => [...prevRoles, newRole]);
-      setCustomRoles(prevRoles => [...prevRoles, newRole]);
-      
-      notification.success('Custom role created successfully');
-      setShowCreateRoleForm(false);
-      
-      // Reset form
-      setSelectedPermissions(new Set());
-      setSelectedGroups(new Set());
-      setExpandedCategories(new Set());
-      
+  const response = await apiClient.post(`/rbac/hostels/${hostelId}/roles`, roleDataWithPermissions);
+  notification.success('Custom role created successfully');
+  setShowCreateRoleForm(false);
+
+  // Always re-fetch roles before showing staff creation form
+  await fetchAvailableRoles();
+
+  // Open staff creation form only after roles are re-fetched
+  setShowCreateForm(true);
+
+  // Reset form
+  setSelectedPermissions(new Set());
+  setSelectedGroups(new Set());
+  setExpandedCategories(new Set());
     } catch (error: any) {
       console.error('Failed to create role:', error);
       notification.error(error.response?.data?.message || 'Failed to create custom role');
@@ -1108,12 +1119,12 @@ export const StaffManagement: React.FC = () => {
 
     try {
       // Convert permission names to the format expected by the API
-      const permissionNames = Array.from(editingRolePermissions);
+      const Permissions = Array.from(editingRolePermissions);
       
       // Optimistic update - update UI immediately
       const updatedRole = {
         ...editingStaffRole.role,
-        permissions: permissionNames.map(name => ({ 
+        permissions: Permissions.map(name => ({ 
           id: name, 
           name: name, 
           displayName: permissionDisplayNames[name] || name, 
@@ -1129,7 +1140,7 @@ export const StaffManagement: React.FC = () => {
 
       // Update role permissions via API
       await apiClient.put(`/rbac/hostels/${hostelId}/roles/${editingStaffRole.role.id}`, {
-        permissionNames: permissionNames
+        permission: Permissions
       });
 
       notification.success('Role permissions updated successfully');
@@ -1864,7 +1875,7 @@ export const StaffManagement: React.FC = () => {
                   name: internalName,
                   displayName: roleName.trim(),
                   description: (formData.get('description') as string) || '',
-                  permissionNames: finalPermissions
+                  permissions: finalPermissions
                 };
                 
                 console.log('Role data being sent:', roleData);

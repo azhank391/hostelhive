@@ -104,13 +104,13 @@ class PermissionDependencyResolver {
 
   /**
    * Resolve all dependencies for a list of permissions
-   * @param {Array} permissionNames - Array of permission names
+   * @param {Array} permissions - Array of permission names
    * @returns {Array} Array of all permissions including dependencies
    */
-  static async resolveDependencies(permissionNames) {
+  static async resolveDependencies(permissions) {
     try {
       const resolvedPermissions = new Set();
-      const toProcess = [...permissionNames];
+      const toProcess = [...permissions];
 
       while (toProcess.length > 0) {
         const currentPermission = toProcess.shift();
@@ -138,22 +138,22 @@ class PermissionDependencyResolver {
       return Array.from(resolvedPermissions);
     } catch (error) {
       console.error("❌ Error resolving permission dependencies:", error);
-      return permissionNames; // Return original list if error
+      return permissions; // Return original list if error
     }
   }
 
   /**
    * Assign permissions to a role with automatic dependency resolution
    * @param {string} roleId - ID of the role
-   * @param {Array} permissionNames - Array of permission names to assign
+   * @param {Array} permissions - Array of permission names to assign
    * @returns {Object} Result object with success status and assigned permissions
    */
-  static async assignPermissionsWithDependencies(roleId, permissionNames) {
+  static async assignPermissionsWithDependencies(roleId, permissions) {
     try {
       console.log(`🔗 Resolving dependencies for role ${roleId}...`);
 
       // Check for high privilege permissions
-      const highPrivilegePerms = permissionNames.filter((perm) => {
+      const highPrivilegePerms = permissions.filter((perm) => {
         const { isHighPrivilege, warning } =
           this.isHighPrivilegePermission(perm);
         if (isHighPrivilege) {
@@ -169,9 +169,9 @@ class PermissionDependencyResolver {
       }
 
       // Resolve all dependencies
-      const allPermissions = await this.resolveDependencies(permissionNames);
+      const allPermissions = await this.resolveDependencies(permissions);
 
-      console.log(`📋 Original permissions: ${permissionNames.length}`);
+      console.log(`📋 Original permissions: ${permissions.length}`);
       console.log(`📋 Resolved permissions: ${allPermissions.length}`);
 
       // Get permission IDs
@@ -189,9 +189,10 @@ class PermissionDependencyResolver {
       // Add all permissions (including dependencies)
       const rolePermissions = permissionIds.map((permissionId) => ({
         id: require("crypto").randomUUID(),
-        roleId,
-        permissionId,
-        createdAt: new Date(),
+        role_id: roleId,
+        permission_id: permissionId,
+        created_at: new Date(),
+        
       }));
 
       await RolePermission.bulkCreate(rolePermissions);
@@ -202,11 +203,11 @@ class PermissionDependencyResolver {
 
       return {
         success: true,
-        originalCount: permissionNames.length,
+        originalCount: permissions.length,
         resolvedCount: allPermissions.length,
         assignedPermissions: allPermissions,
         dependencies: allPermissions.filter(
-          (p) => !permissionNames.includes(p)
+          (p) => !permissions.includes(p)
         ),
       };
     } catch (error) {
@@ -221,13 +222,13 @@ class PermissionDependencyResolver {
   /**
    * Create a custom role with permission dependencies
    * @param {Object} roleData - Role data
-   * @param {Array} permissionNames - Array of permission names
+   * @param {Array} permissions - Array of permission names
    * @param {string} createdBy - ID of the user creating the role
    * @returns {Object} Result object with success status and role data
    */
   static async createRoleWithDependencies(
     roleData,
-    permissionNames,
+    permissions,
     createdBy
   ) {
     try {
@@ -243,7 +244,7 @@ class PermissionDependencyResolver {
       // Assign permissions with dependencies
       const result = await this.assignPermissionsWithDependencies(
         role.id,
-        permissionNames
+        permissions
       );
 
       if (!result.success) {
@@ -271,16 +272,16 @@ class PermissionDependencyResolver {
   /**
    * Update role permissions with dependency resolution
    * @param {string} roleId - ID of the role
-   * @param {Array} permissionNames - Array of permission names
+   * @param {Array} permissions - Array of permission names
    * @returns {Object} Result object with success status
    */
-  static async updateRolePermissions(roleId, permissionNames) {
+  static async updateRolePermissions(roleId, permissions) {
     try {
       console.log(`🔄 Updating permissions for role ${roleId}...`);
 
       const result = await this.assignPermissionsWithDependencies(
         roleId,
-        permissionNames
+        permissions
       );
 
       if (result.success) {
@@ -359,21 +360,21 @@ class PermissionDependencyResolver {
 
   /**
    * Validate permission assignment (check if all dependencies are met)
-   * @param {Array} permissionNames - Array of permission names to validate
+   * @param {Array} permissions - Array of permission names to validate
    * @returns {Object} Validation result
    */
-  static async validatePermissionAssignment(permissionNames) {
+  static async validatePermissionAssignment(permissions) {
     try {
       const resolvedPermissions = await this.resolveDependencies(
-        permissionNames
+        permissions
       );
       const missingDependencies = resolvedPermissions.filter(
-        (p) => !permissionNames.includes(p)
+        (p) => !permissions.includes(p)
       );
 
       return {
         success: true,
-        originalPermissions: permissionNames,
+        originalPermissions: permissions,
         resolvedPermissions,
         missingDependencies,
         isValid: missingDependencies.length === 0,
@@ -389,26 +390,26 @@ class PermissionDependencyResolver {
 
   /**
    * Get all dependencies for multiple permissions (for frontend pages)
-   * @param {Array} permissionNames - Array of permission names
+   * @param {Array} permissions - Array of permission names
    * @returns {Object} Object with permission names as keys and dependencies as values
    */
-  static async getMultipleDependencies(permissionNames) {
+  static async getMultipleDependencies(permissions) {
     try {
       console.log(
         `🔍 Getting dependencies for multiple permissions:`,
-        permissionNames
+        permissions
       );
 
       const results = {};
 
-      for (const permissionName of permissionNames) {
+      for (const permissionName of permissions) {
         results[permissionName] = await this.getPermissionDependencies(
           permissionName
         );
       }
 
       console.log(
-        `✅ Retrieved dependencies for ${permissionNames.length} permissions`
+        `✅ Retrieved dependencies for ${permissions.length} permissions`
       );
       return results;
     } catch (error) {
