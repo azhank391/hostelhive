@@ -88,6 +88,106 @@ class RBACService {
       };
     }
   }
+  // ...existing methods...
+
+  /**
+   * Update a custom role's displayName, description, and permissions
+   * @param {string} roleId
+   * @param {object} payload { displayName, description, permissionIds }
+   * @returns {object} updated role and permissions
+   */
+  async updateCustomRole(roleId, payload) {
+    try {
+      if (!roleId) throw new Error("roleId is required");
+
+      // Find the role
+      const role = await Role.findByPk(roleId, {
+        include: [
+          {
+            model: Permission,
+            as: "permissions",
+            through: { attributes: [] },
+            attributes: ["id", "name", "display_name", "category", "operation"],
+          },
+        ],
+      });
+      if (!role) throw new Error("Role not found");
+      if (role.is_system_role) throw new Error("Cannot update system roles");
+
+      // Update displayName and description if provided
+      if (payload.displayName) role.display_name = payload.displayName;
+      if (payload.description !== undefined) role.description = payload.description;
+      role.updated_at = new Date();
+      await role.save();
+
+      // Update permissions if provided
+      if (payload.permissionIds && Array.isArray(payload.permissionIds)) {
+        // Remove all current permissions
+        await RolePermission.destroy({ where: { roleId: role.id } });
+
+        // Fetch new permissions (by id or name)
+        const permIds = payload.permissionIds.filter((p) => typeof p === "string" && /^[0-9a-fA-F-]{36}$/.test(p));
+        const permNames = payload.permissionIds.filter((p) => typeof p === "string" && !/^[0-9a-fA-F-]{36}$/.test(p));
+        const matchedPerms = await Permission.findAll({
+          where: {
+            ...(permNames.length && permIds.length
+              ? {
+                  [require("sequelize").Op.or]: [
+                    { name: permNames },
+                    { id: permIds },
+                  ],
+                }
+              : permNames.length
+              ? { name: permNames }
+              : { id: permIds }),
+          },
+          attributes: ["id", "name", "display_name", "category", "operation"],
+        });
+
+        if (matchedPerms.length > 0) {
+          const rpInserts = matchedPerms.map((p) => ({
+            id: uuidv4(),
+            roleId: role.id,
+            permissionId: p.id,
+            createdAt: new Date(),
+          }));
+          await RolePermission.bulkCreate(rpInserts, {
+            fields: ["id", "roleId", "permissionId", "createdAt"],
+          });
+        }
+      }
+
+      // Reload role with permissions
+      const updated = await Role.findByPk(role.id, {
+        include: [
+          {
+            model: Permission,
+            as: "permissions",
+            through: { attributes: [] },
+            attributes: ["id", "name", "display_name", "category", "operation"],
+          },
+        ],
+      });
+      const plain = typeof updated.get === "function" ? updated.get({ plain: true }) : updated;
+      return {
+        id: plain.id,
+        name: plain.name,
+        displayName: plain.display_name,
+        description: plain.description,
+        permissions: (plain.permissions || []).map((p) => ({
+          id: p.id,
+          name: p.name,
+          displayName: p.display_name,
+          category: p.category,
+          operation: p.operation,
+        })),
+      };
+
+    } catch (error) {
+      console.error("❌ RBAC: Error updating custom role:", error);
+      throw error;
+    }
+  }
 
   /**
    * Return all permissions grouped by category (for role creation UI)
