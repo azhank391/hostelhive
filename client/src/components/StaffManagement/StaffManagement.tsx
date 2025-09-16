@@ -44,7 +44,7 @@ interface StaffMember {
   permissions: Array<{
     id: string;
     name: string;
-    displayName: string;
+    display_name: string;
     category: string;
   }>;
   isActive: boolean;
@@ -91,13 +91,13 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
 
   // Core Access (Always included)
   core_access: {
-    title: "Core Access",
-    description: "Essential permissions required for basic functionality",
+    title: "Dashboard Access",
+    description: "Essential permissions for accessing the dashboard",
     permissions: [
       'hostel_read'        // View hostel information (basic access)
     ],
     icon: "🏠",
-    required: true
+    required: false
   },
 
   // Student Management  
@@ -108,7 +108,6 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
       'student_read',         // View student details
       'student_create',       // Add new students  
       'student_update',       // Edit student information
-      'export_student_data',  // Export student data
       'student_delete'        // Remove students (HIGH PRIVILEGE)
     ],
     icon: "👥",
@@ -127,8 +126,8 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
       'room_create',      // Create new rooms
       'room_update',      // Update room information
       'room_allocation_create', // Assign rooms to students
-      'room_allocation_update', // Update room assignments
       'room_allocation_delete', // Remove room assignments
+      'room_allocation_read',   // View room allocations
       'room_delete'       // Delete rooms (HIGH PRIVILEGE)
     ],
     icon: "🛏️",
@@ -146,7 +145,6 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
       'visitor_read',       // View visitor logs
       'visitor_create',     // Create visitor entries
       'visitor_update',     // Update visitor information / checkout
-      'export_visitor_data', // Export visitor data
       'visitor_delete'      // Remove visitor records (HIGH PRIVILEGE)
     ],
     icon: "🚪",
@@ -164,7 +162,6 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
       'complaint_read',       // View complaints
       'complaint_create',     // Create complaints
       'complaint_update',     // Update complaint details / resolve
-      'export_complaint_data',// Export complaints
       'complaint_delete'      // Remove complaints (HIGH PRIVILEGE)
     ],
     icon: "📝",
@@ -182,37 +179,23 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
       'staff_read',         // View staff members
       'staff_create',       // Create new staff members
       'staff_update',       // Update staff information
-
+      'role_assign',        // Assign roles to staff
       'staff_delete'        // Delete staff members (HIGH PRIVILEGE)
     ],
     icon: "👨‍💼",
     dependencies: ['hostel_read'],
     highPrivilegeWarning: {
-      'staff_delete': 'Allows permanent removal of staff accounts. This immediately revokes their access to the system and cannot be undone.'
+      'staff_delete': 'Allows permanent removal of staff accounts. This immediately revokes their access to the system and cannot be undone.',
+      'role_assign': 'Allows changing roles of staff members, which can elevate or reduce their access permissions. Use with caution.'
     }
   },
 
   // Role Management
-  role_management: {
-    title: "Role Management",
-    description: "Manage role definitions and permissions", 
-    permissions: [
-      'staff_read',         // View roles
-      'staff_create',       // Create custom roles
-      'staff_update',       // Update role details
-      'role_assign',        // Assign roles to staff
-      'staff_delete'        // Delete custom roles (HIGH PRIVILEGE)
-    ],
-    icon: "🛡️",
-    dependencies: ['hostel_read'],
-    highPrivilegeWarning: {
-      'staff_delete': 'Allows deletion of custom roles. This affects ALL staff members who have this role and removes their access immediately.'
-    }
-  },
+  
 
-  // Reports & Analytics
+  // Exports & Analytics
   reports_analytics: {
-    title: "Reports & Analytics", 
+    title: "Data Exports", 
     description: "Access hostel data exports and billing information",
     permissions: [
       'view_billing',      // View billing information
@@ -276,6 +259,42 @@ export const StaffManagement: React.FC = () => {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [permissionDisplayNames, setPermissionDisplayNames] = useState<Record<string, string>>({});
 
+  // Helper: humanize permission identifiers as a fallback
+  const humanizePermissionName = (name?: string) => {
+    if (!name) return '';
+    return name
+      .toString()
+      .replace(/_/g, ' ')
+      .split(' ')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  };
+
+  // Build final display name mapping from API and roles
+  const buildPermissionDisplayNames = (apiMap: Record<string, string> = {}, rolesList: Array<any> = []) => {
+    const map: Record<string, string> = { ...apiMap };
+
+    // add from roles (custom + system)
+    rolesList.forEach((r) => {
+      (r.permissions || []).forEach((p: any) => {
+        const key = p.name || p.id;
+        if (!key) return;
+        if (!map[key]) {
+          map[key] = p.displayName || p.display_name || humanizePermissionName(key);
+        }
+      });
+    });
+
+    // ensure groups provide fallback labels
+    Object.values(PERMISSION_GROUPS).forEach((group) => {
+      (group.permissions || []).forEach((perm: string) => {
+        if (!map[perm]) map[perm] = humanizePermissionName(perm);
+      });
+    });
+
+    return map;
+  };
+
   // Use permission hook for cleaner permission checking
   const canViewStaff = hasPermission('staff_read');
   const canManageStaff = hasPermission('staff_update');
@@ -286,12 +305,23 @@ export const StaffManagement: React.FC = () => {
   const canExportStaff = hasPermission('export_staff_data');
 
   useEffect(() => {
-    if (canViewStaff) {
-      fetchStaff();
-      fetchCustomRoles();
-      fetchAvailableRoles();
-      fetchAvailablePermissions();
-    }
+    if (!canViewStaff) return;
+
+    // load RBAC data and compose displayName map
+    const loadRBACData = async () => {
+      await fetchStaff();
+      await fetchCustomRoles(); // sets customRoles state
+      await fetchAvailableRoles(); // sets availableRoles state
+      await fetchAvailablePermissions(); // sets availablePermissions and partial map
+
+      // combine maps from API and roles
+      const apiMap = permissionDisplayNames || {};
+      const rolesCombined = [...(customRoles || []), ...(availableRoles || [])];
+      const finalMap = buildPermissionDisplayNames(apiMap, rolesCombined);
+      setPermissionDisplayNames(finalMap);
+    };
+
+    loadRBACData().catch((err) => console.error('Failed to load RBAC data:', err));
   }, [canViewStaff]);
 
   // Close dropdown when clicking outside
@@ -308,40 +338,40 @@ export const StaffManagement: React.FC = () => {
     };
   }, [openDropdown]);
 
-  // 🎯 Update permissions based on selected groups with dependency management
-  const updatePermissionsFromGroups = (groups: Set<string>) => {
-    const allPermissions = new Set<string>();
-    const addedGroups = new Set<string>();
+  // // 🎯 Update permissions based on selected groups with dependency management
+  // const updatePermissionsFromGroups = (groups: Set<string>) => {
+  //   const allPermissions = new Set<string>();
+  //   const addedGroups = new Set<string>();
     
-    // Helper function to add group and its dependencies
-    const addGroupWithDependencies = (groupKey: string) => {
-      if (addedGroups.has(groupKey)) return; // Avoid circular dependencies
+  //   // Helper function to add group and its dependencies
+  //   const addGroupWithDependencies = (groupKey: string) => {
+  //     if (addedGroups.has(groupKey)) return; // Avoid circular dependencies
       
-      const group = PERMISSION_GROUPS[groupKey as keyof typeof PERMISSION_GROUPS];
-      if (!group) return;
+  //     const group = PERMISSION_GROUPS[groupKey as keyof typeof PERMISSION_GROUPS];
+  //     if (!group) return;
       
-      addedGroups.add(groupKey);
+  //     addedGroups.add(groupKey);
       
-      // Add group permissions
-      group.permissions.forEach(permission => {
-        allPermissions.add(permission);
-      });
+  //     // Add group permissions
+  //     group.permissions.forEach(permission => {
+  //       allPermissions.add(permission);
+  //     });
       
-      // Add dependencies
-      if (group.dependencies) {
-        group.dependencies.forEach(depPermission => {
-          allPermissions.add(depPermission);
-        });
-      }
-    };
+  //     // Add dependencies
+  //     if (group.dependencies) {
+  //       group.dependencies.forEach(depPermission => {
+  //         allPermissions.add(depPermission);
+  //       });
+  //     }
+  //   };
     
-    // Process all selected groups
-    groups.forEach(groupKey => {
-      addGroupWithDependencies(groupKey);
-    });
+  //   // Process all selected groups
+  //   groups.forEach(groupKey => {
+  //     addGroupWithDependencies(groupKey);
+  //   });
     
-    return Array.from(allPermissions);
-  };
+  //   return Array.from(allPermissions);
+  // };
 
   // 🎯 Update permissions based on individual permission selection with enhanced dependency logic
   const updatePermissionsFromIndividual = (permissions: Set<string>) => {
@@ -402,17 +432,17 @@ export const StaffManagement: React.FC = () => {
   };
 
   // 🎯 Handle group selection
-  const handleGroupToggle = (groupKey: string) => {
-    if (groupKey === 'hostel_read') return; // Can't remove basic access
+  // const handleGroupToggle = (groupKey: string) => {
+  //   if (groupKey === 'hostel_read') return; // Can't remove basic access
     
-    const newGroups = new Set(selectedGroups);
-    if (newGroups.has(groupKey)) {
-      newGroups.delete(groupKey);
-    } else {
-      newGroups.add(groupKey);
-    }
-    setSelectedGroups(newGroups);
-  };
+  //   const newGroups = new Set(selectedGroups);
+  //   if (newGroups.has(groupKey)) {
+  //     newGroups.delete(groupKey);
+  //   } else {
+  //     newGroups.add(groupKey);
+  //   }
+  //   setSelectedGroups(newGroups);
+  // };
 
   // 🎯 Handle individual permission selection
   const handlePermissionToggle = (permission: string) => {
@@ -486,7 +516,21 @@ export const StaffManagement: React.FC = () => {
       }
 
       const response = await apiClient.get(`/rbac/hostels/${hostelId}/roles`);
-      setCustomRoles((response as any).data || []);
+      const roles = (response as any).data || [];
+
+      // Normalize display name and permission displayNames
+      const normalized = roles.map((r: any) => ({
+        ...r,
+        displayName: r.displayName || r.display_name || r.name || '',
+        permissions: (r.permissions || []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          displayName: p.displayName || p.display_name || p.name,
+          category: p.category,
+        })),
+      }));
+
+      setCustomRoles(normalized);
     } catch (error: any) {
       console.error('Failed to fetch custom roles:', error);
     }
@@ -513,23 +557,28 @@ export const StaffManagement: React.FC = () => {
         role.name === 'warden' || role.name === 'staff'
       );
 
-      // Combine system roles and custom roles
+      // Combine system roles and custom roles with normalization
       const allAvailableRoles = [
         ...staffSystemRoles.map((role: any) => ({
           id: role.id,
           name: role.name,
-          displayName: role.displayName,
+          displayName: role.displayName || role.display_name || role.name,
           description: role.description,
           isSystemRole: true,
-          permissions: []
+          permissions: role.permissions || []
         })),
         ...customRoles.map((role: any) => ({
           id: role.id,
           name: role.name,
-          displayName: role.displayName,
+          displayName: role.displayName || role.display_name || role.name,
           description: role.description,
           isSystemRole: false,
-          permissions: role.permissions || []
+          permissions: (role.permissions || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            displayName: p.displayName || p.display_name || p.name,
+            category: p.category
+          }))
         }))
       ];
 
@@ -552,31 +601,38 @@ export const StaffManagement: React.FC = () => {
         const displayNames: Record<string, string> = {};
         
         Object.keys(permissionsData).forEach(category => {
-          if (Array.isArray(permissionsData[category])) {
-            permissionsData[category].forEach((permission: any) => {
-              flatPermissions.push({
-                id: permission.id,
-                name: permission.name,
-                displayName: permission.displayName,
-                category: category,
-                description: permission.description
-              });
-              
-              // Store display name mapping
-              displayNames[permission.name] = permission.displayName || permission.name;
+          const items = permissionsData[category];
+          if (!Array.isArray(items)) return;
+          items.forEach((permission: any) => {
+            const display = permission.displayName || permission.display_name || permission.name || String(permission.id || '');
+            flatPermissions.push({
+              id: permission.id,
+              name: permission.name,
+              displayName: display,
+              category: category,
+              description: permission.description || ''
             });
-          }
+            
+            // Store display name mapping (by permission name)
+            if (permission.name) {
+              displayNames[permission.name] = display;
+            } else if (permission.id) {
+              displayNames[permission.id] = display;
+            }
+          });
         });
         
         setAvailablePermissions(flatPermissions);
-        setPermissionDisplayNames(displayNames);
+        setPermissionDisplayNames(prev => ({ ...prev, ...displayNames }));
       } else {
         console.warn('Permissions API returned unexpected data format:', permissionsData);
         setAvailablePermissions([]);
+        setPermissionDisplayNames({});
       }
     } catch (error: any) {
       console.error('Failed to fetch permissions:', error);
       setAvailablePermissions([]); // Set empty array as fallback
+      setPermissionDisplayNames({});
     }
   };
 
@@ -1412,7 +1468,12 @@ export const StaffManagement: React.FC = () => {
                             {member.permissions?.length || 0} permission{(member.permissions?.length || 0) !== 1 ? 's' : ''}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {member.permissions?.slice(0, 2).map(p => p.displayName).join(', ') || 'No permissions'}
+                            {(
+                              member.permissions?.slice(0,2)
+                                .map(p => permissionDisplayNames[p.name] || p.display_name || p.display_name || p.name)
+                                .filter(Boolean)
+                                .join(', ')
+                            ) || 'No permissions'}
                             {(member.permissions?.length || 0) > 2 && ` +${(member.permissions?.length || 0) - 2} more`}
                           </div>
                         </td>
@@ -1437,7 +1498,7 @@ export const StaffManagement: React.FC = () => {
                           </td>
                         }
                       >
-                        <td className="px-6 py-4 whitespace-nowraptext-right text-sm font-medium">
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="relative dropdown-container" style={{ zIndex: openDropdown === member.id ? 9999 : 'auto' }}>
                             <button
                               onClick={() => setOpenDropdown(openDropdown === member.id ? null : member.id)}
@@ -1477,7 +1538,7 @@ export const StaffManagement: React.FC = () => {
                                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                       role="menuitem"
                                     >
-                                      <ShieldIcon className="w -4 h-4 mr-3" />
+                                      <ShieldIcon className="w-4 h-4 mr-3" />
                                       Edit Role/Permissions
                                     </button>
                                   </PermissionGate>
@@ -1604,6 +1665,7 @@ export const StaffManagement: React.FC = () => {
                   }
                 }}>
                   <div className="space-y-5">
+                  </div>
                     <div>
                       <label className="block text-sm font-semibold text-gray-800 mb-2">
                         Full Name <span className="text-red-500">*</span>
@@ -1684,69 +1746,67 @@ export const StaffManagement: React.FC = () => {
                     </div>
                     
                     {!editingStaff && (
-                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <div className="flex items-start">
-                          <div className="flex-shrink-0">
-                            <svg className="h-5 w-5 text-yellow-500 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                          </div>
-                          <div className="ml-3">
-                            <h4 className="text-sm font-semibold text-yellow-900 mb-1">
-                              Default Login Credentials
-                            </h4>
-                            <p className="text-sm text-yellow-800">
-                              Password will be set to <strong>123456</strong> and the staff member will be required to change it on first login.
-                            </p>
-                          </div>
+                      <><div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-yellow-500 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        </div>
+                        <div className="ml-3">
+                          <h4 className="text-sm font-semibold text-yellow-900 mb-1">
+                            Default Login Credentials
+                          </h4>
+                          <p className="text-sm text-yellow-800">
+                            Password will be set to <strong>123456</strong> and the staff member will be required to change it on first login.
+                          </p>
                         </div>
                       </div>
-                    )}
-                  </div>
-                  
-                  <div className="mt-8 flex justify-end space-x-3 pt-4 border-t border-gray-200">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowCreateForm(false);
-                        setEditingStaff(null);
-                      }}
-                      className="px-6 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-6 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      disabled={loadingOperations.has(editingStaff ? `update-${editingStaff.id}` : 'create')}
-                    >
-                      {loadingOperations.has(editingStaff ? `update-${editingStaff.id}` : 'create') ? (
-                        <div className="flex items-center">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          {editingStaff ? 'Updating...' : 'Creating...'}
-                        </div>
-                      ) : (
-                        <div className="flex items-center">
-                          {editingStaff ? (
-                            <>
-                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                              Update Staff
-                            </>
+                    </div><div className="mt-8 flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowCreateForm(false);
+                            setEditingStaff(null);
+                          } }
+                          className="px-6 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-6 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          disabled={editingStaff ? loadingOperations.has(`update-${(editingStaff as StaffMember).id}`) : loadingOperations.has('create')}
+                        >
+                          {loadingOperations.has(editingStaff ? `update-${(editingStaff as StaffMember).id}` : 'create') ? (
+                            <div className="flex items-center">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              {editingStaff ? 'Updating...' : 'Creating...'}
+                            </div>
                           ) : (
-                            <>
-                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                              </svg>
-                              Create Staff
-                            </>
+                            <div className="flex items-center">
+                              {editingStaff ? (
+                                <>
+                                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                  Update Staff
+                                </>
+                              ) : (
+                                <>
+                                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                  </svg>
+                                  Create Staff
+                                </>
+                              )}
+                            </div>
                           )}
-                        </div>
-                      )}
-                    </button>
-                  </div>
-                </form>
+                        </button>
+          </div>
+      </>
+          )}
+        </form>
             </div>
           </div>
         </PermissionGate>
@@ -1790,6 +1850,7 @@ export const StaffManagement: React.FC = () => {
                 
                 if (selectedPermissions.size === 0) {
                   notification.error('Please select at least one permission');
+
                   return;
                 }
                 
@@ -1837,6 +1898,7 @@ export const StaffManagement: React.FC = () => {
                     <p className="mt-1 text-xs text-gray-500">Optional description of the role's responsibilities</p>
                   </div>
 
+                 
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-2">
                       Role Capabilities <span className="text-red-500">*</span>
@@ -1851,7 +1913,7 @@ export const StaffManagement: React.FC = () => {
                           </svg>
                         </div>
                         <div className="ml-3">
-                          <h4 className="text-sm font-semibold text-yellow-900">
+                          <h4 className="text-sm font-semibold text-yellow-900 mb-1">
                             🔐 Permission Security Notice
                           </h4>
                           <div className="text-sm text-yellow-800 mt-1">
@@ -2180,7 +2242,7 @@ export const StaffManagement: React.FC = () => {
                             </svg>
                           </div>
                           <div className="ml-3">
-                            <h4 className="text-sm font-semibold text-yellow-900">
+                            <h4 className="text-sm font-semibold text-yellow-900 mb-1">
                               🔐 Permission Security Notice
                             </h4>
                             <div className="text-sm text-yellow-800 mt-1">
@@ -2425,89 +2487,12 @@ export const StaffManagement: React.FC = () => {
                   ) : (
                     <button
                       type="button"
-                      onClick={handleEditRoleSubmit}
-                      disabled={loadingOperations.has(`edit-role-${editingStaffRole.id}`)}
-                      className="px-6 py-2 bg-blue-600 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50"
+                      onClick={() => setIsEditingPermissions(true)}
+                      className="px-6 py-2 bg-blue-600 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                     >
-                      {loadingOperations.has(`edit-role-${editingStaffRole.id}`) ? (
-                        <div className="flex items-center">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Updating...
-                        </div>
-                      ) : (
-                        'Update Role'
-                      )}
+                      Edit Permissions
                     </button>
                   )}
-                </div>
-              </div>
-            </div>
-          </div>
-          )}
-        </PermissionGate>
-
-        {/* Delete Confirmation Modal */}
-        {showDeleteConfirm && staffToDelete && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-6 border w-full max-w-md shadow-xl rounded-lg bg-white">
-              <div className="mb-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-bold text-red-600">
-                    ⚠️ PERMANENT DELETION WARNING
-                  </h3>
-                  <button
-                    onClick={() => {
-                      setShowDeleteConfirm(false);
-                      setStaffToDelete(null);
-                      setDeleteConfirmText('');
-                    }}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                <p className="text-sm text-gray-600 mt-2">
-                  You are about to permanently delete <strong>{staffToDelete.name}</strong>
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-red-800 mb-2">This will PERMANENTLY DELETE:</h4>
-                  <ul className="text-sm text-red-700 space-y-1">
-                    <li>• Staff member account</li>
-                    <li>• All complaints they filed</li>
-                    <li>• All room allocations (if any)</li>
-                    <li>• All visitor logs (if any)</li>
-                    <li>• Any other related records</li>
-                  </ul>
-                  
-                  <h4 className="font-semibold text-amber-800 mb-2 mt-3">This will PRESERVE for reassignment:</h4>
-                  <ul className="text-sm text-amber-700 space-y-1">
-                    <li>• All custom roles they created</li>
-                    <li>• All role permissions for their custom roles</li>
-                  </ul>
-                  
-                  <p className="text-sm font-semibold text-red-800 mt-2">
-                    Deletion cannot be undone! Custom roles can be managed separately.
-                  </p>
-                </div>
-
-                <div>
-                  <label htmlFor="delete-confirm" className="block text-sm font-medium text-gray-700 mb-2">
-                    Type "DELETE" to confirm:
-                  </label>
-                  <input
-                    id="delete-confirm"
-                    type="text"
-                    value={deleteConfirmText}
-                    onChange={(e) => setDeleteConfirmText(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    placeholder="Type DELETE to confirm"
-                    autoComplete="off"
-                  />
                 </div>
               </div>
 
@@ -2526,10 +2511,10 @@ export const StaffManagement: React.FC = () => {
                 <button
                   type="button"
                   onClick={confirmDeleteStaff}
-                  disabled={deleteConfirmText !== 'DELETE' || loadingOperations.has(`delete-${staffToDelete.id}`)}
+                  disabled={deleteConfirmText !== 'DELETE' || loadingOperations.has(`delete-${staffToDelete?.id ?? ''}`)}
                   className="px-6 py-2 bg-red-600 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors disabled:opacity-50"
                 >
-                  {loadingOperations.has(`delete-${staffToDelete.id}`) ? (
+                  {loadingOperations.has(`delete-${staffToDelete?.id ?? ''}`) ? (
                     <div className="flex items-center">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                       Deleting...
@@ -2542,7 +2527,8 @@ export const StaffManagement: React.FC = () => {
             </div>
           </div>
         )}
+        </PermissionGate>
       </div>
     </div>
-  );
+  )
 };

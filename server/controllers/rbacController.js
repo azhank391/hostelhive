@@ -257,6 +257,7 @@ const getSystemRoles = async (req, res) => {
  * @access Private (Users with manage_roles permission)
  */
 const createCustomRole = async (req, res) => {
+  console.log("[RBAC] Incoming role creation payload:", req.body);
   try {
     const { name, displayName, description, permissionNames } = req.body;
     const createdById = req.user.id;
@@ -290,6 +291,7 @@ const createCustomRole = async (req, res) => {
     // Use permission dependency resolver to create role with automatic dependencies
     // Use RBAC service to create role with dependencies
     const result = await rbacService.createCustomRole(
+      hostelId,
       {
         name,
         displayName,
@@ -298,7 +300,6 @@ const createCustomRole = async (req, res) => {
         permissionNames,
       },
       createdById,
-      hostelId
     );
 
     if (!result.success) {

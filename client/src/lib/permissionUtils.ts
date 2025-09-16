@@ -92,7 +92,7 @@ export interface UserPermissions {
 
 export const checkPermission = (userPermissions: string[] | undefined, permission: Permission): boolean => {
   if (!userPermissions) return false;
-  return userPermissions.includes(permission);
+  return userPermissions.includes(permission); 
 };
 
 export const checkAnyPermission = (userPermissions: string[] | undefined, permissions: Permission[]): boolean => {

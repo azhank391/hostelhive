@@ -256,14 +256,19 @@ class RBACService {
         throw new Error("hostelId is required");
       }
 
-      const roleName = (payload.name || payload.displayName || payload.display_name || "")
+      const roleName = (
+        payload.name ||
+        payload.displayName ||
+        payload.display_name ||
+        ""
+      )
         .toString()
         .trim();
       if (!roleName) {
         throw new Error("role name/displayName is required");
       }
 
-      const display_name =
+      const displayName =
         payload.displayName || payload.display_name || roleName;
       const description = payload.description || null;
 
@@ -271,7 +276,7 @@ class RBACService {
       const role = await Role.create({
         id: uuidv4(),
         name: roleName,
-        display_name,
+        displayName,
         description,
         is_system_role: false,
         hostel_id: hostelId,
@@ -344,18 +349,26 @@ class RBACService {
           : created;
 
       return {
-        id: plain.id,
-        name: plain.name,
-        displayName: plain.display_name,
-        description: plain.description,
-        isSystemRole: Boolean(plain.is_system_role),
-        permissions: (plain.permissions || []).map((p) => ({
-          id: p.id,
-          name: p.name,
-          displayName: p.display_name,
-          category: p.category,
-          operation: p.operation,
-        })),
+        success: true,
+        role: {
+          id: plain.id,
+          name: plain.name,
+          displayName: plain.display_name,
+          description: plain.description,
+          isSystemRole: Boolean(plain.is_system_role),
+        },
+        permissions: {
+          list: (plain.permissions || []).map((p) => ({
+            id: p.id,
+            name: p.name,
+            displayName: p.display_name,
+            category: p.category,
+            operation: p.operation,
+          })),
+          resolvedCount: (plain.permissions || []).length,
+          originalCount: (plain.permissions || []).length, // Adjust if you have original/dependency split
+          dependencies: [], // Adjust if you track dependencies
+        },
       };
     } catch (error) {
       console.error("❌ RBAC: Error creating custom role:", error);
