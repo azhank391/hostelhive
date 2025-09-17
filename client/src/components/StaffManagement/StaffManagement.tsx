@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import StaffCreateModal from "./StaffCreateModal";
 import StaffEditModal from "./StaffEditModal";
+import RoleEditModal from "./RoleEditModal";
 import { useRouter } from "next/navigation";
 import { notification } from "@/lib/toast";
 import { useCurrentHostelId } from "@/lib/context-aware-api";
@@ -215,28 +216,12 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
     title: "Reports & Analytics",
     description: "Access to various reports and analytics",
     permissions: [
-      "view_reports", // View general reports
-      "view_analytics", // View analytics data
       "view_billing", // View billing information
-      "view_hostel_stats", // View hostel statistics
     ],
     icon: "📊",
     dependencies: ["hostel_read"],
   },
-
-  // Profile Management
-  profile_management: {
-    title: "Profile Management",
-    description: "Manage user profiles and personal information",
-    permissions: [
-      "manage_profile", // Edit own profile
-      "view_profile", // View profile information
-      "change_password", // Change own password
-      "view_own_data", // View own data
-    ],
-    icon: "👤",
-    required: true, // Everyone needs basic profile access
-  },
+  // Profile Management (Self-service)
 };
 
 // Generate permission display names from PERMISSION_GROUPS
@@ -332,6 +317,7 @@ function StaffManagement() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showCreateRoleForm, setShowCreateRoleForm] = useState(false);
   const [showEditRoleModal, setShowEditRoleModal] = useState(false);
+  const [showStaffEditModal, setShowStaffEditModal] = useState(false);
   const [showUpdatePermissionsModal, setShowUpdatePermissionsModal] =
     useState(false);
   const [modalMode, setModalMode] = useState<
@@ -409,6 +395,12 @@ function StaffManagement() {
                       ...newRole,
                       isSystemRole: newRole.isSystemRole || false,
                     },
+                    permissions: (newRole.permissions || []).map((p: any) => ({
+                      id: p.id,
+                      name: p.name,
+                      display_name: p.displayName,
+                      category: p.category,
+                    })),
                   }
                 : s
             )
@@ -461,28 +453,66 @@ function StaffManagement() {
     setLoadingOperations((prev) => new Set(prev).add(operationId));
 
     try {
-      // Use the selected permissions from the UI (editingRolePermissions)
       const selectedPermissions = Array.from(editingRolePermissions);
 
-      // Update role permissions via API (send permissionIds as expected by backend)
-      await apiClient.put(
-        `/rbac/hostels/${hostelId}/roles/${editingStaffRole.role.id}`,
-        {
-          permissionIds: selectedPermissions,
-        }
-      );
+      // Build optimistic permission objects for display
+      const optimisticPerms = selectedPermissions.map(pid => ({
+        id: pid,
+        name: pid,
+        display_name: permissionDisplayNames[pid] || pid,
+        category: Object.entries(PERMISSION_GROUPS).find(([_k,g]) => g.permissions.includes(pid))?.[0] || 'general'
+      }));
 
+      // Optimistically update availableRoles and staff entries referencing this role
+      setAvailableRoles(prev => prev.map(r => r.id === editingStaffRole.role!.id ? {
+        ...r,
+        permissions: optimisticPerms.map(p => ({
+          id: p.id,
+          name: p.name,
+          displayName: p.display_name,
+          category: p.category
+        }))
+      } : r));
+
+      setStaff(prev => prev.map(s => s.role?.id === editingStaffRole.role!.id ? {
+        ...s,
+        permissions: optimisticPerms
+      } : s));
+
+      // Fire request
+      await apiClient.put(`/rbac/hostels/${hostelId}/roles/${editingStaffRole.role.id}`,{ permissionIds: selectedPermissions });
       notification.success("Role permissions updated successfully");
 
-      // Always refresh staff and roles to get latest permissions
-      await Promise.all([fetchStaff(), fetchAvailableRoles()]);
+      // Reconcile with authoritative data
+      const results = await Promise.all([fetchStaff(true), fetchAvailableRoles(true)]);
 
       // Update the local state immediately with new permissions for better UX
       if (editingStaffRole) {
-        const updatedRole = availableRoles.find(
-          (r) => r.id === editingStaffRole.role?.id
+        const rolesAfterUpdate = results[1] || [];
+        const updatedRole = rolesAfterUpdate.find(
+          (r: any) => r.id === editingStaffRole.role?.id
         );
+        
         if (updatedRole) {
+          // Update the staff list with new permissions
+          setStaff((prevStaff) => 
+            prevStaff.map((staffMember) => {
+              if (staffMember.role?.id === editingStaffRole.role?.id) {
+                return {
+                  ...staffMember,
+                  permissions: updatedRole.permissions?.map((p: any) => ({
+                    id: p.id,
+                    name: p.name,
+                    display_name: p.displayName,
+                    category: p.category,
+                  })) || []
+                };
+              }
+              return staffMember;
+            })
+          );
+          
+          // Update the editing staff role with new permissions
           setEditingStaffRole((prev) =>
             prev
               ? {
@@ -491,12 +521,12 @@ function StaffManagement() {
                     ...updatedRole,
                     isSystemRole: updatedRole.isSystemRole || false,
                   },
-                  permissions: updatedRole.permissions.map((p) => ({
+                  permissions: updatedRole.permissions?.map((p: any) => ({
                     id: p.id,
                     name: p.name,
                     display_name: p.displayName,
                     category: p.category,
-                  })),
+                  })) || []
                 }
               : prev
           );
@@ -506,6 +536,11 @@ function StaffManagement() {
       notification.success(
         "Permissions updated and changes reflected in the system"
       );
+      // Close and reset modal state after successful update
+      setShowEditRoleModal(false);
+      setEditingStaffRole(null);
+      setEditingRolePermissions(new Set());
+      setIsEditingPermissions(false);
     } catch (error: any) {
       console.error("Failed to update role permissions:", error);
       notification.error(error.message || "Failed to update role permissions");
@@ -592,22 +627,46 @@ function StaffManagement() {
     setLoadingOperations((prev) => new Set(prev).add(operationId));
 
     try {
-      await apiClient.delete(`/rbac/hostels/${hostelId}/roles/${roleId}`);
-      notification.success(
-        `Role "${roleToDelete.displayName}" deleted successfully`
-      );
-      // Refresh roles and staff to reflect changes
-      await fetchAvailableRoles();
-      await fetchStaff();
-      // If we were editing this role, close modal
+      // Optimistic updates BEFORE network call
+      // 1. Remove role from availableRoles immediately
+      setAvailableRoles(prev => prev.filter(r => r.id !== roleId));
+      // 2. Mark staff with that role as needing assignment
+      const affectedStaffIds = staff.filter(s => s.role?.id === roleId).map(s => s.id);
+      setStaff(prev => prev.map(s => s.role?.id === roleId ? {
+        ...s,
+        role: { id: '', name: '', displayName: 'Assign a role', isSystemRole: false },
+        permissions: []
+      } : s));
+      // 3. Update editing contexts
       if (editingStaffRole && editingStaffRole.role?.id === roleId) {
         setShowEditRoleModal(false);
         setEditingStaffRole(null);
         setEditingRolePermissions(new Set());
       }
+      if (editingStaff && editingStaff.role?.id === roleId) {
+        setEditingStaff(prev => prev ? {
+          ...prev,
+          role: { id: '', name: '', displayName: 'Assign a role', isSystemRole: false },
+          permissions: []
+        } : prev);
+      }
+
+      // Perform API delete
+      await apiClient.delete(`/rbac/hostels/${hostelId}/roles/${roleId}`);
+      notification.success(`Role "${roleToDelete.displayName}" deleted successfully`);
+
+      // Reconcile authoritative data
+      const [ , ] = await Promise.all([
+        fetchAvailableRoles(true),
+        fetchStaff(true)
+      ]);
+      // (No extra diffing needed; optimistic state already matches expected)
     } catch (error: any) {
       console.error("Failed to delete role:", error);
       notification.error(error.message || "Failed to delete role");
+      // Rollback optimistic changes on failure
+      await fetchAvailableRoles(true);
+      await fetchStaff(true);
     } finally {
       setLoadingOperations((prev) => {
         const newSet = new Set(prev);
@@ -618,12 +677,16 @@ function StaffManagement() {
   };
 
   // Fetch functions
-  const fetchStaff = async () => {
+  const fetchStaff = async (skipCache: boolean = false) => {
     try {
       const hostelId = getHostelIdSafe();
       if (!hostelId) return;
 
-      const response = await apiClient.get(`/hostels/${hostelId}/staff`);
+      if (skipCache && apiClient.invalidateCache) {
+        apiClient.invalidateCache(`/hostels/${hostelId}/staff`);
+      }
+
+      const response = await apiClient.get(`/hostels/${hostelId}/staff`, { skipCache });
       setStaff((response as any).data || []);
     } catch (error: any) {
       console.error("Failed to fetch staff:", error);
@@ -631,14 +694,19 @@ function StaffManagement() {
     }
   };
 
-  const fetchAvailableRoles = async () => {
+  const fetchAvailableRoles = async (skipCache: boolean = false) => {
     try {
       const hostelId = getHostelIdSafe();
-      if (!hostelId) return;
+      if (!hostelId) return [];
+
+      if (skipCache && apiClient.invalidateCache) {
+        apiClient.invalidateCache("/rbac/system-roles");
+        apiClient.invalidateCache(`/rbac/hostels/${hostelId}/roles`);
+      }
 
       const [systemRolesResponse, customRolesResponse] = await Promise.all([
-        apiClient.get("/rbac/system-roles"),
-        apiClient.get(`/rbac/hostels/${hostelId}/roles`),
+        apiClient.get("/rbac/system-roles", { skipCache }),
+        apiClient.get(`/rbac/hostels/${hostelId}/roles`, { skipCache }),
       ]);
 
       const systemRoles = (systemRolesResponse as any).data || [];
@@ -673,6 +741,7 @@ function StaffManagement() {
       ];
 
       setAvailableRoles(allAvailableRoles);
+      return allAvailableRoles;
     } catch (error: any) {
       console.error("Failed to fetch available roles:", error);
       setAvailableRoles([]);
@@ -691,13 +760,42 @@ function StaffManagement() {
     setLoadingOperations((prev) => new Set(prev).add(operationId));
 
     try {
-      await apiClient.post(`/hostels/${hostelId}/staff`, data);
+      // Backend requires a password; set default and enforce change on first login server-side
+      const payload = { ...data, password: "123456" };
+      // Optimistic placeholder (id will be replaced after refetch if needed)
+      const tempId = `temp-${Date.now()}`;
+      const roleMeta = availableRoles.find(r => r.id === data.roleId);
+      const optimisticStaff = {
+        id: tempId,
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        isActive: true,
+        role: roleMeta ? {
+          id: roleMeta.id,
+            name: roleMeta.name,
+            displayName: roleMeta.displayName,
+            isSystemRole: roleMeta.isSystemRole
+          } : { id: data.roleId, name: '', displayName: 'Assigning...', isSystemRole: false },
+        permissions: roleMeta?.permissions?.map(p => ({
+          id: p.id,
+          name: p.name,
+          display_name: p.displayName,
+          category: p.category
+        })) || []
+      } as any;
+      setStaff(prev => [optimisticStaff, ...prev]);
+
+      await apiClient.post(`/hostels/${hostelId}/staff`, payload);
       notification.success("Staff member created successfully");
       setShowCreateForm(false);
-      await fetchStaff();
+      // Fresh reload to replace temp entry
+      await fetchStaff(true);
     } catch (error: any) {
       console.error("Failed to create staff:", error);
       notification.error(error.message || "Failed to create staff member");
+      // Rollback optimistic insert
+      setStaff(prev => prev.filter(s => !String(s.id).startsWith('temp-')));
     } finally {
       setLoadingOperations((prev) => {
         const newSet = new Set(prev);
@@ -720,12 +818,115 @@ function StaffManagement() {
     try {
       await apiClient.put(`/hostels/${hostelId}/staff/${staffId}`, data);
       notification.success("Staff member updated successfully");
+      
+      // Update local state immediately
+      setStaff((prevStaff) => prevStaff.map((s) => {
+        if (s.id !== staffId) return s;
+        const roleMeta = data.roleId ? availableRoles.find(r => r.id === data.roleId) : undefined;
+        return {
+          ...s,
+          ...data,
+          role: roleMeta ? {
+            id: roleMeta.id,
+            name: roleMeta.name,
+            displayName: roleMeta.displayName,
+            isSystemRole: roleMeta.isSystemRole
+          } : s.role,
+          permissions: roleMeta ? roleMeta.permissions?.map(p => ({
+            id: p.id,
+            name: p.name,
+            display_name: p.displayName,
+            category: p.category
+          })) : s.permissions
+        };
+      }));
+      
+      // Close modals and reset state
       setShowCreateForm(false);
+      setShowStaffEditModal(false);
       setEditingStaff(null);
-      await fetchStaff();
+      
+      await fetchStaff(true); // Refresh to get latest data with skipCache
     } catch (error: any) {
       console.error("Failed to update staff:", error);
       notification.error(error.message || "Failed to update staff member");
+    } finally {
+      setLoadingOperations((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(operationId);
+        return newSet;
+      });
+    }
+  };
+
+  // Handle role assignment
+  const handleAssignRole = async (staffId: string, roleId: string) => {
+    const hostelId = getHostelIdSafe();
+    if (!hostelId) {
+      notification.error("No hostel selected");
+      return;
+    }
+
+    const operationId = `assign-role-${staffId}`;
+    setLoadingOperations((prev) => new Set(prev).add(operationId));
+
+    try {
+      await apiClient.post(`/rbac/hostels/${hostelId}/users/${staffId}/assign-role`, {
+        roleId: roleId
+      });
+      
+      notification.success("Role assigned successfully");
+      
+      // Find the assigned role details
+      const assignedRole = availableRoles.find(role => role.id === roleId);
+      
+      // Update local state immediately
+      setStaff((prevStaff) =>
+        prevStaff.map((staff) =>
+          staff.id === staffId 
+            ? { 
+                ...staff, 
+                role: assignedRole ? {
+                  id: assignedRole.id,
+                  name: assignedRole.name,
+                  displayName: assignedRole.displayName,
+                  isSystemRole: assignedRole.isSystemRole || false
+                } : staff.role,
+                permissions: assignedRole?.permissions?.map(p => ({
+                  id: p.id,
+                  name: p.name,
+                  display_name: p.displayName,
+                  category: p.category
+                })) || []
+              } 
+            : staff
+        )
+      );
+      
+      // Update editing staff if it's the same one
+      if (editingStaff && editingStaff.id === staffId && assignedRole) {
+        setEditingStaff(prev => prev ? { 
+          ...prev, 
+          role: {
+            id: assignedRole.id,
+            name: assignedRole.name,
+            displayName: assignedRole.displayName,
+            isSystemRole: assignedRole.isSystemRole || false
+          },
+          permissions: assignedRole.permissions?.map(p => ({
+            id: p.id,
+            name: p.name,
+            display_name: p.displayName,
+            category: p.category
+          })) || []
+        } : null);
+      }
+      
+      // Optionally refresh in background without blocking UI for data authority
+      fetchStaff(true);
+    } catch (error: any) {
+      console.error("Failed to assign role:", error);
+      notification.error(error.message || "Failed to assign role");
     } finally {
       setLoadingOperations((prev) => {
         const newSet = new Set(prev);
@@ -748,6 +949,8 @@ function StaffManagement() {
     setLoadingOperations((prev) => new Set(prev).add(operationId));
 
     try {
+      // Optimistic UI: remove immediately
+      setStaff((prev) => prev.filter((s) => s.id !== staffId));
       await apiClient.delete(`/hostels/${hostelId}/staff/${staffId}`);
       notification.success("Staff member deleted successfully");
       await fetchStaff();
@@ -772,17 +975,22 @@ function StaffManagement() {
       notification.error("No hostel selected");
       return;
     }
+    // Optimistic UI update
+    const previousStaff = staff;
+    setStaff(prev => prev.map(s => s.id === staffId ? { ...s, isActive } : s));
 
     try {
-      await apiClient.patch(`/hostels/${hostelId}/staff/${staffId}/status`, {
-        isActive,
-      });
-      notification.success(
-        `Staff member ${isActive ? "activated" : "deactivated"} successfully`
-      );
-      await fetchStaff();
+      await apiClient.patch(`/hostels/${hostelId}/staff/${staffId}/status`, { isActive });
+      notification.success(`Staff member ${isActive ? "activated" : "deactivated"} successfully`);
+      // Force fresh fetch to avoid stale cache resurrecting old value
+      if (apiClient.invalidateCache) {
+        apiClient.invalidateCache(`/hostels/${hostelId}/staff`);
+      }
+      await fetchStaff(/* skipCache */ true);
     } catch (error: any) {
       console.error("Failed to toggle staff status:", error);
+      // Revert optimistic change
+      setStaff(previousStaff);
       notification.error(error.message || "Failed to update staff status");
     }
   };
@@ -1309,9 +1517,7 @@ function StaffManagement() {
                         <div className="flex items-center">
                           <ShieldIcon className="h-4 w-4 text-gray-400 mr-2" />
                           <span className="text-sm text-gray-900">
-                            {member.role?.displayName ||
-                              member.role?.name ||
-                              "No Role"}
+                            {(!member.role || !member.role.id) ? 'Assign a role' : (member.role.displayName || member.role.name)}
                           </span>
                           {member.role && !member.role.isSystemRole && (
                             <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -1322,25 +1528,31 @@ function StaffManagement() {
                       </td>
                       <PermissionGate permission="staff_read">
                         <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">
-                            {member.permissions?.length || 0} permission
-                            {(member.permissions?.length || 0) !== 1 ? "s" : ""}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {member.permissions
-                              ?.slice(0, 2)
-                              .map(
-                                (p) =>
-                                  permissionDisplayNames[p.name] ||
-                                  p.display_name ||
-                                  p.display_name ||
-                                  p.name
-                              )
-                              .filter(Boolean)
-                              .join(", ") || "No permissions"}
-                            {(member.permissions?.length || 0) > 2 &&
-                              ` +${(member.permissions?.length || 0) - 2} more`}
-                          </div>
+                          {(!member.role || !member.role.id) ? (
+                            <div className="text-sm text-amber-600">No permissions (assign a role)</div>
+                          ) : (
+                            <>
+                              <div className="text-sm text-gray-900">
+                                {member.permissions?.length || 0} permission
+                                {(member.permissions?.length || 0) !== 1 ? "s" : ""}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {member.permissions
+                                  ?.slice(0, 2)
+                                  .map(
+                                    (p) =>
+                                      permissionDisplayNames[p.name] ||
+                                      p.display_name ||
+                                      p.display_name ||
+                                      p.name
+                                  )
+                                  .filter(Boolean)
+                                  .join(", ") || "No permissions"}
+                                {(member.permissions?.length || 0) > 2 &&
+                                  ` +${(member.permissions?.length || 0) - 2} more`}
+                              </div>
+                            </>
+                          )}
                         </td>
                       </PermissionGate>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -1402,6 +1614,7 @@ function StaffManagement() {
                                       <button
                                         onClick={() => {
                                           setEditingStaff(member);
+                                          setShowStaffEditModal(true);
                                           setOpenDropdown(null);
                                         }}
                                         className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -1742,19 +1955,50 @@ function StaffManagement() {
                         name="roleId"
                         defaultValue={editingStaff?.role?.id || ""}
                         required
+                        onChange={(e) => {
+                          const selectedRoleId = e.target.value;
+                          const selectedRole = availableRoles.find(r => r.id === selectedRoleId);
+                          if (selectedRole && editingStaff) {
+                            // Update editing staff with new role and permissions
+                            setEditingStaff({
+                              ...editingStaff,
+                              role: {
+                                id: selectedRole.id,
+                                name: selectedRole.name,
+                                displayName: selectedRole.displayName,
+                                isSystemRole: selectedRole.isSystemRole || false
+                              },
+                              // Convert permissions if available, or use empty array
+                              permissions: selectedRole.permissions 
+                                ? selectedRole.permissions.map(p => ({
+                                    id: p.id,
+                                    name: p.name,
+                                    display_name: p.displayName || p.name,
+                                    category: p.category
+                                  }))
+                                : []
+                            });
+                          }
+                        }}
                         className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors bg-white"
                       >
                         <option value="">
                           Choose a role for this staff member
                         </option>
                         {availableRoles
-                          .filter((role) => role && role.id) // Ensure role has valid id
-                          .map((role, index) => (
-                            <option key={`${role.id}-${index}`} value={role.id}>
-                              {role.displayName}{" "}
-                              {role.isSystemRole ? "(System)" : "(Custom)"}
-                            </option>
-                          ))}
+                          .filter((role) => role && role.id)
+                          .map((role, index) => {
+                            const human = (role.displayName || role.name || "")
+                              .replace(/[-_]+/g, " ")
+                              .replace(/\s+/g, " ")
+                              .trim()
+                              .replace(/\b\w/g, (c) => c.toUpperCase());
+                            return (
+                              <option key={`${role.id}-${index}`} value={role.id}>
+                                {human} {role.isSystemRole ? "(System)" : "(Custom)"}
+                              </option>
+                            );
+                          })}
                       </select>
                     ) : (
                       <div className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm bg-gray-100 text-gray-600 sm:text-sm">
@@ -2342,8 +2586,8 @@ function StaffManagement() {
           )}
         </PermissionGate>
 
-        {/* Staff Edit Modal */}
-        <StaffEditModal
+        {/* Role Edit Modal */}
+        <RoleEditModal
           open={showEditRoleModal}
           onClose={() => {
             setShowEditRoleModal(false);
@@ -2373,6 +2617,24 @@ function StaffManagement() {
           handleEditDeselectAllInCategory={handleEditDeselectAllInCategory}
           handleEditPermissionToggle={handleEditPermissionToggle}
         />
+
+        {/* New Staff Information Edit Modal */}
+        {editingStaff && (
+          <StaffEditModal
+            open={showStaffEditModal}
+            onClose={() => {
+              setShowStaffEditModal(false);
+              setEditingStaff(null);
+            }}
+            editingStaff={editingStaff}
+            availableRoles={availableRoles}
+            loadingOperations={loadingOperations}
+            onUpdateStaff={handleUpdateStaff}
+            onAssignRole={handleAssignRole}
+            permissionDisplayNames={permissionDisplayNames}
+            hasPermission={(permission: string) => hasPermission(permission as any)}
+          />
+        )}
 
         {/* Staff Create Modal */}
         <StaffCreateModal
