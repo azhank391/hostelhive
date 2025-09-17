@@ -267,12 +267,7 @@ const createCustomRole = async (req, res) => {
     );
 
     // Validate required fields
-    if (
-      !name ||
-      !displayName ||
-      !permissions ||
-      permissions.length === 0
-    ) {
+    if (!name || !displayName || !permissions || permissions.length === 0) {
       return res.status(400).json({
         success: false,
         message: "Name, display name, and at least one permission are required",
@@ -302,10 +297,15 @@ const createCustomRole = async (req, res) => {
 
     if (!result.success) {
       // If the error is a unique constraint violation, show a user-friendly message
-      if (result.error && result.error.toLowerCase().includes('unique') && result.error.toLowerCase().includes('role')) {
+      if (
+        result.error &&
+        result.error.toLowerCase().includes("unique") &&
+        result.error.toLowerCase().includes("role")
+      ) {
         return res.status(409).json({
           success: false,
-          message: 'A role with this name already exists for this hostel. Please choose a different name.'
+          message:
+            "A role with this name already exists for this hostel. Please choose a different name.",
         });
       }
       return res.status(400).json({
@@ -332,12 +332,15 @@ const createCustomRole = async (req, res) => {
   } catch (error) {
     console.error("❌ Error creating custom role:", error);
 
-
     // Handle Sequelize unique constraint error for duplicate role name/hostel
-    if (error.name === 'SequelizeUniqueConstraintError' || (error.parent && error.parent.code === 'ER_DUP_ENTRY')) {
+    if (
+      error.name === "SequelizeUniqueConstraintError" ||
+      (error.parent && error.parent.code === "ER_DUP_ENTRY")
+    ) {
       return res.status(409).json({
         success: false,
-        message: 'A role with this name already exists for this hostel. Please choose a different name.'
+        message:
+          "A role with this name already exists for this hostel. Please choose a different name.",
       });
     }
 
@@ -385,23 +388,31 @@ const getCustomRoles = async (req, res) => {
  */
 const updateCustomRole = async (req, res) => {
   try {
-    const { roleId } = req.params;
-    const { displayName, description, permissionIds } = req.body;
+  const { roleId } = req.params;
+  // Accept both 'permissions' (frontend) and 'permissionIds' (legacy/backend)
+  const { displayName, description, permissions, permissionIds } = req.body;
 
     console.log(`🔍 Updating custom role: ${roleId} by user: ${req.user.id}`);
 
+    // Use permissions from frontend if present, else permissionIds
+    const finalPermissionIds = Array.isArray(permissions)
+      ? permissions
+      : Array.isArray(permissionIds)
+      ? permissionIds
+      : [];
+
     // Validate permission IDs if provided
-    if (permissionIds && !Array.isArray(permissionIds)) {
+    if (finalPermissionIds && !Array.isArray(finalPermissionIds)) {
       return res.status(400).json({
         success: false,
-        message: "Permission IDs must be an array",
+        message: "Permissions must be an array",
       });
     }
 
     const updatedRole = await rbacService.updateCustomRole(roleId, {
       displayName,
       description,
-      permissionIds,
+      permissionIds: finalPermissionIds,
     });
 
     console.log(`✅ Custom role ${roleId} updated successfully`);

@@ -116,18 +116,24 @@ class RBACService {
 
       // Update displayName and description if provided
       if (payload.displayName) role.display_name = payload.displayName;
-      if (payload.description !== undefined) role.description = payload.description;
+      if (payload.description !== undefined)
+        role.description = payload.description;
       role.updated_at = new Date();
       await role.save();
 
       // Update permissions if provided
       if (payload.permissionIds && Array.isArray(payload.permissionIds)) {
         // Remove all current permissions
+        
         await RolePermission.destroy({ where: { roleId: role.id } });
 
         // Fetch new permissions (by id or name)
-        const permIds = payload.permissionIds.filter((p) => typeof p === "string" && /^[0-9a-fA-F-]{36}$/.test(p));
-        const permNames = payload.permissionIds.filter((p) => typeof p === "string" && !/^[0-9a-fA-F-]{36}$/.test(p));
+        const permIds = payload.permissionIds.filter(
+          (p) => typeof p === "string" && /^[0-9a-fA-F-]{36}$/.test(p)
+        );
+        const permNames = payload.permissionIds.filter(
+          (p) => typeof p === "string" && !/^[0-9a-fA-F-]{36}$/.test(p)
+        );
         const matchedPerms = await Permission.findAll({
           where: {
             ...(permNames.length && permIds.length
@@ -168,7 +174,10 @@ class RBACService {
           },
         ],
       });
-      const plain = typeof updated.get === "function" ? updated.get({ plain: true }) : updated;
+      const plain =
+        typeof updated.get === "function"
+          ? updated.get({ plain: true })
+          : updated;
       return {
         id: plain.id,
         name: plain.name,
@@ -182,7 +191,6 @@ class RBACService {
           operation: p.operation,
         })),
       };
-
     } catch (error) {
       console.error("❌ RBAC: Error updating custom role:", error);
       throw error;

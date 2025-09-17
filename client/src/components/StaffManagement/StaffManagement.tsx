@@ -1118,44 +1118,32 @@ export const StaffManagement: React.FC = () => {
     setLoadingOperations(prev => new Set(prev).add(operationId));
 
     try {
-      // Convert permission names to the format expected by the API
-      const Permissions = Array.from(editingRolePermissions);
-      
-      // Optimistic update - update UI immediately
-      const updatedRole = {
-        ...editingStaffRole.role,
-        permissions: Permissions.map(name => ({ 
-          id: name, 
-          name: name, 
-          displayName: permissionDisplayNames[name] || name, 
-          category: 'custom' 
-        }))
-      };
-      
-      setStaff(prev => prev.map(s => 
-        s.id === editingStaffRole.id 
-          ? { ...s, role: updatedRole }
-          : s
-      ));
+      // Merge new permissions with existing ones (if needed)
+      const currentPermissions = (editingStaffRole.role.permissions || []).map((p: any) => p.name);
+      const Permissions = Array.from(new Set([
+        ...currentPermissions,
+        ...Array.from(editingRolePermissions)
+      ]));
 
-      // Update role permissions via API
+      // Update role permissions via API (send permissionIds as expected by backend)
       await apiClient.put(`/rbac/hostels/${hostelId}/roles/${editingStaffRole.role.id}`, {
-        permission: Permissions
+        permissionIds: Permissions
       });
 
       notification.success('Role permissions updated successfully');
-      
-      // Close modal and refresh data
+
+  // Always refresh staff and roles before closing modal to get latest permissions
+  await fetchStaff();
+  await fetchAvailableRoles();
+
       setShowEditRoleModal(false);
       setEditingStaffRole(null);
       setEditingRolePermissions(new Set());
       setIsEditingPermissions(false);
-      await fetchStaff(); // Refresh the staff list
-      
     } catch (error: any) {
       console.error('Failed to update role permissions:', error);
       notification.error(error.message || 'Failed to update role permissions');
-      
+
       // Revert optimistic update on error
       await fetchStaff();
     } finally {
@@ -1540,11 +1528,21 @@ export const StaffManagement: React.FC = () => {
                                   </PermissionGate>
                                   <PermissionGate permission="role_assign">
                                     <button
-                                      onClick={() => {
-                                        setEditingStaffRole(member);
-                                        initializeEditPermissions(member);
-                                        setShowEditRoleModal(true);
-                                        setOpenDropdown(null);
+                                      onClick={async () => {
+                                        await fetchStaff();
+                                        // Use the latest staff state after fetchStaff resolves
+                                        setTimeout(() => {
+                                          const latestMember = staff.find((s) => s.id === member.id);
+                                          if (latestMember) {
+                                            setEditingStaffRole(latestMember);
+                                            initializeEditPermissions(latestMember);
+                                          } else {
+                                            setEditingStaffRole(member);
+                                            initializeEditPermissions(member);
+                                          }
+                                          setShowEditRoleModal(true);
+                                          setOpenDropdown(null);
+                                        }, 0);
                                       }}
                                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                       role="menuitem"
@@ -1658,10 +1656,10 @@ export const StaffManagement: React.FC = () => {
                     </div>
                   </div>
                 )}
-                
-                <form onSubmit={(e) => {
+        
+                <form onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
                   e.preventDefault();
-                  const formData = new FormData(e.target as HTMLFormElement);
+                  const formData = new FormData(e.currentTarget);
                   const data = {
                     name: formData.get('name') as string,
                     email: formData.get('email') as string,
@@ -1814,16 +1812,17 @@ export const StaffManagement: React.FC = () => {
                             </div>
                           )}
                         </button>
-          </div>
-      </>
-          )}
-        </form>
+                        </div>
+                        </>
+                    )}
+              </form>
             </div>
-          </div>
+          </div>  
+          
         </PermissionGate>
-        )}
+        
 
-        {/* Create Role Modal */}
+        )}
         <PermissionGate permission="staff_create">
           {showCreateRoleForm && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -2541,5 +2540,5 @@ export const StaffManagement: React.FC = () => {
         </PermissionGate>
       </div>
     </div>
-  )
+  );
 };
