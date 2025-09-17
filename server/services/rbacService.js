@@ -88,6 +88,41 @@ class RBACService {
       };
     }
   }
+
+  /**
+   * Assign a new role to a user
+   * @param {string} userId
+   * @param {string} roleId
+   * @returns {object} updated user with role info
+   */
+  async assignRoleToUser(userId, roleId) {
+    if (!userId || !roleId) throw new Error("userId and roleId are required");
+    const user = await User.findByPk(userId);
+    if (!user) throw new Error("User not found");
+    user.roleId = roleId;
+    await user.save();
+    // Optionally, include role info
+    const updatedUser = await User.findByPk(userId, {
+      include: [
+        {
+          model: Role,
+          as: "rbacRole",
+        },
+      ],
+    });
+    return {
+      id: updatedUser.id,
+      roleId: updatedUser.roleId,
+      role: updatedUser.rbacRole
+        ? {
+            id: updatedUser.rbacRole.id,
+            name: updatedUser.rbacRole.name,
+            displayName: updatedUser.rbacRole.display_name,
+            isSystemRole: updatedUser.rbacRole.is_system_role,
+          }
+        : null,
+    };
+  }
   // ...existing methods...
 
   /**
@@ -124,7 +159,7 @@ class RBACService {
       // Update permissions if provided
       if (payload.permissionIds && Array.isArray(payload.permissionIds)) {
         // Remove all current permissions
-        
+
         await RolePermission.destroy({ where: { roleId: role.id } });
 
         // Fetch new permissions (by id or name)
@@ -487,6 +522,73 @@ class RBACService {
       }
     } catch (error) {
       console.error("❌ RBAC: Error creating custom role:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a custom role and all its associations
+   * @param {string} roleId - Role ID to delete
+   * @returns {Object} - Result of deletion
+   */
+  async deleteCustomRole(roleId) {
+    try {
+      console.log(`🔍 RBAC: Deleting custom role: ${roleId}`);
+
+      if (!roleId) {
+        throw new Error("roleId is required");
+      }
+
+      // Find the role first to validate it exists and is not a system role
+      const role = await Role.findByPk(roleId, {
+        include: [
+          {
+            model: User,
+            as: "users",
+            attributes: ["id", "name", "email"],
+          },
+        ],
+      });
+
+      if (!role) {
+        throw new Error("Role not found");
+      }
+
+      if (role.isSystemRole) {
+        throw new Error("Cannot delete system roles");
+      }
+
+      // Get count of users with this role
+      const usersWithRole = role.users ? role.users.length : 0;
+
+      // Delete all role-permission associations first
+      await RolePermission.destroy({
+        where: { roleId: roleId },
+      });
+
+      // Update all users with this role to have null roleId (they'll need reassignment)
+      if (usersWithRole > 0) {
+        await User.update(
+          { roleId: null },
+          { where: { roleId: roleId } }
+        );
+        console.log(`📝 RBAC: Updated ${usersWithRole} users to remove role assignment`);
+      }
+
+      // Delete the role itself
+      await Role.destroy({
+        where: { id: roleId },
+      });
+
+      console.log(`✅ RBAC: Custom role ${roleId} deleted successfully`);
+
+      return {
+        success: true,
+        message: `Role deleted successfully. ${usersWithRole} user(s) will need role reassignment.`,
+        affectedUsers: usersWithRole,
+      };
+    } catch (error) {
+      console.error("❌ RBAC: Error deleting custom role:", error);
       throw error;
     }
   }
