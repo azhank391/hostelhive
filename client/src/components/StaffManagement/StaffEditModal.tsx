@@ -109,11 +109,13 @@ const StaffEditModal: React.FC<StaffEditModalProps> = ({
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -159,7 +161,8 @@ const StaffEditModal: React.FC<StaffEditModalProps> = ({
                 <p className="font-medium text-gray-900">{editingStaff.name}</p>
                 <p className="text-sm text-gray-500">{editingStaff.email}</p>
                 <p className="text-sm text-gray-600">
-                  Current Role: {editingStaff.role?.displayName || "No role assigned"}
+                  Current Role:{" "}
+                  {editingStaff.role?.displayName || "No role assigned"}
                 </p>
               </div>
             </div>
@@ -228,7 +231,8 @@ const StaffEditModal: React.FC<StaffEditModalProps> = ({
                   <option value="">Choose a role for this staff member</option>
                   {availableRoles.map((role) => (
                     <option key={role.id} value={role.id}>
-                      {role.displayName} {role.isSystemRole ? "(System)" : "(Custom)"}
+                      {role.displayName}{" "}
+                      {role.isSystemRole ? "(System)" : "(Custom)"}
                     </option>
                   ))}
                 </select>
@@ -241,7 +245,9 @@ const StaffEditModal: React.FC<StaffEditModalProps> = ({
           </div>
 
           <div>
-            <h4 className="font-medium text-gray-900 mb-3">Current Permissions</h4>
+            <h4 className="font-medium text-gray-900 mb-3">
+              Current Permissions
+            </h4>
             <div className="bg-gray-50 rounded-lg p-4 max-h-32 overflow-y-auto">
               {permissionNamesToShow && permissionNamesToShow.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2">
@@ -252,7 +258,9 @@ const StaffEditModal: React.FC<StaffEditModalProps> = ({
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-500 italic">No permissions assigned</p>
+                <p className="text-sm text-gray-500 italic">
+                  No permissions assigned
+                </p>
               )}
             </div>
           </div>
@@ -268,7 +276,10 @@ const StaffEditModal: React.FC<StaffEditModalProps> = ({
             {canUpdate && (
               <button
                 type="submit"
-                disabled={isLoading || loadingOperations.has(`update-${editingStaff.id}`)}
+                disabled={
+                  isLoading ||
+                  loadingOperations.has(`update-${editingStaff.id}`)
+                }
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {isLoading ? (
