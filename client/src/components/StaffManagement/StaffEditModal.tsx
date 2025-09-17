@@ -1,7 +1,7 @@
-﻿'use client'
+﻿"use client";
 
-import React from 'react';
-import { X, ShieldIcon } from 'lucide-react';
+import React from "react";
+import { X, ShieldIcon } from "lucide-react";
 
 interface StaffMember {
   id: string;
@@ -40,7 +40,7 @@ interface StaffEditModalProps {
   loadingOperations: Set<string>;
   editingRolePermissions: Set<string>;
   isEditingPermissions: boolean;
-  modalMode: 'changeRole' | 'updatePermissions';
+  modalMode: "changeRole" | "updatePermissions";
   onEditRoleSubmit: () => Promise<void>;
   onUpdateRolePermissions: () => Promise<void>;
   onSetEditingRolePermissions: (permissions: Set<string>) => void;
@@ -48,17 +48,20 @@ interface StaffEditModalProps {
   onRoleChange?: (roleId: string) => void;
   onDeleteRole?: (roleId: string) => void;
   onToggleEditPermissions?: () => void;
-  PERMISSION_GROUPS: Record<string, {
-    title: string;
-    description: string;
-    permissions: string[];
-    icon: string;
-    required?: boolean;
-    dependencies?: string[];
-    isHighPrivilege?: boolean;
-    highPrivilegeWarning?: { [key: string]: string };
-    hideFromOwner?: boolean;
-  }>;
+  PERMISSION_GROUPS: Record<
+    string,
+    {
+      title: string;
+      description: string;
+      permissions: string[];
+      icon: string;
+      required?: boolean;
+      dependencies?: string[];
+      isHighPrivilege?: boolean;
+      highPrivilegeWarning?: { [key: string]: string };
+      hideFromOwner?: boolean;
+    }
+  >;
   handleCategoryToggle: (groupKey: string) => void;
   expandedCategories: Set<string>;
   handleEditSelectAllInCategory: (groupKey: string) => void;
@@ -87,7 +90,7 @@ const StaffEditModal: React.FC<StaffEditModalProps> = ({
   expandedCategories,
   handleEditSelectAllInCategory,
   handleEditDeselectAllInCategory,
-  handleEditPermissionToggle
+  handleEditPermissionToggle,
 }) => {
   if (!open) return null;
 
@@ -97,7 +100,9 @@ const StaffEditModal: React.FC<StaffEditModalProps> = ({
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-gray-900 flex items-center">
             <ShieldIcon className="h-5 w-5 mr-2 text-blue-600" />
-            {modalMode === 'changeRole' ? 'Change Staff Role' : 'Update Role Permissions'}
+            {modalMode === "changeRole"
+              ? "Change Staff Role"
+              : "Update Role Permissions"}
           </h3>
           <button
             onClick={onClose}
@@ -123,10 +128,17 @@ const StaffEditModal: React.FC<StaffEditModalProps> = ({
                       </div>
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">{editingStaffRole.name}</p>
-                      <p className="text-sm text-gray-500">{editingStaffRole.email}</p>
+                      <p className="font-medium text-gray-900">
+                        {editingStaffRole.name}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {editingStaffRole.email}
+                      </p>
                       <p className="text-sm text-gray-600">
-                        Current Role: <span className="font-medium">{editingStaffRole.role.displayName}</span>
+                        Current Role:{" "}
+                        <span className="font-medium">
+                          {editingStaffRole.role.displayName}
+                        </span>
                         {editingStaffRole.role.isSystemRole && (
                           <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             System
@@ -139,10 +151,17 @@ const StaffEditModal: React.FC<StaffEditModalProps> = ({
               </div>
 
               {/* Change Role Form */}
-              {modalMode === 'changeRole' && (
+              {modalMode === "changeRole" && (
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Change Role</h4>
-                  <form onSubmit={(e) => { e.preventDefault(); onEditRoleSubmit(); }}>
+                  <h4 className="font-medium text-gray-900 mb-3">
+                    Change Role
+                  </h4>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      onEditRoleSubmit();
+                    }}
+                  >
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -151,7 +170,7 @@ const StaffEditModal: React.FC<StaffEditModalProps> = ({
                         <select
                           id="edit-role-select"
                           className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                          value={editingStaffRole.role?.id || ''}
+                          value={editingStaffRole.role?.id || ""}
                           onChange={(e) => {
                             const val = e.target.value;
                             if (onRoleChange) onRoleChange(val);
@@ -160,7 +179,8 @@ const StaffEditModal: React.FC<StaffEditModalProps> = ({
                           <option value="">Select a role...</option>
                           {availableRoles.map((role) => (
                             <option key={role.id} value={role.id}>
-                              {role.displayName} {role.isSystemRole ? '(System)' : '(Custom)'}
+                              {role.displayName}{" "}
+                              {role.isSystemRole ? "(System)" : "(Custom)"}
                             </option>
                           ))}
                         </select>
@@ -169,10 +189,14 @@ const StaffEditModal: React.FC<StaffEditModalProps> = ({
                       <div className="flex justify-end space-x-3">
                         <button
                           type="submit"
-                          disabled={loadingOperations.has(`edit-role-${editingStaffRole.id}`)}
+                          disabled={loadingOperations.has(
+                            `edit-role-${editingStaffRole.id}`
+                          )}
                           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                         >
-                          {loadingOperations.has(`edit-role-${editingStaffRole.id}`) ? (
+                          {loadingOperations.has(
+                            `edit-role-${editingStaffRole.id}`
+                          ) ? (
                             <>
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                               Updating...
@@ -191,17 +215,20 @@ const StaffEditModal: React.FC<StaffEditModalProps> = ({
               )}
 
               {/* Custom Role Permissions - Only show in updatePermissions mode */}
-              {modalMode === 'updatePermissions' && editingStaffRole.role && (
+              {modalMode === "updatePermissions" && editingStaffRole.role && (
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Update {editingStaffRole.role.displayName} Permissions</h4>
-                  
+                  <h4 className="font-medium text-gray-900 mb-3">
+                    Update {editingStaffRole.role.displayName} Permissions
+                  </h4>
+
                   {editingStaffRole.role.isSystemRole ? (
                     <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
                       <div className="flex">
                         <div className="ml-3">
                           <p className="text-sm text-blue-700">
-                            <strong>System Role:</strong> This is a system role with fixed permissions that cannot be modified. 
-                            To change permissions, assign a custom role instead.
+                            <strong>System Role:</strong> This is a system role
+                            with fixed permissions that cannot be modified. To
+                            change permissions, assign a custom role instead.
                           </p>
                         </div>
                       </div>
@@ -212,8 +239,10 @@ const StaffEditModal: React.FC<StaffEditModalProps> = ({
                         <div className="flex">
                           <div className="ml-3">
                             <p className="text-sm text-blue-700">
-                              <strong>Note:</strong> You are editing permissions for the "{editingStaffRole.role.displayName}" role. 
-                              Changes will affect all users with this role.
+                              <strong>Note:</strong> You are editing permissions
+                              for the "{editingStaffRole.role.displayName}"
+                              role. Changes will affect all users with this
+                              role.
                             </p>
                           </div>
                         </div>
@@ -221,120 +250,170 @@ const StaffEditModal: React.FC<StaffEditModalProps> = ({
 
                       <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg p-4">
                         <div className="space-y-4">
-                          {Object.entries(PERMISSION_GROUPS).map(([groupKey, group]) => {
-                            const isExpanded = expandedCategories.has(groupKey);
-                            const selectedInGroup = group.permissions.filter((p: string) => editingRolePermissions.has(p)).length;
-                            const isFullySelected = selectedInGroup === group.permissions.length;
-                            const isPartiallySelected = selectedInGroup > 0 && selectedInGroup < group.permissions.length;
-                            
-                            return (
-                              <div 
-                                key={groupKey} 
-                                className={`border rounded-lg transition-all ${
-                                  isFullySelected || isPartiallySelected
-                                    ? 'border-blue-500 bg-blue-50 shadow-sm' 
-                                    : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                                }`}
-                              >
-                                <div 
-                                  className="p-4 cursor-pointer"
-                                  onClick={() => handleCategoryToggle(groupKey)}
+                          {Object.entries(PERMISSION_GROUPS).map(
+                            ([groupKey, group]) => {
+                              const isExpanded =
+                                expandedCategories.has(groupKey);
+                              const selectedInGroup = group.permissions.filter(
+                                (p: string) => editingRolePermissions.has(p)
+                              ).length;
+                              const isFullySelected =
+                                selectedInGroup === group.permissions.length;
+                              const isPartiallySelected =
+                                selectedInGroup > 0 &&
+                                selectedInGroup < group.permissions.length;
+
+                              return (
+                                <div
+                                  key={groupKey}
+                                  className={`border rounded-lg transition-all ${
+                                    isFullySelected || isPartiallySelected
+                                      ? "border-blue-500 bg-blue-50 shadow-sm"
+                                      : "border-gray-200 hover:border-gray-300 hover:shadow-sm"
+                                  }`}
                                 >
-                                  <div className="flex items-start space-x-3">
-                                    <span className="text-2xl">{group.icon}</span>
-                                    <div className="flex-1">
-                                      <div className="flex items-center justify-between">
-                                        <div className="flex items-center space-x-2">
-                                          <h4 className="font-medium text-gray-900">{group.title}</h4>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                                            {selectedInGroup}/{group.permissions.length} selected
-                                          </span>
-                                          <input
-                                            type="checkbox"
-                                            checked={isFullySelected}
-                                            ref={(input) => {
-                                              if (input) input.indeterminate = isPartiallySelected;
-                                            }}
-                                            onChange={(e) => {
-                                              e.stopPropagation();
-                                              if (isFullySelected) {
-                                                handleEditDeselectAllInCategory(groupKey);
-                                              } else {
-                                                handleEditSelectAllInCategory(groupKey);
-                                              }
-                                            }}
-                                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                          />
-                                        </div>
-                                      </div>
-                                      <p className="text-sm text-gray-600 mt-1">{group.description}</p>
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                {/* Expanded permissions list */}
-                                {isExpanded && (
-                                  <div className="border-t border-gray-200 bg-gray-50 p-4">
-                                    <div className="grid grid-cols-1 gap-2">
-                                      {group.permissions.map((permission: string) => {
-                                        const isSelected = editingRolePermissions.has(permission);
-                                        
-                                        return (
-                                          <div key={permission} className="space-y-1">
-                                            <label className="flex items-start space-x-2 p-3 rounded transition-colors cursor-pointer hover:bg-white">
-                                              <input
-                                                type="checkbox"
-                                                checked={isSelected}
-                                                onChange={() => handleEditPermissionToggle(permission)}
-                                                className="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                              />
-                                              <div className="flex-1">
-                                                <div className="flex items-center space-x-2">
-                                                  <span className="text-sm font-medium text-gray-900">
-                                                    {permissionDisplayNames[permission] || permission}
-                                                  </span>
-                                                </div>
-                                              </div>
-                                            </label>
+                                  <div
+                                    className="p-4 cursor-pointer"
+                                    onClick={() =>
+                                      handleCategoryToggle(groupKey)
+                                    }
+                                  >
+                                    <div className="flex items-start space-x-3">
+                                      <span className="text-2xl">
+                                        {group.icon}
+                                      </span>
+                                      <div className="flex-1">
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center space-x-2">
+                                            <h4 className="font-medium text-gray-900">
+                                              {group.title}
+                                            </h4>
                                           </div>
-                                        );
-                                      })}
-                                    </div>
-                                    
-                                    {/* Select/Deselect All buttons */}
-                                    <div className="mt-3 flex space-x-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleEditSelectAllInCategory(groupKey)}
-                                        className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                                      >
-                                        Select All
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleEditDeselectAllInCategory(groupKey)}
-                                        className="text-xs px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-                                      >
-                                        Deselect All
-                                      </button>
+                                          <div className="flex items-center space-x-2">
+                                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                              {selectedInGroup}/
+                                              {group.permissions.length}{" "}
+                                              selected
+                                            </span>
+                                            <input
+                                              type="checkbox"
+                                              checked={isFullySelected}
+                                              ref={(input) => {
+                                                if (input)
+                                                  input.indeterminate =
+                                                    isPartiallySelected;
+                                              }}
+                                              onChange={(e) => {
+                                                e.stopPropagation();
+                                                if (isFullySelected) {
+                                                  handleEditDeselectAllInCategory(
+                                                    groupKey
+                                                  );
+                                                } else {
+                                                  handleEditSelectAllInCategory(
+                                                    groupKey
+                                                  );
+                                                }
+                                              }}
+                                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                            />
+                                          </div>
+                                        </div>
+                                        <p className="text-sm text-gray-600 mt-1">
+                                          {group.description}
+                                        </p>
+                                      </div>
                                     </div>
                                   </div>
-                                )}
-                              </div>
-                            );
-                          })}
+
+                                  {/* Expanded permissions list */}
+                                  {isExpanded && (
+                                    <div className="border-t border-gray-200 bg-gray-50 p-4">
+                                      <div className="grid grid-cols-1 gap-2">
+                                        {group.permissions.map(
+                                          (permission: string) => {
+                                            const isSelected =
+                                              editingRolePermissions.has(
+                                                permission
+                                              );
+
+                                            return (
+                                              <div
+                                                key={permission}
+                                                className="space-y-1"
+                                              >
+                                                <label className="flex items-start space-x-2 p-3 rounded transition-colors cursor-pointer hover:bg-white">
+                                                  <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={() =>
+                                                      handleEditPermissionToggle(
+                                                        permission
+                                                      )
+                                                    }
+                                                    className="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                  />
+                                                  <div className="flex-1">
+                                                    <div className="flex items-center space-x-2">
+                                                      <span className="text-sm font-medium text-gray-900">
+                                                        {permissionDisplayNames[
+                                                          permission
+                                                        ] || permission}
+                                                      </span>
+                                                    </div>
+                                                  </div>
+                                                </label>
+                                              </div>
+                                            );
+                                          }
+                                        )}
+                                      </div>
+
+                                      {/* Select/Deselect All buttons */}
+                                      <div className="mt-3 flex space-x-2">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleEditSelectAllInCategory(
+                                              groupKey
+                                            )
+                                          }
+                                          className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                                        >
+                                          Select All
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleEditDeselectAllInCategory(
+                                              groupKey
+                                            )
+                                          }
+                                          className="text-xs px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                                        >
+                                          Deselect All
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            }
+                          )}
                         </div>
                       </div>
 
                       <div className="flex justify-end mt-4">
                         <button
                           onClick={onUpdateRolePermissions}
-                          disabled={loadingOperations.has(`update-permissions-${editingStaffRole.role.id}`)}
+                          disabled={loadingOperations.has(
+                            `update-permissions-${editingStaffRole.role.id}`
+                          )}
                           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
                         >
-                          {loadingOperations.has(`update-permissions-${editingStaffRole.role.id}`) ? (
+                          {loadingOperations.has(
+                            `update-permissions-${editingStaffRole.role.id}`
+                          ) ? (
                             <>
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                               Updating...
@@ -354,18 +433,29 @@ const StaffEditModal: React.FC<StaffEditModalProps> = ({
 
               {/* Current Permissions Display */}
               <div>
-                <h4 className="font-medium text-gray-900 mb-3">Current Permissions</h4>
+                <h4 className="font-medium text-gray-900 mb-3">
+                  Current Permissions
+                </h4>
                 <div className="bg-gray-50 rounded-lg p-4">
-                  {editingStaffRole.permissions && editingStaffRole.permissions.length > 0 ? (
+                  {editingStaffRole.permissions &&
+                  editingStaffRole.permissions.length > 0 ? (
                     <div className="grid grid-cols-2 gap-2">
                       {editingStaffRole.permissions.map((permission) => (
-                        <div key={permission.id} className="text-sm text-gray-600">
-                          • {permissionDisplayNames[permission.name] || permission.display_name || permission.name}
+                        <div
+                          key={permission.id}
+                          className="text-sm text-gray-600"
+                        >
+                          •{" "}
+                          {permissionDisplayNames[permission.name] ||
+                            permission.display_name ||
+                            permission.name}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-500 italic">No permissions assigned</p>
+                    <p className="text-sm text-gray-500 italic">
+                      No permissions assigned
+                    </p>
                   )}
                 </div>
               </div>

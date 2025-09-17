@@ -568,11 +568,10 @@ class RBACService {
 
       // Update all users with this role to have null roleId (they'll need reassignment)
       if (usersWithRole > 0) {
-        await User.update(
-          { roleId: null },
-          { where: { roleId: roleId } }
+        await User.update({ roleId: null }, { where: { roleId: roleId } });
+        console.log(
+          `📝 RBAC: Updated ${usersWithRole} users to remove role assignment`
         );
-        console.log(`📝 RBAC: Updated ${usersWithRole} users to remove role assignment`);
       }
 
       // Delete the role itself

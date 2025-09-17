@@ -115,8 +115,10 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
     icon: "🛏️",
     dependencies: ["hostel_read"],
     highPrivilegeWarning: {
-      room_delete: "Allows permanent removal of rooms. This will also remove all student allocations for these rooms.",
-      export_room_data: "Allows exporting sensitive room and student allocation data.",
+      room_delete:
+        "Allows permanent removal of rooms. This will also remove all student allocations for these rooms.",
+      export_room_data:
+        "Allows exporting sensitive room and student allocation data.",
     },
   },
 
@@ -134,8 +136,10 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
     icon: "👥",
     dependencies: ["hostel_read"],
     highPrivilegeWarning: {
-      student_delete: "Allows permanent removal of student records. This action cannot be undone and will also remove all associated room allocations and complaint history.",
-      export_student_data: "Allows exporting sensitive student personal information and data.",
+      student_delete:
+        "Allows permanent removal of student records. This action cannot be undone and will also remove all associated room allocations and complaint history.",
+      export_student_data:
+        "Allows exporting sensitive student personal information and data.",
     },
   },
 
@@ -155,9 +159,12 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
     dependencies: ["hostel_read"],
     isHighPrivilege: true,
     highPrivilegeWarning: {
-      staff_delete: "Allows permanent removal of staff members. This action cannot be undone.",
-      role_assign: "Allows changing user roles, which can grant or revoke access to sensitive functions.",
-      export_staff_data: "Allows exporting sensitive staff personal information and role data.",
+      staff_delete:
+        "Allows permanent removal of staff members. This action cannot be undone.",
+      role_assign:
+        "Allows changing user roles, which can grant or revoke access to sensitive functions.",
+      export_staff_data:
+        "Allows exporting sensitive staff personal information and role data.",
     },
   },
 
@@ -176,7 +183,8 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
     dependencies: ["hostel_read"],
     highPrivilegeWarning: {
       visitor_delete: "Allows permanent removal of visitor records.",
-      export_visitor_data: "Allows exporting visitor logs and personal information.",
+      export_visitor_data:
+        "Allows exporting visitor logs and personal information.",
     },
   },
 
@@ -195,8 +203,10 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
     icon: "📢",
     dependencies: ["hostel_read"],
     highPrivilegeWarning: {
-      complaint_delete: "Allows permanent removal of complaint records. This may affect audit trails.",
-      export_complaint_data: "Allows exporting sensitive complaint information and student data.",
+      complaint_delete:
+        "Allows permanent removal of complaint records. This may affect audit trails.",
+      export_complaint_data:
+        "Allows exporting sensitive complaint information and student data.",
     },
   },
 
@@ -232,70 +242,70 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
 // Generate permission display names from PERMISSION_GROUPS
 const generatePermissionDisplayNames = (): Record<string, string> => {
   const displayNames: Record<string, string> = {};
-  
+
   // Standard permission display name mapping
   const permissionDisplayMap: Record<string, string> = {
     // Core Access
-    "hostel_read": "View Hostel Information",
-    "view_hostel_stats": "View Hostel Statistics",
-    
+    hostel_read: "View Hostel Information",
+    view_hostel_stats: "View Hostel Statistics",
+
     // Room Management
-    "room_read": "View Rooms",
-    "room_create": "Add New Rooms",
-    "room_update": "Edit Room Information",
-    "room_delete": "Delete Rooms",
-    "room_allocation_read": "View Room Allocations",
-    "room_allocation_create": "Assign Students to Rooms",
-    "room_allocation_delete": "Remove Students from Rooms",
-    "export_room_data": "Export Room Data",
-    
+    room_read: "View Rooms",
+    room_create: "Add New Rooms",
+    room_update: "Edit Room Information",
+    room_delete: "Delete Rooms",
+    room_allocation_read: "View Room Allocations",
+    room_allocation_create: "Assign Students to Rooms",
+    room_allocation_delete: "Remove Students from Rooms",
+    export_room_data: "Export Room Data",
+
     // Student Management
-    "student_read": "View Student Details",
-    "student_create": "Add New Students",
-    "student_update": "Edit Student Information",
-    "student_delete": "Delete Student Records",
-    "export_student_data": "Export Student Data",
-    
+    student_read: "View Student Details",
+    student_create: "Add New Students",
+    student_update: "Edit Student Information",
+    student_delete: "Delete Student Records",
+    export_student_data: "Export Student Data",
+
     // Staff Management
-    "staff_read": "View Staff Details",
-    "staff_create": "Add New Staff",
-    "staff_update": "Edit Staff Information",
-    "staff_delete": "Delete Staff Records",
-    "role_assign": "Assign User Roles",
-    "export_staff_data": "Export Staff Data",
-    
+    staff_read: "View Staff Details",
+    staff_create: "Add New Staff",
+    staff_update: "Edit Staff Information",
+    staff_delete: "Delete Staff Records",
+    role_assign: "Assign User Roles",
+    export_staff_data: "Export Staff Data",
+
     // Visitor Management
-    "visitor_read": "View Visitor Logs",
-    "visitor_create": "Add Visitor Entries",
-    "visitor_update": "Edit Visitor Information",
-    "visitor_delete": "Delete Visitor Records",
-    "export_visitor_data": "Export Visitor Data",
-    
+    visitor_read: "View Visitor Logs",
+    visitor_create: "Add Visitor Entries",
+    visitor_update: "Edit Visitor Information",
+    visitor_delete: "Delete Visitor Records",
+    export_visitor_data: "Export Visitor Data",
+
     // Complaint Management
-    "complaint_read": "View Complaints",
-    "complaint_create": "Create New Complaints",
-    "complaint_update": "Update Complaint Status",
-    "complaint_delete": "Delete Complaint Records",
-    "view_complaint_stats": "View Complaint Statistics",
-    "export_complaint_data": "Export Complaint Data",
-    
+    complaint_read: "View Complaints",
+    complaint_create: "Create New Complaints",
+    complaint_update: "Update Complaint Status",
+    complaint_delete: "Delete Complaint Records",
+    view_complaint_stats: "View Complaint Statistics",
+    export_complaint_data: "Export Complaint Data",
+
     // Reports & Analytics
-    "view_reports": "View General Reports",
-    "view_analytics": "View Analytics Data",
-    "view_billing": "View Billing Information",
-    
+    view_reports: "View General Reports",
+    view_analytics: "View Analytics Data",
+    view_billing: "View Billing Information",
+
     // Profile Management
-    "manage_profile": "Edit Own Profile",
-    "view_profile": "View Profile Information",
-    "change_password": "Change Own Password",
-    "view_own_data": "View Own Data",
+    manage_profile: "Edit Own Profile",
+    view_profile: "View Profile Information",
+    change_password: "Change Own Password",
+    view_own_data: "View Own Data",
   };
-  
+
   // Apply display names from the mapping
   Object.entries(permissionDisplayMap).forEach(([permission, displayName]) => {
     displayNames[permission] = displayName;
   });
-  
+
   return displayNames;
 };
 
@@ -322,8 +332,11 @@ function StaffManagement() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showCreateRoleForm, setShowCreateRoleForm] = useState(false);
   const [showEditRoleModal, setShowEditRoleModal] = useState(false);
-  const [showUpdatePermissionsModal, setShowUpdatePermissionsModal] = useState(false);
-  const [modalMode, setModalMode] = useState<'changeRole' | 'updatePermissions'>('changeRole');
+  const [showUpdatePermissionsModal, setShowUpdatePermissionsModal] =
+    useState(false);
+  const [modalMode, setModalMode] = useState<
+    "changeRole" | "updatePermissions"
+  >("changeRole");
   const [editingStaffRole, setEditingStaffRole] = useState<StaffMember | null>(
     null
   );
@@ -466,25 +479,33 @@ function StaffManagement() {
 
       // Update the local state immediately with new permissions for better UX
       if (editingStaffRole) {
-        const updatedRole = availableRoles.find(r => r.id === editingStaffRole.role?.id);
+        const updatedRole = availableRoles.find(
+          (r) => r.id === editingStaffRole.role?.id
+        );
         if (updatedRole) {
-          setEditingStaffRole(prev => prev ? {
-            ...prev,
-            role: {
-              ...updatedRole,
-              isSystemRole: updatedRole.isSystemRole || false
-            },
-            permissions: updatedRole.permissions.map(p => ({
-              id: p.id,
-              name: p.name,
-              display_name: p.displayName,
-              category: p.category
-            }))
-          } : prev);
+          setEditingStaffRole((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  role: {
+                    ...updatedRole,
+                    isSystemRole: updatedRole.isSystemRole || false,
+                  },
+                  permissions: updatedRole.permissions.map((p) => ({
+                    id: p.id,
+                    name: p.name,
+                    display_name: p.displayName,
+                    category: p.category,
+                  })),
+                }
+              : prev
+          );
         }
       }
 
-      notification.success("Permissions updated and changes reflected in the system");
+      notification.success(
+        "Permissions updated and changes reflected in the system"
+      );
     } catch (error: any) {
       console.error("Failed to update role permissions:", error);
       notification.error(error.message || "Failed to update role permissions");
@@ -507,17 +528,29 @@ function StaffManagement() {
     if (!hostelId) return;
 
     // Try to find the role in the availableRoles cache
-    let selectedRole = availableRoles.find(r => r.id === roleId);
+    let selectedRole = availableRoles.find((r) => r.id === roleId);
     if (!selectedRole) {
       // Refresh roles from server and try again
       await fetchAvailableRoles();
-      selectedRole = availableRoles.find(r => r.id === roleId);
+      selectedRole = availableRoles.find((r) => r.id === roleId);
     }
 
     if (selectedRole && editingStaffRole) {
-      setEditingStaffRole(prev => prev ? ({ ...prev, role: { ...selectedRole, isSystemRole: selectedRole.isSystemRole || false } }) : prev);
+      setEditingStaffRole((prev) =>
+        prev
+          ? {
+              ...prev,
+              role: {
+                ...selectedRole,
+                isSystemRole: selectedRole.isSystemRole || false,
+              },
+            }
+          : prev
+      );
       // Set editing permissions from the selected role
-      const perms = new Set((selectedRole.permissions || []).map((p: any) => p.name));
+      const perms = new Set(
+        (selectedRole.permissions || []).map((p: any) => p.name)
+      );
       setEditingRolePermissions(perms);
       setIsEditingPermissions(!selectedRole.isSystemRole);
     }
@@ -526,40 +559,43 @@ function StaffManagement() {
   // Delete a custom role
   const handleDeleteRole = async (roleId: string) => {
     if (!roleId) return;
-    
+
     // Find the role to get its details
-    const roleToDelete = availableRoles.find(r => r.id === roleId);
+    const roleToDelete = availableRoles.find((r) => r.id === roleId);
     if (!roleToDelete) {
-      notification.error('Role not found');
+      notification.error("Role not found");
       return;
     }
-    
+
     if (roleToDelete.isSystemRole) {
-      notification.error('Cannot delete system roles');
+      notification.error("Cannot delete system roles");
       return;
     }
 
     // Get the number of users with this role
-    const usersWithRole = staff.filter(s => s.role.id === roleId).length;
-    
-    const confirmMessage = usersWithRole > 0 
-      ? `Are you sure you want to delete the "${roleToDelete.displayName}" role?\n\nThis will affect ${usersWithRole} staff member(s) who will need to be assigned new roles. They will temporarily lose access until reassigned.`
-      : `Are you sure you want to delete the "${roleToDelete.displayName}" role?`;
-    
+    const usersWithRole = staff.filter((s) => s.role.id === roleId).length;
+
+    const confirmMessage =
+      usersWithRole > 0
+        ? `Are you sure you want to delete the "${roleToDelete.displayName}" role?\n\nThis will affect ${usersWithRole} staff member(s) who will need to be assigned new roles. They will temporarily lose access until reassigned.`
+        : `Are you sure you want to delete the "${roleToDelete.displayName}" role?`;
+
     if (!confirm(confirmMessage)) return;
-    
+
     const hostelId = getHostelIdSafe();
     if (!hostelId) {
-      notification.error('No hostel selected');
+      notification.error("No hostel selected");
       return;
     }
 
     const operationId = `delete-role-${roleId}`;
-    setLoadingOperations(prev => new Set(prev).add(operationId));
+    setLoadingOperations((prev) => new Set(prev).add(operationId));
 
     try {
       await apiClient.delete(`/rbac/hostels/${hostelId}/roles/${roleId}`);
-      notification.success(`Role "${roleToDelete.displayName}" deleted successfully`);
+      notification.success(
+        `Role "${roleToDelete.displayName}" deleted successfully`
+      );
       // Refresh roles and staff to reflect changes
       await fetchAvailableRoles();
       await fetchStaff();
@@ -570,10 +606,10 @@ function StaffManagement() {
         setEditingRolePermissions(new Set());
       }
     } catch (error: any) {
-      console.error('Failed to delete role:', error);
-      notification.error(error.message || 'Failed to delete role');
+      console.error("Failed to delete role:", error);
+      notification.error(error.message || "Failed to delete role");
     } finally {
-      setLoadingOperations(prev => {
+      setLoadingOperations((prev) => {
         const newSet = new Set(prev);
         newSet.delete(operationId);
         return newSet;
@@ -906,7 +942,9 @@ function StaffManagement() {
   useEffect(() => {
     if (showEditRoleModal && editingStaffRole && editingStaffRole.role) {
       // Get the full role information from available roles to ensure we have complete permission data
-      const fullRole = availableRoles.find(r => r.id === editingStaffRole.role.id);
+      const fullRole = availableRoles.find(
+        (r) => r.id === editingStaffRole.role.id
+      );
       if (fullRole) {
         const perms = new Set(
           (fullRole.permissions || []).map((p: any) => p.name || p.id)
@@ -915,7 +953,9 @@ function StaffManagement() {
       } else {
         // Fallback to permissions from the staff member's role
         const perms = new Set(
-          (editingStaffRole.role.permissions || []).map((p: any) => p.name || p.id)
+          (editingStaffRole.role.permissions || []).map(
+            (p: any) => p.name || p.id
+          )
         );
         setEditingRolePermissions(perms);
       }
@@ -1390,7 +1430,7 @@ function StaffManagement() {
                                             );
                                             setEditingRolePermissions(perms);
                                             setIsEditingPermissions(false);
-                                            setModalMode('changeRole');
+                                            setModalMode("changeRole");
                                             setShowEditRoleModal(true);
                                             setOpenDropdown(null);
                                           }, 0);
@@ -1412,24 +1452,33 @@ function StaffManagement() {
                                                 (s) => s.id === member.id
                                               ) || member;
                                             setEditingStaffRole(latestMember);
-                                            
+
                                             // Get the full role information from available roles to ensure we have complete permission data
-                                            const fullRole = availableRoles.find(r => r.id === latestMember.role?.id);
+                                            const fullRole =
+                                              availableRoles.find(
+                                                (r) =>
+                                                  r.id === latestMember.role?.id
+                                              );
                                             if (fullRole) {
                                               const perms = new Set(
-                                                (fullRole.permissions || []).map((p) => p.name || p.id)
+                                                (
+                                                  fullRole.permissions || []
+                                                ).map((p) => p.name || p.id)
                                               );
                                               setEditingRolePermissions(perms);
                                             } else {
                                               // Fallback to permissions from the staff member's role
                                               const perms = new Set(
-                                                (latestMember.role?.permissions || []).map((p) => p.name || p.id)
+                                                (
+                                                  latestMember.role
+                                                    ?.permissions || []
+                                                ).map((p) => p.name || p.id)
                                               );
                                               setEditingRolePermissions(perms);
                                             }
-                                            
+
                                             setIsEditingPermissions(true);
-                                            setModalMode('updatePermissions');
+                                            setModalMode("updatePermissions");
                                             setShowEditRoleModal(true);
                                             setOpenDropdown(null);
                                           }, 0);
@@ -1451,14 +1500,22 @@ function StaffManagement() {
                                         }}
                                         className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                                         role="menuitem"
-                                        disabled={loadingOperations.has(`delete-role-${member.role.id}`) || member.role.isSystemRole}
+                                        disabled={
+                                          loadingOperations.has(
+                                            `delete-role-${member.role.id}`
+                                          ) || member.role.isSystemRole
+                                        }
                                       >
-                                        {loadingOperations.has(`delete-role-${member.role.id}`) ? (
+                                        {loadingOperations.has(
+                                          `delete-role-${member.role.id}`
+                                        ) ? (
                                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-3"></div>
                                         ) : (
                                           <TrashIcon className="w-4 h-4 mr-3" />
                                         )}
-                                        {member.role.isSystemRole ? 'Cannot Delete System Role' : 'Delete Role'}
+                                        {member.role.isSystemRole
+                                          ? "Cannot Delete System Role"
+                                          : "Delete Role"}
                                       </button>
                                     </PermissionGate>
                                     <PermissionGate permission="staff_update">
@@ -2285,8 +2342,6 @@ function StaffManagement() {
           )}
         </PermissionGate>
 
-
-
         {/* Staff Edit Modal */}
         <StaffEditModal
           open={showEditRoleModal}
@@ -2308,7 +2363,9 @@ function StaffManagement() {
           permissionDisplayNames={permissionDisplayNames}
           onRoleChange={handleRoleChangeForEdit}
           onDeleteRole={handleDeleteRole}
-          onToggleEditPermissions={() => setIsEditingPermissions(prev => !prev)}
+          onToggleEditPermissions={() =>
+            setIsEditingPermissions((prev) => !prev)
+          }
           PERMISSION_GROUPS={PERMISSION_GROUPS}
           handleCategoryToggle={handleCategoryToggle}
           expandedCategories={expandedCategories}
