@@ -40,7 +40,7 @@ export type Permission =
   | 'manage_system' | 'manage_all_hostels'
   | 'view_system_stats' | 'system_stats_read'
   | 'manage_owners' | 'owner_manage'
-  | 'hostel_global_manage' | 'view_dashboard_owner';
+  | 'hostel_global_manage';
 
 export const AVAILABLE_PERMISSIONS: Permission[] = [
   // 🏠 Hostel
@@ -83,7 +83,7 @@ export const AVAILABLE_PERMISSIONS: Permission[] = [
   'manage_system','manage_all_hostels',
   'view_system_stats','system_stats_read',
   'manage_owners','owner_manage',
-  'hostel_global_manage','view_dashboard_owner'
+  'hostel_global_manage'
 ];
 
 export interface UserPermissions {

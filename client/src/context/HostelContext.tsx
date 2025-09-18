@@ -281,22 +281,35 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       const response = await hostelApi.createHostel(hostelData);
       const newHostel = (response as any).hostel || response;
-      
-      // Update local state
+
+      // Update local list immediately (optimistic append)
       setHostels(prev => [...prev, newHostel]);
-      
-      // If this is the first hostel, auto-select it
-      if (hostels.length === 0) {
-        setCurrentHostel(newHostel);
-        localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, newHostel.id);
+
+      // Always set the newly created hostel as current (improves first-hostel UX and immediate navigation)
+      setCurrentHostel(newHostel);
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_HOSTEL, newHostel.id);
+
+      // Attempt to sync active hostel on server & capture potential new token
+      try {
+        if (user?.role === 'owner') {
+          const authToken = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+          if (authToken) {
+            const activeResponse = await authApi.setActiveHostel(newHostel.id);
+            if ((activeResponse as any)?.token) {
+              localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, (activeResponse as any).token);
+            }
+          }
+        }
+      } catch (syncErr) {
+        console.warn('HostelContext: active hostel sync after creation failed (non-blocking):', syncErr);
       }
-      
+
       return newHostel;
     } catch (error) {
       console.error('Failed to create hostel:', error);
       throw error;
     }
-  }, [hostels.length]);
+  }, [user?.role]);
 
   const updateHostel = useCallback(async (hostelId: string, updates: Partial<Hostel>): Promise<Hostel> => {
     try {

@@ -93,7 +93,7 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
     title: "Dashboard Access",
     description: "Essential permissions for accessing the dashboard",
     permissions: [
-      "hostel_read", // View hostel information (basic access)
+      "view_hostel_stats", // View hostel information (basic access)
     ],
     icon: "🏠",
     required: false,
@@ -213,7 +213,7 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
 
   // Reports & Analytics
   reporting: {
-    title: "Reports & Analytics",
+    title: "Billing",
     description: "Access to various reports and analytics",
     permissions: [
       "view_billing", // View billing information
@@ -256,7 +256,7 @@ const generatePermissionDisplayNames = (): Record<string, string> => {
     staff_create: "Add New Staff",
     staff_update: "Edit Staff Information",
     staff_delete: "Delete Staff Records",
-    role_assign: "Assign User Roles",
+    role_assign: "Assign Staff Roles",
     export_staff_data: "Export Staff Data",
 
     // Visitor Management
@@ -275,14 +275,9 @@ const generatePermissionDisplayNames = (): Record<string, string> => {
     export_complaint_data: "Export Complaint Data",
 
     // Reports & Analytics
-    view_reports: "View General Reports",
-    view_analytics: "View Analytics Data",
     view_billing: "View Billing Information",
 
     // Profile Management
-    manage_profile: "Edit Own Profile",
-    view_profile: "View Profile Information",
-    change_password: "Change Own Password",
     view_own_data: "View Own Data",
   };
 
@@ -1096,16 +1091,18 @@ function StaffManagement() {
         permissions: finalPermissions,
       };
 
-      await apiClient.post(
-        `/rbac/hostels/${hostelId}/roles`,
-        roleDataWithPermissions
-      );
+      await apiClient.post(`/rbac/hostels/${hostelId}/roles`, roleDataWithPermissions);
       notification.success("Custom role created successfully");
+      const wasCreatingStaff = showCreateForm;
+      await fetchAvailableRoles(true);
       setShowCreateRoleForm(false);
-
-      await fetchAvailableRoles();
-      setShowCreateForm(true);
-
+      if (wasCreatingStaff) {
+        // ensure select reflects new roles immediately
+        setShowCreateForm(false);
+        setTimeout(()=> setShowCreateForm(true),0);
+      } else {
+        setShowCreateForm(true);
+      }
       setSelectedPermissions(new Set());
       setSelectedGroups(new Set());
       setExpandedCategories(new Set());
@@ -1567,7 +1564,12 @@ function StaffManagement() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {staff.map((member) => (
+                  {[...staff].sort((a,b)=>{
+                    const aUn = (!a.role || !a.role.id) ? 0 : 1;
+                    const bUn = (!b.role || !b.role.id) ? 0 : 1;
+                    if (aUn !== bUn) return aUn - bUn;
+                    return a.name.localeCompare(b.name);
+                  }).map((member) => (
                     <tr key={member.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -1598,15 +1600,18 @@ function StaffManagement() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <ShieldIcon className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-sm text-gray-900">
-                            {!member.role || !member.role.id
-                              ? "Assign a role"
-                              : member.role.displayName || member.role.name}
+                          <span className="text-sm text-gray-900 flex items-center gap-2">
+                            {(!member.role || !member.role.id) ? 'Assign a role' : (member.role.displayName || member.role.name)}
+                            {(!member.role || !member.role.id) && (
+                              <button
+                                type="button"
+                                onClick={() => { setEditingStaff(member as any); setShowStaffEditModal(true); }}
+                                className="text-xs px-2 py-0.5 rounded border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition"
+                              >Reassign</button>
+                            )}
                           </span>
                           {member.role && !member.role.isSystemRole && (
-                            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              Custom
-                            </span>
+                            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Custom</span>
                           )}
                         </div>
                       </td>

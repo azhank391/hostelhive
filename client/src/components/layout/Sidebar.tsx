@@ -128,7 +128,8 @@ export const Sidebar = memo(({
   onClose
 }: SidebarProps) => {
   const { user } = useAuth();
-  const { currentHostel } = useHostel();
+  // Access both currentHostel and hostels list so we can suppress invalid links for first-time owners
+  const { currentHostel, hostels } = useHostel();
   const { hasPermission, userRole, loading } = usePermissions();
   const [activeItem, setActiveItem] = useState<string>('dashboard');
   // Removed expandedSections state since we no longer have sub-sections
@@ -206,6 +207,11 @@ export const Sidebar = memo(({
   const getFilteredSidebarItems = (items: SidebarItem[]): SidebarItem[] => {
     if (!user) return [];
 
+    // Guard: First-time owner (no hostels yet) should NOT see operational sidebar items that depend on a hostel context.
+    if (user.role === 'owner' && (!hostels || hostels.length === 0)) {
+      return [];
+    }
+
     // Get accessible sections for this user
     const accessibleSections = getAccessibleSidebarSections(user);
     
@@ -238,7 +244,7 @@ export const Sidebar = memo(({
     }
     
     // For custom roles, only show if they have dashboard access or are an owner
-    return hasPermission('view_dashboard_owner') || isOwner;
+  return hasPermission('view_hostel_stats') || isOwner;
   }, [user?.role, hasPermission, isOwner]);
 
   // Check if there are any visible items in GENERAL section
@@ -246,7 +252,7 @@ export const Sidebar = memo(({
     let itemCount = 0;
     
     // Dashboard item
-    if (user?.role === 'superadmin' || user?.role === 'owner' || user?.role === 'warden' || user?.role === 'student' || hasPermission('view_dashboard_owner')) {
+  if (user?.role === 'superadmin' || user?.role === 'owner' || user?.role === 'warden' || user?.role === 'student' || hasPermission('view_hostel_stats')) {
       itemCount++;
     }
     
@@ -439,7 +445,7 @@ export const Sidebar = memo(({
             </p>
             <nav className="mt-2 lg:mt-1 space-y-2 sm:space-y-1">
               {/* Dashboard access - only show if user has explicit dashboard permission */}
-              {(user?.role === 'superadmin' || user?.role === 'owner' || user?.role === 'warden' || user?.role === 'student' || hasPermission('view_dashboard_owner')) && (
+              {(user?.role === 'superadmin' || user?.role === 'owner' || user?.role === 'warden' || user?.role === 'student' || hasPermission('view_hostel_stats')) && (
                 <NavItem 
                   to={
                     isSuperadmin ? '/dashboard/superadmin' : 
@@ -498,14 +504,21 @@ export const Sidebar = memo(({
         )}
         
         {/* Permission-based navigation - Hide for students */}
-        {filteredItems.length > 0 && !isStudent && (
+        {(!isStudent) && (
           <div className="px-3 sm:px-4 mt-6 lg:mt-4">
             <p className="px-2 sm:px-4 text-sm sm:text-xs font-semibold text-gray-300 uppercase tracking-wider mb-3 sm:mb-2">
               Operations
             </p>
-            <nav className="mt-2 lg:mt-1 space-y-2 sm:space-y-1">
-              {filteredItems.map(item => renderSidebarItem(item))}
-            </nav>
+            {filteredItems.length > 0 ? (
+              <nav className="mt-2 lg:mt-1 space-y-2 sm:space-y-1">
+                {filteredItems.map(item => renderSidebarItem(item))}
+              </nav>
+            ) : (
+              <div className="mt-2 text-xs text-gray-400 bg-gray-800 border border-dashed border-gray-700 rounded-md p-3 leading-relaxed">
+                <p className="font-medium text-gray-300 mb-1">No Hostels Yet</p>
+                <p>Create a hostel to unlock management features like Rooms, Students, Staff, Visitors, Complaints, and Billing.</p>
+              </div>
+            )}
           </div>
         )}
         

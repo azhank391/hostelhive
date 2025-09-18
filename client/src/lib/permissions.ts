@@ -6,7 +6,6 @@ export type Role = 'owner' | 'warden' | 'student' | 'superadmin';
 // Legacy role-based permissions (deprecated - use direct permission checking instead)
 const LEGACY_ROLE_PERMISSIONS: Record<Role, string[]> = {
   owner: [
-    'view_dashboard_owner',
     'hostel_create',
     'hostel_read',
     'hostel_update',

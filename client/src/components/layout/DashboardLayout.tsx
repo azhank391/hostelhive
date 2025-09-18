@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { DashboardHeader } from './DashboardHeader';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -8,6 +8,7 @@ import { HostelSelector } from '@/components/HostelSelector';
 import { CreateHostelForm } from '@/components/forms/CreateHostelForm';
 import { useHostel } from '@/context/HostelContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePathname, useRouter } from 'next/navigation';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -116,6 +117,24 @@ LayoutWrapper.displayName = 'LayoutWrapper';
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { currentHostel, hostels, loadingState, isMultiHostelOwner } = useHostel();
   const { user } = useAuth();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // Owner no-hostel guard: If owner has zero hostels, prevent navigation to hostel-scoped routes and redirect to owner hostels page
+  useEffect(() => {
+    if (!user || user.role !== 'owner') return;
+    if (loadingState === 'loading') return;
+    if (hostels.length > 0) return; // owner already has at least one hostel
+
+    // Define hostel-scoped patterns we want to guard (any /dashboard/hostels/... path)
+    const isHostelScoped = pathname?.startsWith('/dashboard/hostels');
+    const disallowedSections = ['/dashboard/owner/hostels/new']; // allow creation page implicitly
+    const isAlreadyOnOwnerHostels = pathname === '/dashboard/owner/hostels' || pathname === '/dashboard/create-hostel' || pathname === '/dashboard/owner/hostels/new';
+
+    if (isHostelScoped || (!isAlreadyOnOwnerHostels && pathname?.startsWith('/dashboard') && !disallowedSections.includes(pathname!))) {
+      router.replace('/dashboard/owner/hostels');
+    }
+  }, [user, hostels.length, pathname, router, loadingState]);
 
   // Memoize layout decisions to prevent unnecessary re-calculations
   const layoutConfig = useMemo(() => {

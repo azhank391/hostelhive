@@ -56,6 +56,11 @@ export const CreateHostelForm = React.memo(({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const { refreshHostels, hostels } = useHostel();
+  // Lazy import of auth context hook to optionally refresh user if needed (token may include activeHostelId)
+  // We avoid circular deps; assuming useAuth is safe here.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { useAuth } = require('../../contexts/AuthContext');
+  const { user } = useAuth();
   const router = useRouter();
   const hostelApi = useHostelApiWithContext();
 
@@ -146,45 +151,28 @@ export const CreateHostelForm = React.memo(({
       // Show success message in form
       setSuccessMessage(`Hostel "${hostelName}" created successfully! Subdomain: ${subdomain}.hostelhive.com`);
       
-      // Wait a moment for the user to see the success message
+      // Short pause so user sees success toast, then refresh hostels and redirect directly to new hostel dashboard
       setTimeout(async () => {
         try {
-    
-          // Refresh hostels to get the newly created one
           await refreshHostels();
           console.log('✅ Hostels refreshed successfully');
-          
-          // Call onSuccess if provided (for modal usage)
+
+          // If modal, call onSuccess and exit
           if (onSuccess) {
             onSuccess();
-            return; // Don't redirect if using modal
+            return;
           }
-          
-          // For non-modal usage, redirect based on whether this was the first hostel or additional
-          setTimeout(() => {
-            if (isFirstHostel) {
-              // First hostel - go to owner dashboard
-              router.push('/dashboard/owner');
-            } else {
-              // Additional hostel - go to hostels list
-              router.push('/dashboard/hostels');
-            }
-          }, 1000);
+
+          const destination = `/dashboard/hostels/${hostel.id}`;
+          router.replace(destination);
         } catch (refreshError) {
           console.error('❌ Failed to refresh hostels:', refreshError);
-          notification.error('Failed to refresh hostels', {
-            description: 'The hostel was created but there was an issue refreshing the list.'
+          notification.error('Hostel list refresh failed', {
+            description: 'We will still take you to the new hostel dashboard.'
           });
-          // Still redirect even if refresh fails
-          setTimeout(() => {
-            if (isFirstHostel) {
-              router.push('/dashboard/owner');
-            } else {
-              router.push('/dashboard/hostels');
-            }
-          }, 1000);
+          router.replace(`/dashboard/hostels/${hostel.id}`);
         }
-      }, 2000);
+      }, 1200);
       
     } catch (error) {
       console.error('Failed to create hostel:', error);
