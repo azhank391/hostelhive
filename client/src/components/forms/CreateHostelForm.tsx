@@ -55,7 +55,7 @@ export const CreateHostelForm = React.memo(({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const { refreshHostels, hostels } = useHostel();
+  const { refreshHostels, hostels, createHostel } = useHostel();
   // Lazy import of auth context hook to optionally refresh user if needed (token may include activeHostelId)
   // We avoid circular deps; assuming useAuth is safe here.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -133,12 +133,9 @@ export const CreateHostelForm = React.memo(({
     
     try {
       // 🎯 Use context-aware API for hostel creation
-      const response = await hostelApi.createHostel(formData);
-       
-      console.log('Hostel created successfully:', response);
-       
-      // The context-aware API returns the hostel object directly (from HostelContext.createHostel)
-      const hostel = (response as any).hostel || response;
+  // Use context createHostel so currentHostel is set immediately
+  const hostel = await createHostel(formData as any);
+  console.log('Hostel created successfully via context:', hostel);
       const hostelName = hostel.name || 'Hostel';
       const subdomain = hostel.subdomain || 'unknown';
        
@@ -151,28 +148,20 @@ export const CreateHostelForm = React.memo(({
       // Show success message in form
       setSuccessMessage(`Hostel "${hostelName}" created successfully! Subdomain: ${subdomain}.hostelhive.com`);
       
-      // Short pause so user sees success toast, then refresh hostels and redirect directly to new hostel dashboard
+      // Minimal delay just for UX feedback, then redirect immediately (context already has currentHostel)
       setTimeout(async () => {
         try {
-          await refreshHostels();
-          console.log('✅ Hostels refreshed successfully');
-
-          // If modal, call onSuccess and exit
+          // Refresh list in background (non-blocking) to capture any additional server-calculated fields
+          refreshHostels().catch(err => console.warn('Background hostel refresh failed:', err));
           if (onSuccess) {
             onSuccess();
             return;
           }
-
-          const destination = `/dashboard/hostels/${hostel.id}`;
-          router.replace(destination);
-        } catch (refreshError) {
-          console.error('❌ Failed to refresh hostels:', refreshError);
-          notification.error('Hostel list refresh failed', {
-            description: 'We will still take you to the new hostel dashboard.'
-          });
+          router.replace(`/dashboard/hostels/${hostel.id}`);
+        } catch (err) {
           router.replace(`/dashboard/hostels/${hostel.id}`);
         }
-      }, 1200);
+      }, 600);
       
     } catch (error) {
       console.error('Failed to create hostel:', error);
@@ -221,7 +210,7 @@ export const CreateHostelForm = React.memo(({
     } finally {
       setIsSubmitting(false);
     }
-  }, [validate, formData, hostelApi, refreshHostels, onSuccess, isFirstHostel, router]);
+  }, [validate, formData, createHostel, refreshHostels, onSuccess, router]);
 
   return (
     <div className={`${isModal ? 'w-full max-w-2xl' : 'max-w-2xl mx-auto'} bg-white rounded-lg shadow-sm border border-gray-200 p-6 sm:p-8`}>
