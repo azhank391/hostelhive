@@ -1,31 +1,31 @@
-'use client'
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
-import { useHostel } from '@/context/HostelContext';
-import { usePermissions } from '@/hooks/usePermissions';
-import api from '@/lib/http';
-import { notification } from '@/lib/toast';
-import { STORAGE_KEYS } from '@/lib/config';
-import { Card, CardContent, CardHeader } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Textarea } from '@/components/ui/Textarea';
-import { Badge } from '@/components/ui/Badge';
-import { 
-  Settings, 
-  User, 
-  Building2, 
-  Moon, 
-  Sun, 
-  Save, 
+import React, { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { useHostel } from "@/context/HostelContext";
+import { usePermissions } from "@/hooks/usePermissions";
+import api from "@/lib/http";
+import { notification } from "@/lib/toast";
+import { STORAGE_KEYS } from "@/lib/config";
+import { Card, CardContent, CardHeader } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import { Badge } from "@/components/ui/Badge";
+import {
+  Settings,
+  User,
+  Building2,
+  Moon,
+  Sun,
+  Save,
   Loader2,
   Eye,
   EyeOff,
-  AlertTriangle
-} from 'lucide-react';
-import { ProfileSettingsForm } from '@/components/settings/ProfileSettingsForm';
+  AlertTriangle,
+} from "lucide-react";
+import { ProfileSettingsForm } from "@/components/settings/ProfileSettingsForm";
 
 interface ProfileFormData {
   name: string;
@@ -56,40 +56,40 @@ export default function HostelSettingsPage() {
 
   // Permission checks
   // Map legacy/placeholder permissions to actual defined permission constants
-  const canViewSettings = hasPermission('hostel_read');
-  const canUpdateProfile = hasPermission('manage_profile');
+  const canViewSettings = hasPermission("hostel_read");
+  const canUpdateProfile = hasPermission("manage_profile");
   const selfCanEditProfile = !!user; // Allow self-edit fallback even without permission
-  const canUpdateHostelSettings = hasPermission('hostel_settings_update');
+  const canUpdateHostelSettings = hasPermission("hostel_settings_update");
 
   // Theme state
   const [isDarkTheme, setIsDarkTheme] = useState(false);
-  
+
   // Form states
   const [profileForm, setProfileForm] = useState<ProfileFormData>({
-    name: '',
-    email: '',
-    phone: ''
+    name: "",
+    email: "",
+    phone: "",
   });
-  
+
   const [passwordForm, setPasswordForm] = useState<PasswordFormData>({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
-  
+
   const [hostelForm, setHostelForm] = useState<HostelFormData>({
-    name: '',
-    country: '',
-    city: '',
-    address: '',
-    email: ''
+    name: "",
+    country: "",
+    city: "",
+    address: "",
+    email: "",
   });
 
   // Loading states
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
   const [isHostelLoading, setIsHostelLoading] = useState(false);
-  
+
   // Password visibility
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -97,66 +97,62 @@ export default function HostelSettingsPage() {
 
   // Initialize forms and theme
   useEffect(() => {
-   
-    
     if (user) {
       setProfileForm({
-        name: user.name || '',
-        email: user.email || '',
-        phone: user.phone || ''
+        name: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
       });
     }
 
     if (currentHostel) {
       // Extract location data from the hostel object
       const location = currentHostel.location;
-      
-      
+
       setHostelForm({
-        name: currentHostel.name || '',
-        country: location?.country || '',
-        city: location?.city || '',
-        address: location?.address || '',
-        email: currentHostel.email || ''
+        name: currentHostel.name || "",
+        country: location?.country || "",
+        city: location?.city || "",
+        address: location?.address || "",
+        email: currentHostel.email || "",
       });
     }
 
     // Load theme preference
-    const savedTheme = localStorage.getItem('theme');
-    console.log('🔍 DEBUG: Saved theme:', savedTheme);
-    setIsDarkTheme(savedTheme === 'dark');
+    const savedTheme = localStorage.getItem("theme");
+    console.log("🔍 DEBUG: Saved theme:", savedTheme);
+    setIsDarkTheme(savedTheme === "dark");
 
     // Debug: Check authentication state
     const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-   
   }, [user, currentHostel]);
 
   // Apply theme
   useEffect(() => {
-    console.log('🔍 DEBUG: Applying theme:', isDarkTheme ? 'dark' : 'light');
+    console.log("🔍 DEBUG: Applying theme:", isDarkTheme ? "dark" : "light");
     if (isDarkTheme) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
     } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
     }
   }, [isDarkTheme]);
 
   // Apply initial theme on mount
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-      document.documentElement.classList.add('dark');
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme === "dark") {
+      document.documentElement.classList.add("dark");
     } else {
-      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.remove("dark");
     }
   }, []);
 
   // Refresh hostel data when page loads to ensure we have the latest data
   useEffect(() => {
     if (user && hostelId) {
-      console.log('🔍 DEBUG: Refreshing hostel data for hostelId:', hostelId);
+      console.log("🔍 DEBUG: Refreshing hostel data for hostelId:", hostelId);
       refreshHostels();
     }
   }, [user, hostelId, refreshHostels]);
@@ -172,33 +168,32 @@ export default function HostelSettingsPage() {
 
     try {
       setIsProfileLoading(true);
-      
+
       // Debug: Check if token exists
       const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-      
-      
+
       const response = await api.put(`/auth/profile`, {
         name: profileForm.name,
         email: profileForm.email,
-        phone: profileForm.phone
+        phone: profileForm.phone,
       });
 
       if ((response as any)?.data?.success) {
         updateUser({
           name: profileForm.name,
           email: profileForm.email,
-          phone: profileForm.phone
+          phone: profileForm.phone,
         });
-        notification.success('Profile updated successfully');
+        notification.success("Profile updated successfully");
       }
     } catch (error: any) {
-      console.error('Failed to update profile:', error);
+      console.error("Failed to update profile:", error);
       if (error?.response?.status === 401) {
-        notification.error('Authentication failed. Please log in again.');
+        notification.error("Authentication failed. Please log in again.");
         // Redirect to login
-        window.location.href = '/auth/login';
+        window.location.href = "/auth/login";
       } else {
-        notification.error('Failed to update profile');
+        notification.error("Failed to update profile");
       }
     } finally {
       setIsProfileLoading(false);
@@ -207,44 +202,44 @@ export default function HostelSettingsPage() {
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      notification.error('New passwords do not match');
+      notification.error("New passwords do not match");
       return;
     }
 
     if (passwordForm.newPassword.length < 6) {
-      notification.error('Password must be at least 6 characters long');
+      notification.error("Password must be at least 6 characters long");
       return;
     }
 
     try {
       setIsPasswordLoading(true);
-      
+
       // Debug: Check if token exists
       const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-      
+
       const response = await api.put(`/auth/change-password`, {
         currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword
+        newPassword: passwordForm.newPassword,
       });
 
       if ((response as any)?.data?.success) {
-        notification.success('Password changed successfully');
+        notification.success("Password changed successfully");
         setPasswordForm({
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: ''
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
         });
       }
     } catch (error: any) {
-      console.error('Failed to change password:', error);
+      console.error("Failed to change password:", error);
       if (error?.response?.status === 401) {
-        notification.error('Authentication failed. Please log in again.');
+        notification.error("Authentication failed. Please log in again.");
         // Redirect to login
-        window.location.href = '/auth/login';
+        window.location.href = "/auth/login";
       } else {
-        notification.error('Failed to change password');
+        notification.error("Failed to change password");
       }
     } finally {
       setIsPasswordLoading(false);
@@ -257,15 +252,15 @@ export default function HostelSettingsPage() {
 
     try {
       setIsHostelLoading(true);
-      
+
       const updatedHostel = await updateHostel(currentHostel.id, hostelForm);
-      
+
       if (updatedHostel) {
-        notification.success('Hostel information updated successfully');
+        notification.success("Hostel information updated successfully");
       }
     } catch (error) {
-      console.error('Failed to update hostel:', error);
-      notification.error('Failed to update hostel information');
+      console.error("Failed to update hostel:", error);
+      notification.error("Failed to update hostel information");
     } finally {
       setIsHostelLoading(false);
     }
@@ -367,178 +362,250 @@ export default function HostelSettingsPage() {
             </h3>
           </CardHeader>
           <CardContent>
-            <ProfileSettingsForm roleContext={user?.role === 'owner' ? 'owner' : 'staff'} />
+            <ProfileSettingsForm
+              roleContext={user?.role === "owner" ? "owner" : "staff"}
+            />
           </CardContent>
         </Card>
       )}
 
       {/* Password Change - Also part of profile permissions */}
       {canUpdateProfile && (
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
-        <CardHeader>
-          <h3 className="flex items-center gap-2 dark:text-white">
-            <User className="h-5 w-5" />
-            Change Password
-          </h3>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handlePasswordChange} className="space-y-4">
-                         <div>
-               <label className="block text-sm font-medium mb-2 dark:text-white">Current Password</label>
-               <div className="relative">
-                 <Input
-                   type={showCurrentPassword ? "text" : "password"}
-                   value={passwordForm.currentPassword}
-                   onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
-                   required
-                 />
-                 <Button
-                   type="button"
-                   variant="text"
-                   size="sm"
-                   className="absolute right-0 top-0 h-full px-3"
-                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                 >
-                   {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                 </Button>
-               </div>
-             </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div>
-                 <label className="block text-sm font-medium mb-2 dark:text-white">New Password</label>
-                 <div className="relative">
-                   <Input
-                     type={showNewPassword ? "text" : "password"}
-                     value={passwordForm.newPassword}
-                     onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
-                     required
-                   />
-                   <Button
-                     type="button"
-                     variant="text"
-                     size="sm"
-                     className="absolute right-0 top-0 h-full px-3"
-                     onClick={() => setShowNewPassword(!showNewPassword)}
-                   >
-                     {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                   </Button>
-                 </div>
-               </div>
-               <div>
-                 <label className="block text-sm font-medium mb-2 dark:text-white">Confirm New Password</label>
-                 <div className="relative">
-                   <Input
-                     type={showConfirmPassword ? "text" : "password"}
-                     value={passwordForm.confirmPassword}
-                     onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                     required
-                   />
-                   <Button
-                     type="button"
-                     variant="text"
-                     size="sm"
-                     className="absolute right-0 top-0 h-full px-3"
-                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                   >
-                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                   </Button>
-                 </div>
-               </div>
-             </div>
-            <Button type="submit" disabled={isPasswordLoading}>
-              {isPasswordLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Changing Password...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Change Password
-                </>
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+          <CardHeader>
+            <h3 className="flex items-center gap-2 dark:text-white">
+              <User className="h-5 w-5" />
+              Change Password
+            </h3>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handlePasswordChange} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 dark:text-white">
+                  Current Password
+                </label>
+                <div className="relative">
+                  <Input
+                    type={showCurrentPassword ? "text" : "password"}
+                    value={passwordForm.currentPassword}
+                    onChange={(e) =>
+                      setPasswordForm((prev) => ({
+                        ...prev,
+                        currentPassword: e.target.value,
+                      }))
+                    }
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="text"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  >
+                    {showCurrentPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 dark:text-white">
+                    New Password
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type={showNewPassword ? "text" : "password"}
+                      value={passwordForm.newPassword}
+                      onChange={(e) =>
+                        setPasswordForm((prev) => ({
+                          ...prev,
+                          newPassword: e.target.value,
+                        }))
+                      }
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="text"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                    >
+                      {showNewPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 dark:text-white">
+                    Confirm New Password
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={passwordForm.confirmPassword}
+                      onChange={(e) =>
+                        setPasswordForm((prev) => ({
+                          ...prev,
+                          confirmPassword: e.target.value,
+                        }))
+                      }
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="text"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <Button type="submit" disabled={isPasswordLoading}>
+                {isPasswordLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Changing Password...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Change Password
+                  </>
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       )}
 
       {/* Hostel Information - Only visible if user has hostel_settings_update permission */}
       {canUpdateHostelSettings && (
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
-        <CardHeader>
-          <h3 className="flex items-center gap-2 dark:text-white">
-            <Building2 className="h-5 w-5" />
-            Hostel Information
-          </h3>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleHostelUpdate} className="space-y-4">
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div>
-                 <label className="block text-sm font-medium mb-2 dark:text-white">Hostel Name</label>
-                 <Input
-                   type="text"
-                   value={hostelForm.name}
-                   onChange={(e) => setHostelForm(prev => ({ ...prev, name: e.target.value }))}
-                   required
-                 />
-               </div>
-               <div>
-                 <label className="block text-sm font-medium mb-2 dark:text-white">Email</label>
-                 <Input
-                   type="email"
-                   value={hostelForm.email}
-                   onChange={(e) => setHostelForm(prev => ({ ...prev, email: e.target.value }))}
-                   required
-                 />
-               </div>
-             </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div>
-                 <label className="block text-sm font-medium mb-2 dark:text-white">Country</label>
-                 <Input
-                   type="text"
-                   value={hostelForm.country}
-                   onChange={(e) => setHostelForm(prev => ({ ...prev, country: e.target.value }))}
-                   required
-                 />
-               </div>
-               <div>
-                 <label className="block text-sm font-medium mb-2 dark:text-white">City</label>
-                 <Input
-                   type="text"
-                   value={hostelForm.city}
-                   onChange={(e) => setHostelForm(prev => ({ ...prev, city: e.target.value }))}
-                   required
-                 />
-               </div>
-             </div>
-             <div>
-               <label className="block text-sm font-medium mb-2 dark:text-white">Address</label>
-               <Textarea
-                 value={hostelForm.address}
-                 onChange={(e) => setHostelForm(prev => ({ ...prev, address: e.target.value }))}
-                 required
-                 rows={3}
-               />
-             </div>
-            <Button type="submit" disabled={isHostelLoading}>
-              {isHostelLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Updating Hostel...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Update Hostel Information
-                </>
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+          <CardHeader>
+            <h3 className="flex items-center gap-2 dark:text-white">
+              <Building2 className="h-5 w-5" />
+              Hostel Information
+            </h3>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleHostelUpdate} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 dark:text-white">
+                    Hostel Name
+                  </label>
+                  <Input
+                    type="text"
+                    value={hostelForm.name}
+                    onChange={(e) =>
+                      setHostelForm((prev) => ({
+                        ...prev,
+                        name: e.target.value,
+                      }))
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 dark:text-white">
+                    Email
+                  </label>
+                  <Input
+                    type="email"
+                    value={hostelForm.email}
+                    onChange={(e) =>
+                      setHostelForm((prev) => ({
+                        ...prev,
+                        email: e.target.value,
+                      }))
+                    }
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 dark:text-white">
+                    Country
+                  </label>
+                  <Input
+                    type="text"
+                    value={hostelForm.country}
+                    onChange={(e) =>
+                      setHostelForm((prev) => ({
+                        ...prev,
+                        country: e.target.value,
+                      }))
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 dark:text-white">
+                    City
+                  </label>
+                  <Input
+                    type="text"
+                    value={hostelForm.city}
+                    onChange={(e) =>
+                      setHostelForm((prev) => ({
+                        ...prev,
+                        city: e.target.value,
+                      }))
+                    }
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 dark:text-white">
+                  Address
+                </label>
+                <Textarea
+                  value={hostelForm.address}
+                  onChange={(e) =>
+                    setHostelForm((prev) => ({
+                      ...prev,
+                      address: e.target.value,
+                    }))
+                  }
+                  required
+                  rows={3}
+                />
+              </div>
+              <Button type="submit" disabled={isHostelLoading}>
+                {isHostelLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Updating Hostel...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Update Hostel Information
+                  </>
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
