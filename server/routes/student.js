@@ -83,7 +83,7 @@ router.get(
 router.put(
   "/profile",
   verifyToken,
-  requirePermission("manage_profile"), // Changed from "profile_update"
+  requirePermission("view_own_data"), // Changed from "profile_update"
   updateMyProfile
 );
 

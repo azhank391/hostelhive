@@ -94,6 +94,10 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
     description: "Essential permissions for accessing the dashboard",
     permissions: [
       "view_hostel_stats", // View hostel information (basic access)
+      "hostel_read", // View hostel details
+      "manage_profile", // update their own information
+      "hostel_settings_update" // update hostel settings in the settings page
+
     ],
     icon: "🏠",
     required: false,
@@ -233,6 +237,8 @@ const generatePermissionDisplayNames = (): Record<string, string> => {
     // Core Access
     hostel_read: "View Hostel Information",
     view_hostel_stats: "View Hostel Statistics",
+    manage_profile: "Update their own information",
+    hostel_settings_update: "Update hostel settings",
 
     // Room Management
     room_read: "View Rooms",
@@ -279,6 +285,7 @@ const generatePermissionDisplayNames = (): Record<string, string> => {
 
     // Profile Management
     view_own_data: "View Own Data",
+    
   };
 
   // Apply display names from the mapping

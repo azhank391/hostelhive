@@ -113,6 +113,12 @@ module.exports = {
         description: "Access dashboard and analytics",
         category: "dashboard",
       },
+      {
+        name: "manage_profile",
+        display_name: "Manage Profile",
+        description: "Update personal profile information",
+        category: "profile",
+      },
 
       // 2. Hostel Management
       {
@@ -412,13 +418,15 @@ module.exports = {
     // Owner permissions - Full hostel management
     const ownerPermissions = [
       // Profile management (Dashboard access)
+      "manage_profile", // used for the settings page  // to view their own hostel info
+      "hostel_settings_update", // to change settings like subdomain, plan, etc.
       // Hostel management
       "hostel_create",
       "hostel_read",
       "hostel_update",
       "hostel_delete",
-      "hostel_settings_update",
       "view_hostel_stats",
+      
 
       // Room management
       "room_create",
@@ -484,7 +492,8 @@ module.exports = {
     const wardenPermissions = [
       // Hostel information (read-only)
       "view_hostel_stats",
-      "hostel_read", // used for the warden dashbaord page
+      "hostel_read",
+      "manage_profile", // used for the warden settings page to change their info
 
       // Room management
       "room_create",

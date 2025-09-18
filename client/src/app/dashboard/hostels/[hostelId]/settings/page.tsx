@@ -95,9 +95,7 @@ export default function HostelSettingsPage() {
 
   // Initialize forms and theme
   useEffect(() => {
-    console.log('🔍 DEBUG: Settings page useEffect triggered');
-    console.log('🔍 DEBUG: User:', user);
-    console.log('🔍 DEBUG: Current hostel:', currentHostel);
+   
     
     if (user) {
       setProfileForm({
@@ -110,8 +108,7 @@ export default function HostelSettingsPage() {
     if (currentHostel) {
       // Extract location data from the hostel object
       const location = currentHostel.location;
-      console.log('🔍 DEBUG: Hostel data:', currentHostel);
-      console.log('🔍 DEBUG: Location data:', location);
+      
       
       setHostelForm({
         name: currentHostel.name || '',
@@ -129,9 +126,7 @@ export default function HostelSettingsPage() {
 
     // Debug: Check authentication state
     const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-    console.log('🔍 DEBUG: Settings page - User:', user);
-    console.log('🔍 DEBUG: Settings page - Current hostel:', currentHostel);
-    console.log('🔍 DEBUG: Settings page - Token exists:', !!token);
+   
   }, [user, currentHostel]);
 
   // Apply theme
@@ -165,9 +160,7 @@ export default function HostelSettingsPage() {
   }, [user, hostelId, refreshHostels]);
 
   const handleThemeToggle = () => {
-    console.log('🔍 DEBUG: Theme toggle clicked, current theme:', isDarkTheme ? 'dark' : 'light');
     const newTheme = !isDarkTheme;
-    console.log('🔍 DEBUG: Setting new theme to:', newTheme ? 'dark' : 'light');
     setIsDarkTheme(newTheme);
   };
 
@@ -180,8 +173,7 @@ export default function HostelSettingsPage() {
       
       // Debug: Check if token exists
       const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-      console.log('🔍 DEBUG: Profile update - Token exists:', !!token);
-      console.log('🔍 DEBUG: Profile update - User:', user);
+      
       
       const response = await api.put(`/auth/profile`, {
         name: profileForm.name,
@@ -229,7 +221,6 @@ export default function HostelSettingsPage() {
       
       // Debug: Check if token exists
       const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-      console.log('🔍 DEBUG: Password change - Token exists:', !!token);
       
       const response = await api.put(`/auth/change-password`, {
         currentPassword: passwordForm.currentPassword,
