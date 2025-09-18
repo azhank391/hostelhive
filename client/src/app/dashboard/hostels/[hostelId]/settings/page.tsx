@@ -25,6 +25,7 @@ import {
   EyeOff,
   AlertTriangle
 } from 'lucide-react';
+import { ProfileSettingsForm } from '@/components/settings/ProfileSettingsForm';
 
 interface ProfileFormData {
   name: string;
@@ -57,6 +58,7 @@ export default function HostelSettingsPage() {
   // Map legacy/placeholder permissions to actual defined permission constants
   const canViewSettings = hasPermission('hostel_read');
   const canUpdateProfile = hasPermission('manage_profile');
+  const selfCanEditProfile = !!user; // Allow self-edit fallback even without permission
   const canUpdateHostelSettings = hasPermission('hostel_settings_update');
 
   // Theme state
@@ -355,8 +357,8 @@ export default function HostelSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Profile Settings - Visible if user has profile_update permission */}
-      {canUpdateProfile && (
+      {/* Profile Settings - Visible if has permission OR self user fallback */}
+      {(canUpdateProfile || selfCanEditProfile) && (
         <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardHeader>
             <h3 className="flex items-center gap-2 dark:text-white">
@@ -365,52 +367,9 @@ export default function HostelSettingsPage() {
             </h3>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleProfileUpdate} className="space-y-4">
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div>
-                 <label className="block text-sm font-medium mb-2 dark:text-white">Full Name</label>
-                 <Input
-                   type="text"
-                   value={profileForm.name}
-                   onChange={(e) => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
-                   required
-                 />
-               </div>
-               <div>
-                 <label className="block text-sm font-medium mb-2 dark:text-white">Email</label>
-                 <Input
-                   type="email"
-                   value={profileForm.email}
-                   onChange={(e) => setProfileForm(prev => ({ ...prev, email: e.target.value }))}
-                   required
-                 />
-               </div>
-             </div>
-             <div>
-               <label className="block text-sm font-medium mb-2 dark:text-white">Phone Number</label>
-               <Input
-                 type="tel"
-                 value={profileForm.phone || ''}
-                 onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
-                 placeholder="Optional"
-               />
-             </div>
-            <Button type="submit" disabled={isProfileLoading}>
-              {isProfileLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Updating...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Update Profile
-                </>
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+            <ProfileSettingsForm roleContext={user?.role === 'owner' ? 'owner' : 'staff'} />
+          </CardContent>
+        </Card>
       )}
 
       {/* Password Change - Also part of profile permissions */}

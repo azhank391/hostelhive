@@ -117,7 +117,8 @@ export function getAccessibleSidebarSections(user: AuthUser): string[] {
     case 'superadmin':
       return ['dashboard', 'hostels', 'billing', 'analytics', 'settings'];
     case 'owner':
-      return ['dashboard', 'students', 'rooms', 'staff', 'complaints', 'visitors', 'reports', 'settings'];
+      // Include billing explicitly so owners always see Billing section
+      return ['dashboard', 'students', 'rooms', 'staff', 'complaints', 'visitors', 'billing', 'reports', 'settings'];
     case 'warden':
       return ['dashboard', 'students', 'rooms', 'complaints', 'visitors', 'settings'];
     case 'student':
