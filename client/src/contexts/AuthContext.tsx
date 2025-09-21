@@ -231,7 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         
         return data;
-      } catch (userLoginError) {
+      } catch (userLoginError: any) {
         // If standard user login fails, try superadmin login
         console.log('Standard login failed, attempting superadmin login...');
         
@@ -274,8 +274,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.setItem(userDataKey, JSON.stringify(userData))
           
           return superadminData;
-        } catch (superadminLoginError) {
+        } catch (superadminLoginError: any) {
           console.error('❌ AuthContext: All login attempts failed:', superadminLoginError);
+          // Normalize errors for end users
+          const msg = superadminLoginError?.response?.data?.message || userLoginError?.response?.data?.message || superadminLoginError?.message || userLoginError?.message || '';
+          if (/invalid\s*credentials|user\s*not\s*found|superadmin\s*not\s*found/i.test(msg)) {
+            notification.error('Email or password does not match');
+          } else {
+            notification.error('Failed to sign in');
+          }
           throw superadminLoginError;
         }
       }

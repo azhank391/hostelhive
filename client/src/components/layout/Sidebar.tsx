@@ -559,7 +559,17 @@ export const Sidebar = memo(({
             </p>
             <nav className="mt-2 lg:mt-1 space-y-2 sm:space-y-1">
               <NavItem 
-                to={isSuperadmin ? '/dashboard/superadmin/settings' : (isOwner && currentHostelId ? `/dashboard/hostels/${currentHostelId}/settings` : `/dashboard/${user?.role}/settings`)} 
+                to={
+                  isSuperadmin
+                    ? '/dashboard/superadmin/settings'
+                    : isOwner && currentHostelId
+                    ? `/dashboard/hostels/${currentHostelId}/settings`
+                    : user?.hostelId
+                    ? `/dashboard/hostels/${user.hostelId}/settings`
+                    : currentHostelId
+                    ? `/dashboard/hostels/${currentHostelId}/settings`
+                    : `/dashboard/${user?.role}/settings`
+                } 
                 icon={<SettingsIcon size={24} className="sm:w-5 sm:h-5" />}
               >
                 Settings

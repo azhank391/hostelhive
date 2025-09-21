@@ -21,8 +21,6 @@ import {
   Sun,
   Save,
   Loader2,
-  Eye,
-  EyeOff,
   AlertTriangle,
 } from "lucide-react";
 import { ProfileSettingsForm } from "@/components/settings/ProfileSettingsForm";
@@ -31,12 +29,6 @@ interface ProfileFormData {
   name: string;
   email: string;
   phone?: string;
-}
-
-interface PasswordFormData {
-  currentPassword: string;
-  newPassword: string;
-  confirmPassword: string;
 }
 
 interface HostelFormData {
@@ -71,12 +63,6 @@ export default function HostelSettingsPage() {
     phone: "",
   });
 
-  const [passwordForm, setPasswordForm] = useState<PasswordFormData>({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
-
   const [hostelForm, setHostelForm] = useState<HostelFormData>({
     name: "",
     country: "",
@@ -86,14 +72,7 @@ export default function HostelSettingsPage() {
   });
 
   // Loading states
-  const [isProfileLoading, setIsProfileLoading] = useState(false);
-  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
   const [isHostelLoading, setIsHostelLoading] = useState(false);
-
-  // Password visibility
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Initialize forms and theme
   useEffect(() => {
@@ -162,89 +141,7 @@ export default function HostelSettingsPage() {
     setIsDarkTheme(newTheme);
   };
 
-  const handleProfileUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
 
-    try {
-      setIsProfileLoading(true);
-
-      // Debug: Check if token exists
-      const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-
-      const response = await api.put(`/auth/profile`, {
-        name: profileForm.name,
-        email: profileForm.email,
-        phone: profileForm.phone,
-      });
-
-      if ((response as any)?.data?.success) {
-        updateUser({
-          name: profileForm.name,
-          email: profileForm.email,
-          phone: profileForm.phone,
-        });
-        notification.success("Profile updated successfully");
-      }
-    } catch (error: any) {
-      console.error("Failed to update profile:", error);
-      if (error?.response?.status === 401) {
-        notification.error("Authentication failed. Please log in again.");
-        // Redirect to login
-        window.location.href = "/auth/login";
-      } else {
-        notification.error("Failed to update profile");
-      }
-    } finally {
-      setIsProfileLoading(false);
-    }
-  };
-
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      notification.error("New passwords do not match");
-      return;
-    }
-
-    if (passwordForm.newPassword.length < 6) {
-      notification.error("Password must be at least 6 characters long");
-      return;
-    }
-
-    try {
-      setIsPasswordLoading(true);
-
-      // Debug: Check if token exists
-      const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-
-      const response = await api.put(`/auth/change-password`, {
-        currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword,
-      });
-
-      if ((response as any)?.data?.success) {
-        notification.success("Password changed successfully");
-        setPasswordForm({
-          currentPassword: "",
-          newPassword: "",
-          confirmPassword: "",
-        });
-      }
-    } catch (error: any) {
-      console.error("Failed to change password:", error);
-      if (error?.response?.status === 401) {
-        notification.error("Authentication failed. Please log in again.");
-        // Redirect to login
-        window.location.href = "/auth/login";
-      } else {
-        notification.error("Failed to change password");
-      }
-    } finally {
-      setIsPasswordLoading(false);
-    }
-  };
 
   const handleHostelUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -260,11 +157,45 @@ export default function HostelSettingsPage() {
       }
     } catch (error) {
       console.error("Failed to update hostel:", error);
-      notification.error("Failed to update hostel information");
+      const errMsg = formatError(error, {
+        400: "Please check the hostel details and try again.",
+        401: "Authentication failed. Please log in again.",
+        403: "You don't have permission to update hostel information.",
+        422: "Some hostel fields are invalid. Please correct them and try again.",
+      });
+
+      notification.error(errMsg || "Failed to update hostel information");
+      if ((error as any)?.response?.status === 401) {
+        window.location.href = "/auth/login";
+      }
     } finally {
       setIsHostelLoading(false);
     }
   };
+
+  // Helper to map common API errors to friendly messages
+  function formatError(err: any, mapping: Record<number, string>) {
+    try {
+      const status = err?.response?.status;
+      const data = err?.response?.data;
+
+      // Prefer backend message if present and looks user-friendly
+      if (data && typeof data === "object") {
+        const msg = data?.message || data?.error || data?.errors;
+        if (typeof msg === "string" && msg.length < 200) return msg;
+      }
+
+      if (status && mapping[status]) return mapping[status];
+
+      // Network error fallback
+      if (err?.message && /network|timeout|failed to fetch/i.test(err.message))
+        return "Network error. Please check your connection and try again.";
+
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
 
   if (isLoading) {
     return (
@@ -365,132 +296,6 @@ export default function HostelSettingsPage() {
             <ProfileSettingsForm
               roleContext={user?.role === "owner" ? "owner" : "staff"}
             />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Password Change - Also part of profile permissions */}
-      {canUpdateProfile && (
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader>
-            <h3 className="flex items-center gap-2 dark:text-white">
-              <User className="h-5 w-5" />
-              Change Password
-            </h3>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handlePasswordChange} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2 dark:text-white">
-                  Current Password
-                </label>
-                <div className="relative">
-                  <Input
-                    type={showCurrentPassword ? "text" : "password"}
-                    value={passwordForm.currentPassword}
-                    onChange={(e) =>
-                      setPasswordForm((prev) => ({
-                        ...prev,
-                        currentPassword: e.target.value,
-                      }))
-                    }
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="text"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
-                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  >
-                    {showCurrentPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2 dark:text-white">
-                    New Password
-                  </label>
-                  <div className="relative">
-                    <Input
-                      type={showNewPassword ? "text" : "password"}
-                      value={passwordForm.newPassword}
-                      onChange={(e) =>
-                        setPasswordForm((prev) => ({
-                          ...prev,
-                          newPassword: e.target.value,
-                        }))
-                      }
-                      required
-                    />
-                    <Button
-                      type="button"
-                      variant="text"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                    >
-                      {showNewPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2 dark:text-white">
-                    Confirm New Password
-                  </label>
-                  <div className="relative">
-                    <Input
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={passwordForm.confirmPassword}
-                      onChange={(e) =>
-                        setPasswordForm((prev) => ({
-                          ...prev,
-                          confirmPassword: e.target.value,
-                        }))
-                      }
-                      required
-                    />
-                    <Button
-                      type="button"
-                      variant="text"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() =>
-                        setShowConfirmPassword(!showConfirmPassword)
-                      }
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              <Button type="submit" disabled={isPasswordLoading}>
-                {isPasswordLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Changing Password...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Change Password
-                  </>
-                )}
-              </Button>
-            </form>
           </CardContent>
         </Card>
       )}

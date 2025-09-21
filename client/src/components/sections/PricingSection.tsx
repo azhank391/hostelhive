@@ -57,18 +57,18 @@ export function PricingSection() {
     name: 'Free Plan',
     price: 'Free',
     description: 'Perfect for small hostels',
-    features: ['5 Rooms maximum', '20 Students', 'Basic admin panel', 'Community support']
+    features: ['10 Rooms maximum', '20 Students', 'Basic admin panel', 'Community support']
   }, {
     name: 'Pro Plan',
     price: '$29',
     description: 'Most Popular',
-    features: ['Up to 500 students', 'Unlimited rooms', 'Visitor logs', 'Analytics dashboard', 'Email support'],
+    features: ['Up to 500 students', 'Unlimited rooms', 'Visitor logs', 'Analytics dashboard'],
     isPopular: true
   }, {
     name: 'Enterprise Plan',
     price: '$99',
     description: 'For large institutions',
-    features: ['Unlimited everything', 'Priority support', 'Custom integrations', 'Dedicated account manager']
+    features: ['Unlimited everything', 'Priority support', 'Online Payment Integration for Students to Pay dues']
   }];
   return <section id="pricing" className="py-16 bg-[#F9FAFB]">
       <div className="container mx-auto px-4">

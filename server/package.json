@@ -11,8 +11,8 @@
     "seed:undo": "sequelize-cli db:seed:undo:all",
     "seed:superadmin": "node seed-superadmin.js",
     "test:auth": "node test-integrated-auth.js",
-  "check-db": "node check-database.js",
-  "audit:permissions": "node scripts/permission-audit.js"
+    "check-db": "node check-database.js",
+    "audit:permissions": "node scripts/permission-audit.js"
   },
   "keywords": [],
   "author": "Muhammad Azhan",
@@ -27,7 +27,8 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.1",
     "mysql2": "^3.14.3",
-    "sequelize": "^6.37.7"
+    "sequelize": "^6.37.7",
+    "stripe": "^18.5.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10",

@@ -1,20 +1,39 @@
-'use client';
+"use client";
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/contexts/PermissionContext';
 import { redirect } from 'next/navigation';
+import { useBilling } from '@/hooks/useBilling';
+import { useStripe } from '@/contexts/StripeContext';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 
-// Lightweight client wrapper to gate by view_billing
+const plans = [
+  {
+    id: 'basic',
+    name: 'Basic',
+    priceMonthly: 29,
+    stripePriceIdMonthly: 'price_monthly_basic', // TODO: replace with real Stripe price ID
+    features: ['Up to 100 students', 'Basic reporting', 'Email support'],
+  },
+  {
+    id: 'pro',
+    name: 'Professional',
+    priceMonthly: 59,
+    stripePriceIdMonthly: 'price_monthly_pro', // TODO: replace with real Stripe price ID
+    features: ['Up to 500 students', 'Advanced reporting', 'Priority support', 'API access'],
+  },
+];
+
 export default function BillingPage() {
-  // Because this is a client route segment, we can safely call hooks
-  // If project uses Server Components by default, convert to "use client" block.
   return <BillingPageClient />;
 }
-
 
 function BillingPageClient() {
   const { user } = useAuth();
   const { hasPermission, loading } = usePermissions();
+  const { subscriptionStatus, createCheckoutSession } = useBilling();
+  const { stripePromise } = useStripe();
 
   if (loading) {
     return <div className="p-8 text-gray-600">Loading billing...</div>;
@@ -36,35 +55,59 @@ function BillingPageClient() {
     );
   }
 
+  const handleSubscribe = async (priceId: string, planId: string) => {
+    try {
+      const sessionId = await createCheckoutSession(priceId, planId);
+      const stripe = await stripePromise;
+      const { error } = await stripe!.redirectToCheckout({ sessionId });
+      if (error) console.error('Stripe redirect error:', error);
+    } catch (error) {
+      console.error('Subscribe error:', error);
+    }
+  };
+
   return (
     <div className="p-6 md:p-8 space-y-8">
       <header>
-        <h1 className="text-2xl font-bold text-gray-900">Billing Overview</h1>
-        <p className="text-gray-600 mt-1 text-sm">Subscription, invoices and usage metrics for this hostel.</p>
+        <h1 className="text-2xl font-bold text-gray-900">Billing & Subscription</h1>
+        <p className="text-gray-600 mt-1 text-sm">Choose a plan to activate your account.</p>
       </header>
 
-      <section className="grid gap-6 md:grid-cols-3">
-        <div className="bg-white rounded-lg shadow p-5 border border-gray-100">
-          <h2 className="text-sm font-medium text-gray-500 mb-2">Current Plan</h2>
-          <div className="text-lg font-semibold text-gray-900">Standard</div>
-          <p className="text-xs text-gray-500 mt-1">Billed monthly</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-5 border border-gray-100">
-            <h2 className="text-sm font-medium text-gray-500 mb-2">Active Staff</h2>
-            <div className="text-lg font-semibold text-gray-900">--</div>
-            <p className="text-xs text-gray-500 mt-1">Coming soon</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-5 border border-gray-100">
-            <h2 className="text-sm font-medium text-gray-500 mb-2">Storage Usage</h2>
-            <div className="text-lg font-semibold text-gray-900">--</div>
-            <p className="text-xs text-gray-500 mt-1">Coming soon</p>
-        </div>
-      </section>
+      {/* Current Status */}
+      <Card>
+        <CardHeader>
+          <h3>Current Subscription</h3>
+        </CardHeader>
+        <CardContent>
+          <p>Status: {subscriptionStatus?.subscription_status || 'No subscription'}</p>
+          <p>Plan: {subscriptionStatus?.plan_id || 'None'}</p>
+          {subscriptionStatus?.trial_end && (
+            <p>Trial ends: {new Date(subscriptionStatus.trial_end).toLocaleDateString()}</p>
+          )}
+        </CardContent>
+      </Card>
 
-      <section className="bg-white rounded-lg shadow border border-gray-100 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Invoices</h2>
-        <div className="text-sm text-gray-600">No invoices available yet.</div>
-      </section>
+      {/* Plans */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {plans.map((plan) => (
+          <Card key={plan.id}>
+            <CardHeader>
+              <h3>{plan.name}</h3>
+              <p className="text-2xl font-bold">${plan.priceMonthly}/month</p>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 mb-4">
+                {plan.features.map((feature, i) => (
+                  <li key={i}>✓ {feature}</li>
+                ))}
+              </ul>
+              <Button onClick={() => handleSubscribe(plan.stripePriceIdMonthly, plan.id)} className="w-full">
+                Subscribe to {plan.name}
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }

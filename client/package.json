@@ -16,6 +16,7 @@
     "build:turbo:fast": "turbo build:ultra --parallel"
   },
   "dependencies": {
+    "@stripe/stripe-js": "^7.9.0",
     "@tanstack/react-query": "^5.85.5",
     "@tanstack/react-query-devtools": "^5.85.5",
     "axios": "^1.11.0",

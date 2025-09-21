@@ -11,7 +11,6 @@ import { useHostelApiWithContext } from '@/lib/context-aware-api';
 interface CreateHostelFormData {
   name: string;
   email: string;
-  plan: 'free' | 'pro' | 'enterprise';
   country?: string;
   city?: string;
   address?: string;
@@ -47,7 +46,6 @@ export const CreateHostelForm = React.memo(({
   const [formData, setFormData] = useState<CreateHostelFormData>({
     name: '',
     email: '',
-    plan: 'free',
     country: '',
     city: '',
     address: ''
@@ -71,7 +69,6 @@ export const CreateHostelForm = React.memo(({
     setFormData({
       name: '',
       email: '',
-      plan: 'free',
       country: '',
       city: '',
       address: ''
@@ -109,10 +106,6 @@ export const CreateHostelForm = React.memo(({
       newErrors.email = 'Please enter a valid email address';
     }
     
-    if (!formData.plan) {
-      newErrors.plan = 'Please select a plan';
-    }
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }, [formData]);
@@ -136,8 +129,8 @@ export const CreateHostelForm = React.memo(({
   // Use context createHostel so currentHostel is set immediately
   const hostel = await createHostel(formData as any);
   console.log('Hostel created successfully via context:', hostel);
-      const hostelName = hostel.name || 'Hostel';
-      const subdomain = hostel.subdomain || 'unknown';
+  const hostelName = hostel.name || 'Hostel';
+  const subdomain = hostel.subdomain || 'unknown';
        
       // Dismiss loading toast and show success
       notification.dismiss(loadingToast);
@@ -157,9 +150,10 @@ export const CreateHostelForm = React.memo(({
             onSuccess();
             return;
           }
-          router.replace(`/dashboard/hostels/${hostel.id}`);
+          // Redirect to billing page for plan selection & checkout
+          router.replace(`/dashboard/hostels/${hostel.id}/billing`);
         } catch (err) {
-          router.replace(`/dashboard/hostels/${hostel.id}`);
+          router.replace(`/dashboard/hostels/${hostel.id}/billing`);
         }
       }, 600);
       
@@ -340,24 +334,7 @@ export const CreateHostelForm = React.memo(({
         </div>
 
         {/* Plan Selection */}
-        <div>
-          <label htmlFor="plan" className="block text-sm font-medium text-gray-700 mb-2">
-            <CreditCardIcon className="inline h-4 w-4 mr-2" />
-            Plan *
-          </label>
-          <select
-            id="plan"
-            name="plan"
-            value={formData.plan}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="free">Free Plan (Up to 10 students)</option>
-            <option value="pro">Pro Plan (Up to 100 students)</option>
-            <option value="enterprise">Enterprise Plan (Unlimited students)</option>
-          </select>
-          {errors.plan && <p className="mt-1 text-sm text-red-600">{errors.plan}</p>}
-        </div>
+        {/* Plan selection removed. Plans are chosen on the billing page after creation. */}
 
         {/* Location Fields */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

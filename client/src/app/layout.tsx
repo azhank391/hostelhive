@@ -7,6 +7,7 @@ import { PermissionProvider } from '@/contexts/PermissionContext'
 import { ToastProvider } from '@/providers/ToastProvider'
 import { SubdomainProvider } from '@/context/SubdomainContext'
 import { HostelProvider } from '@/context/HostelContext'
+import {StripeProvider} from '@/contexts/StripeContext';
 import { ConditionalHostelModal } from '@/components/ConditionalHostelModal'
 import { PasswordChangeRequirement } from '@/components/auth/PasswordChangeRequirement'
 
@@ -27,6 +28,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <SubdomainProvider>
           <AuthProvider>
+            <StripeProvider>
             <PermissionProvider>
               <HostelProvider>
                 <main id="main-content">
@@ -37,6 +39,7 @@ export default function RootLayout({
                 <ToastProvider />
               </HostelProvider>
             </PermissionProvider>
+            </StripeProvider>
           </AuthProvider>
         </SubdomainProvider>
       </body>

@@ -9,7 +9,8 @@ dotenv.config();
 
 //intialize express app
 const app = express();
-
+const webhookRoutes = require("./routes/webhook");
+app.use('/api/webhooks', webhookRoutes);
 //middleware
 app.use(cors()); //enable CORS
 app.use(express.json()); //parse JSON bodies
@@ -21,6 +22,7 @@ app.get("/health", (req, res) => {
 });
 
 // Mount routes
+const billingRoutes = require("./routes/billing");
 const authRoutes = require("./routes/auth");
 const hostelRoutes = require("./routes/hostels");
 const hostelResolverRoutes = require("./routes/hostel-resolver");
@@ -36,9 +38,10 @@ app.use("/api/hostels/:hostelId/admin", adminRoutes); // 🔧 URL-based admin ro
 app.use("/api/student", studentRoutes);
 app.use("/api/superadmin", superadminRoutes);
 app.use("/api/rbac", rbacRoutes); // 🔐 RBAC routes
+app.use("/api/billing", billingRoutes);
 
-//connect db and start server
-const Port = process.env.PORT || 3000;
+//connect db and start servera
+const Port = process.env.PORT;
 sequelize
   .authenticate()
   .then(() => {
