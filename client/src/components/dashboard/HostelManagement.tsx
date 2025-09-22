@@ -19,7 +19,7 @@ interface Hostel {
   name: string;
   email: string;
   subdomain: string;
-  plan: string;
+  plan_id?: string;
   isActive: boolean;
   isPaid: boolean;
   createdAt: string;
@@ -42,7 +42,7 @@ interface HostelStats {
 }
 
 interface FilterCriteria {
-  plan: string;
+  plan_id: string;
   status: string;
   payment: string;
   location: string;
@@ -81,7 +81,7 @@ export const HostelManagement = React.memo(() => {
   const [searchTerm, setSearchTerm] = useState('')
   const [showFilter, setShowFilter] = useState(false)
   const [filterCriteria, setFilterCriteria] = useState<FilterCriteria>({
-    plan: 'all',
+    plan_id: 'all',
     status: 'all',
     payment: 'all',
     location: 'all'
@@ -106,8 +106,8 @@ export const HostelManagement = React.memo(() => {
     }
 
     // Plan filter
-    if (filterCriteria.plan !== 'all') {
-      filtered = filtered.filter(hostel => hostel.plan && hostel.plan === filterCriteria.plan)
+    if (filterCriteria.plan_id !== 'all') {
+      filtered = filtered.filter(hostel => hostel.plan_id && hostel.plan_id === filterCriteria.plan_id)
     }
 
     // Status filter
@@ -161,7 +161,7 @@ export const HostelManagement = React.memo(() => {
 
   // 🎯 PERFORMANCE: Memoized unique plan and location lists for filters
   const filterOptions = useMemo(() => {
-    const plans = Array.from(new Set(hostels.map(h => h.plan).filter(Boolean)))
+    const plans = Array.from(new Set(hostels.map(h => h.plan_id).filter(Boolean)))
     const countries = Array.from(new Set(hostels.map(h => h.location?.country).filter(Boolean)))
     
     return { plans, countries }
@@ -304,7 +304,7 @@ export const HostelManagement = React.memo(() => {
   const clearFilters = useCallback(() => {
     setSearchTerm('')
     setFilterCriteria({
-      plan: 'all',
+      plan_id: 'all',
       status: 'all',
       payment: 'all',
       location: 'all'
@@ -549,13 +549,13 @@ export const HostelManagement = React.memo(() => {
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Plan</label>
                   <select
-                    value={filterCriteria.plan}
-                    onChange={(e) => handleFilterChange('plan', e.target.value)}
+                    value={filterCriteria.plan_id}
+                    onChange={(e) => handleFilterChange('plan_id', e.target.value)}
                     className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
                   >
                     <option value="all">All Plans</option>
                     {filterOptions.plans.map(plan => (
-                      <option key={plan} value={plan}>{plan.charAt(0).toUpperCase() + plan.slice(1)}</option>
+                      <option key={plan as string} value={plan as string}>{String(plan).charAt(0).toUpperCase() + String(plan).slice(1)}</option>
                     ))}
                   </select>
                 </div>

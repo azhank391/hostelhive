@@ -10,7 +10,7 @@ interface Hostel {
   name: string
   email: string
   subdomain: string
-  plan: string
+  plan_id?: string
   isActive: boolean
   isPaid: boolean
   createdAt: string
@@ -99,7 +99,7 @@ export const SuperadminHostelsPage = () => {
                       <span className={`font-medium ${
                         hostel.isPaid ? 'text-green-600' : 'text-orange-600'
                       }`}>
-                        {hostel.plan} Plan {hostel.isPaid ? '(Paid)' : '(Unpaid)'}
+                        {hostel.plan_id || 'basic'} Plan {hostel.isPaid ? '(Paid)' : '(Unpaid)'}
                       </span>
                     </div>
                   </div>

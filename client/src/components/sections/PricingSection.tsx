@@ -1,8 +1,13 @@
-import React from 'react';
+'use client';
+import React, { useCallback } from 'react';
 import { Button } from '../ui/Button';
 import { Card, CardHeader, CardContent, CardFooter } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { CheckIcon } from 'lucide-react';
+import { PRICING_PLANS } from '@/config/pricing';
+import { useAuth } from '@/contexts/AuthContext';
+import { useHostel } from '@/context/HostelContext';
+import { useRouter } from 'next/navigation';
 interface PricingFeatureProps {
   children: React.ReactNode;
 }
@@ -45,31 +50,29 @@ function PricingTier({
           {features.map((feature, index) => <PricingFeature key={index}>{feature}</PricingFeature>)}
         </div>
       </CardContent>
-      <CardFooter>
-        <Button variant={isPopular ? 'primary' : 'outline'} fullWidth>
-          Get Started
-        </Button>
-      </CardFooter>
+      {/* This generic tier component is used only for static rendering; explicit plan routing handled below */}
+  <CardFooter>{null}</CardFooter>
     </Card>;
 }
 export function PricingSection() {
-  const pricingTiers = [{
-    name: 'Free Plan',
-    price: 'Free',
-    description: 'Perfect for small hostels',
-    features: ['10 Rooms maximum', '20 Students', 'Basic admin panel', 'Community support']
-  }, {
-    name: 'Pro Plan',
-    price: '$29',
-    description: 'Most Popular',
-    features: ['Up to 500 students', 'Unlimited rooms', 'Visitor logs', 'Analytics dashboard'],
-    isPopular: true
-  }, {
-    name: 'Enterprise Plan',
-    price: '$99',
-    description: 'For large institutions',
-    features: ['Unlimited everything', 'Priority support', 'Online Payment Integration for Students to Pay dues']
-  }];
+  const { user } = useAuth();
+  const { currentHostel } = useHostel();
+  const router = useRouter();
+
+  const handleSelectPlan = useCallback((planId: string) => {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('HOSTELHIVE_SELECTED_PLAN', planId);
+      }
+    } catch {}
+    // If logged in and has a hostel, go straight to billing with pre-selected plan
+    if (user && currentHostel?.id) {
+      router.push(`/dashboard/hostels/${currentHostel.id}/billing?plan=${encodeURIComponent(planId)}`);
+      return;
+    }
+    // Otherwise, send to register-owner and carry plan forward
+    router.push(`/auth/register-owner?plan=${encodeURIComponent(planId)}`);
+  }, [user, currentHostel?.id, router]);
   return <section id="pricing" className="py-16 bg-[#F9FAFB]">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
@@ -81,9 +84,68 @@ export function PricingSection() {
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          {pricingTiers.map((tier, index) => <div key={index} className="flex">
-              <PricingTier name={tier.name} price={tier.price} description={tier.description} features={tier.features} isPopular={tier.isPopular} />
-            </div>)}
+          {/* Free card */}
+          <div className="flex">
+            <Card className="flex flex-col h-full">
+              <CardHeader className="border-b">
+                <h3 className="text-xl font-bold mb-2">Free Plan</h3>
+                <div className="mb-2">
+                  <span className="text-3xl font-bold">Free</span>
+                </div>
+                <p className="text-gray-600">Perfect for small hostels</p>
+              </CardHeader>
+              <CardContent className="flex-grow">
+                <div className="space-y-4">
+                  <PricingFeature>10 Rooms maximum</PricingFeature>
+                  <PricingFeature>20 Students</PricingFeature>
+                  <PricingFeature>1 Warden</PricingFeature>
+                  <PricingFeature>No Visitor Log</PricingFeature>
+                  <PricingFeature>No Complaints</PricingFeature>
+                  <PricingFeature>No Staff</PricingFeature>
+                  <PricingFeature>1 Max Hostel</PricingFeature>
+                  <PricingFeature>Basic admin panel</PricingFeature>
+                  <PricingFeature>Community support</PricingFeature>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button variant="outline" fullWidth onClick={() => handleSelectPlan('free')}>
+                  Get Started
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+
+          {PRICING_PLANS.map((plan) => (
+            <div key={plan.id} className="flex">
+              <Card className={`flex flex-col h-full ${plan.isPopular ? 'border-2 border-[#3B82F6] relative' : ''}`}>
+                {plan.isPopular && (
+                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <Badge variant="primary">Most Popular</Badge>
+                  </div>
+                )}
+                <CardHeader className={`border-b ${plan.isPopular ? 'bg-blue-50' : ''}`}>
+                  <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
+                  <div className="mb-2">
+                    <span className="text-3xl font-bold">${plan.priceMonthly}</span>
+                    <span className="text-gray-600">/month</span>
+                  </div>
+                  <p className="text-gray-600">{plan.isPopular ? 'Most Popular' : 'Paid plan'}</p>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                  <div className="space-y-4">
+                    {plan.features.map((f, idx) => (
+                      <PricingFeature key={idx}>{f}</PricingFeature>
+                    ))}
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button variant={plan.isPopular ? 'primary' : 'outline'} fullWidth onClick={() => handleSelectPlan(plan.id)}>
+                    Get Started
+                  </Button>
+                </CardFooter>
+              </Card>
+            </div>
+          ))}
         </div>
       </div>
     </section>;

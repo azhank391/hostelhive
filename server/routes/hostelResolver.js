@@ -23,7 +23,7 @@ router.get("/by-subdomain/:subdomain", async (req, res) => {
         subdomain: subdomain.toLowerCase(),
         isActive: true,
       },
-      attributes: ["id", "name", "subdomain", "plan", "isActive"],
+  attributes: ["id", "name", "subdomain", "plan_id", "isActive"],
     });
 
     if (!hostel) {
@@ -58,7 +58,7 @@ router.get("/hostels", verifyToken, requirePermission('hostel_read'), async (req
           attributes: [],
         },
       ],
-      attributes: ["id", "name", "subdomain", "isActive", "plan"],
+  attributes: ["id", "name", "subdomain", "isActive", "plan_id"],
       where: { isActive: true },
       order: [["name", "ASC"]],
     });

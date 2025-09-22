@@ -93,7 +93,7 @@ export function HostelSelectionModal() {
                     </div>
                     <div className="text-right">
                       <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                        {hostel.plan || 'Free'}
+                        {hostel.plan_id || 'Free'}
                       </span>
                     </div>
                   </div>

@@ -17,7 +17,6 @@ interface HostelDetailProps {
 interface UpdateHostelData {
   name: string;
   email: string;
-  plan: 'free' | 'pro' | 'enterprise';
   country?: string;
   city?: string;
   address?: string;
@@ -36,7 +35,6 @@ export const HostelDetail: React.FC<HostelDetailProps> = ({ id }) => {
   const [updateForm, setUpdateForm] = useState<UpdateHostelData>({
     name: '',
     email: '',
-    plan: 'free',
     country: '',
     city: '',
     address: '',
@@ -196,7 +194,6 @@ export const HostelDetail: React.FC<HostelDetailProps> = ({ id }) => {
     setUpdateForm({
       name: hostel.name || '',
       email: hostel.email || '',
-      plan: (hostel.plan as 'free' | 'pro' | 'enterprise') || 'free',
       country: hostel.location?.country || '',
       city: hostel.location?.city || '',
       address: hostel.location?.address || '',
@@ -368,7 +365,7 @@ export const HostelDetail: React.FC<HostelDetailProps> = ({ id }) => {
                 <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="flex items-center justify-between">
                     <span className="text-xs lg:text-sm font-medium text-blue-700 uppercase tracking-wide">Plan</span>
-                    <span className="text-sm lg:text-base font-medium text-blue-900 capitalize">{hostel.plan}</span>
+                    <span className="text-sm lg:text-base font-medium text-blue-900 capitalize">{hostel.plan_id || 'basic'}</span>
                   </div>
                 </div>
 
@@ -458,22 +455,7 @@ export const HostelDetail: React.FC<HostelDetailProps> = ({ id }) => {
                    </p>
                  </div>
 
-                 <div>
-                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                     <CreditCardIcon className="inline h-4 w-4 mr-2 text-purple-500" />
-                     Plan *
-                   </label>
-                   <select
-                     value={updateForm.plan}
-                     onChange={(e) => setUpdateForm(prev => ({ ...prev, plan: e.target.value as 'free' | 'pro' | 'enterprise' }))}
-                     className="w-full px-3 py-2 lg:px-4 lg:py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200"
-                     required
-                   >
-                     <option value="free">Free Plan (Up to 10 students)</option>
-                     <option value="pro">Pro Plan (Up to 100 students)</option>
-                     <option value="enterprise">Enterprise Plan (Unlimited students)</option>
-                   </select>
-                 </div>
+                 {/* Plan selection removed; managed via Billing/Stripe */}
 
                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4">
                    <div>

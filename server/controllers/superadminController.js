@@ -77,12 +77,13 @@ exports.getDashboardData = async (req, res) => {
     });
 
     // Plan Distribution with revenue calculation
+    // TODO: Update metrics to use plan_id after legacy plan removal
     const plans = await Hostel.findAll({
       attributes: [
-        "plan",
-        [sequelize.fn("COUNT", sequelize.col("plan")), "count"],
+        "plan_id",
+        [sequelize.fn("COUNT", sequelize.col("plan_id")), "count"],
       ],
-      group: ["plan"],
+      group: ["plan_id"],
     });
 
     // Calculate revenue metrics
@@ -94,7 +95,7 @@ exports.getDashboardData = async (req, res) => {
     };
 
     const totalMonthlyRevenue = plans.reduce((total, plan) => {
-      const planName = plan.plan;
+      const planName = plan.plan_id;
       const count = parseInt(plan.count);
       const revenue = planRevenue[planName] || 0;
       return total + count * revenue;
@@ -134,12 +135,12 @@ exports.getDashboardData = async (req, res) => {
 // ✅ Register New Hostel
 exports.registerHostel = async (req, res) => {
   try {
-    const { name, email, subdomain, plan, country, city, address } = req.body;
+    const { name, email, subdomain, plan_id, country, city, address } = req.body;
 
-    if (!name || !email || !subdomain || !plan) {
+    if (!name || !email || !subdomain) {
       return res
         .status(400)
-        .json({ message: "Name, email, subdomain, and plan are required" });
+        .json({ message: "Name, email, and subdomain are required" });
     }
 
     // Check if subdomain already exists
@@ -159,9 +160,10 @@ exports.registerHostel = async (req, res) => {
       name,
       email,
       subdomain,
-      plan,
+      // Legacy `plan` deprecated; use plan_id which will be finalized by billing flow/webhooks
+      plan_id: plan_id || 'basic',
       isActive: true,
-      isPaid: plan === "free" ? true : false, // Free plan is considered paid
+      isPaid: false,
     });
 
     // Create location if provided
@@ -184,11 +186,13 @@ exports.registerHostel = async (req, res) => {
 // ✅ Get All Hostels
 exports.getAllHostels = async (req, res) => {
   try {
-    const { page = 1, limit = 10, plan, isActive, isPaid } = req.query;
+  const { page = 1, limit = 10, plan, plan_id, isActive, isPaid } = req.query;
     const offset = (page - 1) * limit;
 
-    const whereClause = {};
-    if (plan) whereClause.plan = plan;
+  const whereClause = {};
+  if (plan_id) whereClause.plan_id = plan_id;
+  // Backward-compat: support legacy `plan` filter if present
+  if (!plan_id && plan) whereClause.plan_id = plan;
     if (isActive !== undefined) whereClause.isActive = isActive === "true";
     if (isPaid !== undefined) whereClause.isPaid = isPaid === "true";
 
@@ -268,32 +272,7 @@ exports.getHostelDetails = async (req, res) => {
   }
 };
 
-// ✅ Update Hostel Plan
-exports.updateHostelPlan = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { plan } = req.body;
-
-    if (!plan || !["free", "pro", "enterprise"].includes(plan)) {
-      return res.status(400).json({ message: "Valid plan is required" });
-    }
-
-    const hostel = await Hostel.findByPk(id);
-    if (!hostel) {
-      return res.status(404).json({ message: "Hostel not found" });
-    }
-
-    await hostel.update({
-      plan,
-      isPaid: plan === "free" ? true : hostel.isPaid, // Free plan is considered paid
-    });
-
-    res.json({ message: "Hostel plan updated successfully", hostel });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to update hostel plan" });
-  }
-};
+// (Legacy Update Hostel Plan removed) – plans are managed via Stripe billing; use plan_id + webhooks.
 
 // ✅ Update Hostel Status (Suspend/Reactivate)
 exports.updateHostelStatus = async (req, res) => {
@@ -387,7 +366,7 @@ exports.getHostelsByRegion = async (req, res) => {
         {
           model: Hostel,
           as: "hostel",
-          attributes: ["id", "name", "subdomain", "plan", "isActive", "isPaid"],
+          attributes: ["id", "name", "subdomain", "plan_id", "isActive", "isPaid"],
         },
       ],
       order: [
@@ -411,16 +390,16 @@ exports.getBillingOverview = async (req, res) => {
 
     const planBreakdown = await Hostel.findAll({
       attributes: [
-        "plan",
+        "plan_id",
         "isPaid",
         [sequelize.fn("COUNT", sequelize.col("id")), "count"],
       ],
-      group: ["plan", "isPaid"],
+      group: ["plan_id", "isPaid"],
     });
 
     const recentPayments = await Hostel.findAll({
       where: { isPaid: true },
-      attributes: ["id", "name", "plan", "updatedAt"],
+      attributes: ["id", "name", "plan_id", "updatedAt"],
       order: [["updatedAt", "DESC"]],
       limit: 10,
     });
@@ -486,12 +465,12 @@ exports.createOwner = async (req, res) => {
 
     // Create hostel if provided
     if (hostelData) {
-      const { name: hostelName, plan, country, city, address } = hostelData;
+      const { name: hostelName, plan_id, country, city, address } = hostelData;
 
-      if (!hostelName || !plan) {
+      if (!hostelName) {
         return res
           .status(400)
-          .json({ message: "Hostel name and plan are required" });
+          .json({ message: "Hostel name is required" });
       }
 
       // Auto-generate unique subdomain
@@ -527,13 +506,19 @@ exports.createOwner = async (req, res) => {
       const subdomain = await generateUniqueSubdomain(hostelName);
 
       // Create hostel
+      // Default to trialing/basic if plan_id not provided
+      const TRIAL_DAYS = 14;
+      const now = new Date();
+      const trialEnd = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
       hostel = await Hostel.create({
         name: hostelName,
         email,
         subdomain,
-        plan,
+        plan_id: plan_id || 'basic',
+        subscription_status: 'trialing',
+        trial_end: trialEnd,
         isActive: true,
-        isPaid: plan === "free" ? true : false,
+        isPaid: false,
         ownerId: owner.id,
       });
 
@@ -594,10 +579,10 @@ exports.getHostelStudents = async (req, res) => {
 
     res.json({
       hostel: {
-        id: hostel.id,
-        name: hostel.name,
-        subdomain: hostel.subdomain,
-        plan: hostel.plan,
+        id: hostel?.id,
+        name: hostel?.name,
+        subdomain: hostel?.subdomain,
+        plan_id: hostel?.plan_id,
       },
       students,
       totalStudents: students.length,

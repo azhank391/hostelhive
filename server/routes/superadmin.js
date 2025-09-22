@@ -6,7 +6,6 @@ const {
   registerHostel,
   getAllHostels,
   getHostelDetails,
-  updateHostelPlan,
   updateHostelStatus,
   updateBillingStatus,
   deleteHostel,
@@ -35,7 +34,6 @@ router.post('/hostels', verifyToken, requirePermission('hostel_global_manage'), 
 router.get('/hostels', verifyToken, requirePermission('hostel_global_manage'), getAllHostels);
 router.get('/hostels/:id', verifyToken, requirePermission('hostel_global_manage'), getHostelDetails);
 router.get('/hostels/:id/students', verifyToken, requirePermission('hostel_global_manage'), getHostelStudents);
-router.put('/hostels/:id/plan', verifyToken, requirePermission('hostel_global_manage'), updateHostelPlan);
 router.put('/hostels/:id/status', verifyToken, requirePermission('hostel_global_manage'), updateHostelStatus);
 router.put('/hostels/:id/billing', verifyToken, requirePermission('billing_manage'), updateBillingStatus);
 router.delete('/hostels/:id', verifyToken, requirePermission('hostel_global_manage'), deleteHostel);

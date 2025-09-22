@@ -4,6 +4,8 @@ import api from '@/lib/http';
 interface SubscriptionStatus {
     subscription_status: string;
     plan_id: string;
+    stripe_subscription_id?: string;
+    current_period_start?: string;
     current_period_end:string;
     trial_end:string;
 }
@@ -15,7 +17,8 @@ export const useBilling = () => {
         const fetchSubscriptionStatus = useCallback(async () => {
         try {
                 const response = (await api.get('/billing/subscription-status')) as any;
-                setSubscriptionStatus(response?.data as SubscriptionStatus);
+                // http client returns parsed JSON directly (not { data })
+                setSubscriptionStatus(response as SubscriptionStatus);
         } catch (error) {
             console.error('Error fetching subscription status:', error);
         } finally {
@@ -29,12 +32,23 @@ export const useBilling = () => {
                 priceId,
                 planId,
                 })) as any;
-                return (response?.data?.sessionId as string) || '';
+                // Expect { sessionId: string }
+                return (response?.sessionId as string) || '';
         } catch (error) {
             console.error('Error creating checkout session:', error);
             throw error;
         }
     }, []);
+
+    const cancelSubscription = useCallback(async () => {
+        await api.post('/billing/cancel-subscription', {});
+        await fetchSubscriptionStatus();
+    }, [fetchSubscriptionStatus]);
+
+    const resumeSubscription = useCallback(async () => {
+        await api.post('/billing/resume-subscription', {});
+        await fetchSubscriptionStatus();
+    }, [fetchSubscriptionStatus]);
 
     useEffect(() => {
         fetchSubscriptionStatus();
@@ -45,5 +59,7 @@ export const useBilling = () => {
         loading,
         createCheckoutSession,
         refetchStatus: fetchSubscriptionStatus,
+        cancelSubscription,
+        resumeSubscription,
     };
 };

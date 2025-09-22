@@ -178,7 +178,7 @@ const PAGE_API_MAP = {
     "GET /api/superadmin/analytics/user-growth", // Get user growth data
     "GET /api/superadmin/analytics/hostel-growth", // Get hostel growth data
     "GET /api/superadmin/analytics/regional-distribution", // Get regional data
-    "GET /api/superadmin/analytics/plan-distribution", // Get plan distribution
+  "GET /api/superadmin/analytics/plan-distribution", // Get plan distribution (by plan_id)
     "POST /api/superadmin/analytics/export-report", // Export analytics report
   ],
 };

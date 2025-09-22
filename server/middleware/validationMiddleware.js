@@ -93,6 +93,7 @@ exports.validateComplaintCreation = [
 ];
 
 // ✅ Hostel Registration Validation
+// Creation path now auto-generates subdomain and defaults plan to 'free'
 exports.validateHostelRegistration = [
   body('name')
     .trim()
@@ -102,14 +103,6 @@ exports.validateHostelRegistration = [
     .isEmail()
     .normalizeEmail()
     .withMessage('Valid email is required'),
-  body('subdomain')
-    .trim()
-    .isLength({ min: 3, max: 50 })
-    .matches(/^[a-z0-9-]+$/)
-    .withMessage('Subdomain must be 3-50 characters, lowercase, numbers and hyphens only'),
-  body('plan')
-    .isIn(['free', 'pro', 'enterprise'])
-    .withMessage('Valid plan is required'),
   body('country')
     .optional()
     .trim()
@@ -149,13 +142,7 @@ exports.validatePagination = [
   handleValidationErrors
 ];
 
-// ✅ Plan Update Validation
-exports.validatePlanUpdate = [
-  body('plan')
-    .isIn(['free', 'pro', 'enterprise'])
-    .withMessage('Valid plan is required'),
-  handleValidationErrors
-];
+// (Removed) Plan update validation – plan changes are managed by Stripe billing and webhooks.
 
 // ✅ Status Update Validation
 exports.validateStatusUpdate = [

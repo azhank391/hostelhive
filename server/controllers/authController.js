@@ -242,7 +242,7 @@ exports.loginUser = async (req, res) => {
       const { Hostel } = require("../models");
       const ownedHostels = await Hostel.findAll({
         where: { ownerId: user.id, isActive: true },
-        attributes: ["id", "name", "subdomain", "plan"],
+        attributes: ["id", "name", "subdomain", "plan_id"],
       });
 
       // 🚀 NEW: If logging in through subdomain, prioritize that hostel
@@ -295,6 +295,7 @@ exports.loginUser = async (req, res) => {
         userPermissions = [];
       }
 
+      // Include plan_id for each owned hostel in the token for UI convenience
       const tokenPayload = {
         id: user.id,
         name: user.name,
@@ -304,6 +305,7 @@ exports.loginUser = async (req, res) => {
           id: h.id,
           name: h.name,
           subdomain: h.subdomain,
+          plan_id: h.plan_id,
         })),
         requiresPasswordChange: user.requiresPasswordChange,
         permissions: userPermissions, // Include permissions in JWT
@@ -321,7 +323,7 @@ exports.loginUser = async (req, res) => {
         role: user.role,
         name: user.name,
         hostelId: selectedHostelId, // Include hostelId in response
-        ownedHostels, // Frontend will show hostel selection if needed
+        ownedHostels, // Frontend will show hostel selection if needed (includes plan_id)
         needsHostelSelection: ownedHostels.length > 1 && !selectedHostelId,
         subdomainHostel: subdomainHostel, // Include subdomain hostel info
         requiresPasswordChange: user.requiresPasswordChange,
@@ -497,7 +499,7 @@ exports.getUserHostels = async (req, res) => {
           "id",
           "name",
           "subdomain",
-          "plan",
+          "plan_id",
           "isActive",
           "email",
           "createdAt",
@@ -524,7 +526,7 @@ exports.getUserHostels = async (req, res) => {
           "id",
           "name",
           "subdomain",
-          "plan",
+          "plan_id",
           "isActive",
           "email",
           "createdAt",
@@ -550,7 +552,7 @@ exports.getUserHostels = async (req, res) => {
               "id",
               "name",
               "subdomain",
-              "plan",
+              "plan_id",
               "isActive",
               "email",
               "createdAt",
@@ -597,7 +599,7 @@ exports.getAllOwnerHostels = async (req, res) => {
         "id",
         "name",
         "subdomain",
-        "plan",
+  "plan_id",
         "isActive",
         "email",
         "createdAt",

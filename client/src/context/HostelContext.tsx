@@ -85,7 +85,7 @@ export const HostelProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           name: studentHostel.name,
           subdomain: studentHostel.subdomain,
           isActive: studentHostel.isActive,
-          plan: studentHostel.plan,
+          plan_id: (studentHostel as any).plan_id,
           ownerId: '', // Students don't need owner info
           email: '',
           isPaid: true,

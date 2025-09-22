@@ -13,7 +13,7 @@ export interface Hostel {
   name: string;
   subdomain: string;
   isActive: boolean;
-  plan?: string;
+  plan_id?: string;
   email?: string;
   isPaid?: boolean;
   ownerId: string;
@@ -184,7 +184,6 @@ export interface RegisterOwnerData {
   password: string;
   hostelData?: {
     name: string;
-    plan: string;
     country?: string;
     city?: string;
     address?: string;
@@ -235,7 +234,6 @@ export interface CreateVisitorData {
 
 export interface CreateHostelData {
   name: string;
-  plan: string;
   country?: string;
   city?: string;
   address?: string;
@@ -288,7 +286,7 @@ export interface VisitorFilters extends SearchParams {
 }
 
 export interface HostelFilters extends SearchParams {
-  plan?: string;
+  plan_id?: string;
   isActive?: boolean;
   isPaid?: boolean;
   country?: string;
@@ -309,7 +307,7 @@ export interface SuperAdminDashboard {
   };
   recentHostels: Hostel[];
   planDistribution: {
-    plan: string;
+    plan_id: string;
     count: number;
     revenue: number;
   }[];
@@ -322,7 +320,7 @@ export interface BillingOverview {
   paidHostels: number;
   unpaidHostels: number;
   revenueByPlan: {
-    plan: string;
+    plan_id: string;
     revenue: number;
     count: number;
   }[];

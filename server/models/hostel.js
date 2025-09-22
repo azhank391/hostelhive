@@ -64,9 +64,39 @@ module.exports = (sequelize, DataTypes) => {
       name: DataTypes.STRING,
       email: DataTypes.STRING,
       subdomain: DataTypes.STRING,
-      plan: DataTypes.ENUM("free", "pro", "enterprise"),
       isActive: DataTypes.BOOLEAN,
       isPaid: DataTypes.BOOLEAN,
+      // Stripe subscription fields
+      stripe_customer_id: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      stripe_subscription_id: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      // Use STRING to avoid enum mismatch across environments
+      subscription_status: {
+        type: DataTypes.STRING(20), // e.g., active, trialing, past_due, unpaid, canceled
+        allowNull: true,
+      },
+      current_period_start: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      current_period_end: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      trial_end: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      // Logical plan identifier in our system (basic, pro, etc.)
+      plan_id: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+      },
     },
     {
       sequelize,
@@ -85,6 +115,15 @@ module.exports = (sequelize, DataTypes) => {
         },
         {
           fields: ["isActive"],
+        },
+        {
+          fields: ["stripe_customer_id"],
+        },
+        {
+          fields: ["stripe_subscription_id"],
+        },
+        {
+          fields: ["subscription_status"],
         },
       ],
     }

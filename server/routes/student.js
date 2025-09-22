@@ -18,6 +18,7 @@ const {
 } = require("../controllers/studentController");
 const { verifyToken } = require("../middleware/authMiddleware");
 const { requirePermission } = require("../middleware/permissionMiddleware");
+const { enforceQuota } = require("../middleware/quotaMiddleware");
 
 // Dashboard
 router.get(
@@ -48,7 +49,7 @@ router.get("/my-hostel", verifyToken, async (req, res) => {
 
     // Fetch hostel with only safe, student-relevant fields that exist in the model
     const hostel = await Hostel.findByPk(req.user.hostelId, {
-      attributes: ["id", "name", "subdomain", "isActive", "plan", "email"],
+      attributes: ["id", "name", "subdomain", "isActive", "plan_id", "email"],
     });
 
     if (!hostel) {
@@ -95,6 +96,7 @@ router.post(
   "/complaints",
   verifyToken,
   requirePermission("complaint_create"),
+  enforceQuota('complaints'),
   lodgeComplaint
 );
 router.get(
@@ -133,6 +135,7 @@ router.post(
   "/visitor-logs",
   verifyToken,
   requirePermission("visitor_create"),
+  enforceQuota('visitors'),
   createMyVisitorLog
 );
 router.put(

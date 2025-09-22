@@ -150,8 +150,17 @@ export const CreateHostelForm = React.memo(({
             onSuccess();
             return;
           }
-          // Redirect to billing page for plan selection & checkout
-          router.replace(`/dashboard/hostels/${hostel.id}/billing`);
+              // Redirect to billing page for plan selection & checkout, preserving preselected plan if any
+              let planQuery = '';
+              try {
+                if (typeof window !== 'undefined') {
+                  const selectedPlan = localStorage.getItem('HOSTELHIVE_SELECTED_PLAN');
+                  if (selectedPlan && selectedPlan !== 'free') {
+                    planQuery = `?plan=${encodeURIComponent(selectedPlan)}`;
+                  }
+                }
+              } catch {}
+              router.replace(`/dashboard/hostels/${hostel.id}/billing${planQuery}`);
         } catch (err) {
           router.replace(`/dashboard/hostels/${hostel.id}/billing`);
         }

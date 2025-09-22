@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -30,6 +30,17 @@ export default function RegisterOwnerPage() {
   const [error, setError] = useState('')
   
   const router = useRouter()
+  const searchParams = useSearchParams()
+  // Capture plan from query and stash for post-auth flow
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      const plan = url.searchParams.get('plan');
+      if (plan) {
+        localStorage.setItem('HOSTELHIVE_SELECTED_PLAN', plan);
+      }
+    } catch {}
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -49,11 +60,13 @@ export default function RegisterOwnerPage() {
         password: formData.password
       })
 
-      // Show success notification
+    // Show success notification
       toast.success('Registration successful! Please sign in to continue.')
 
-      // Registration successful, redirect to login
-      router.push('/auth/login?message=registration_success')
+    // Registration successful, redirect to login (preserve selected plan via query and localStorage)
+    const plan = searchParams?.get('plan')
+    const nextHref = `/auth/login?message=registration_success${plan ? `&plan=${encodeURIComponent(plan)}` : ''}`
+    router.push(nextHref)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Registration failed'
       setError(errorMessage)
@@ -186,7 +199,7 @@ export default function RegisterOwnerPage() {
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 Already have an account?{' '}
-                <Link href="/auth/login" className="text-blue-600 hover:text-blue-500 font-medium">
+                <Link href={searchParams?.get('plan') ? `/auth/login?plan=${encodeURIComponent(searchParams.get('plan') as string)}` : '/auth/login'} className="text-blue-600 hover:text-blue-500 font-medium">
                   Sign in
                 </Link>
               </p>

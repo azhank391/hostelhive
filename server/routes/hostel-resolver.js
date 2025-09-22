@@ -24,7 +24,7 @@ router.get("/hostels", verifyToken, async (req, res) => {
         "name",
         "subdomain",
         "isActive",
-        "plan",
+        "plan_id",
         "email",
         "isPaid",
         "ownerId", // Add this to include ownerId in response
@@ -54,7 +54,7 @@ router.get("/resolve/:subdomain", async (req, res) => {
         subdomain: subdomain.toLowerCase(),
         isActive: true,
       },
-      attributes: ["id", "name", "subdomain", "isActive", "plan", "email"],
+  attributes: ["id", "name", "subdomain", "isActive", "plan_id", "email"],
     });
 
     if (!hostel) {
@@ -83,7 +83,7 @@ router.get("/context", verifyToken, async (req, res) => {
           "name",
           "subdomain",
           "isActive",
-          "plan",
+          "plan_id",
           "email",
           "isPaid",
         ],
@@ -106,7 +106,7 @@ router.get("/context", verifyToken, async (req, res) => {
       }
 
       hostel = await Hostel.findByPk(req.user.hostelId, {
-        attributes: ["id", "name", "subdomain", "isActive", "plan", "email"],
+        attributes: ["id", "name", "subdomain", "isActive", "plan_id", "email"],
       });
 
       return res.json({
@@ -119,7 +119,7 @@ router.get("/context", verifyToken, async (req, res) => {
     // If user is warden → always allow based on hostelId
     if (req.user.role === "warden") {
       hostel = await Hostel.findByPk(req.user.hostelId, {
-        attributes: ["id", "name", "subdomain", "isActive", "plan", "email"],
+        attributes: ["id", "name", "subdomain", "isActive", "plan_id", "email"],
       });
 
       return res.json({
@@ -138,7 +138,7 @@ router.get("/context", verifyToken, async (req, res) => {
       }
 
       hostel = await Hostel.findByPk(req.user.hostelId, {
-        attributes: ["id", "name", "subdomain", "isActive", "plan", "email"],
+        attributes: ["id", "name", "subdomain", "isActive", "plan_id", "email"],
       });
 
       return res.json({

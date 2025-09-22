@@ -43,30 +43,26 @@ const generateUniqueSubdomain = async (hostelName) => {
 exports.createHostel = async (req, res) => {
   try {
     const ownerId = req.user.id;
-    const { name, email, plan, country, city, address } = req.body;
+  const { name, email, country, city, address } = req.body;
 
     console.log("🏢 Creating hostel:", {
       ownerId,
       name,
       email,
-      plan,
+      
       country,
       city,
       address,
     });
 
-    if (!name || !email || !plan) {
+    if (!name || !email) {
       return res
         .status(400)
-        .json({ message: "Name, email, and plan are required" });
+        .json({ message: "Name and email are required" });
     }
 
-    // Validate plan
-    if (!["free", "pro", "enterprise"].includes(plan)) {
-      return res
-        .status(400)
-        .json({ message: "Invalid plan. Must be free, pro, or enterprise" });
-    }
+  // Default new hostels to Free plan with no active subscription.
+  // Owners can upgrade via billing to 'basic' or 'pro'.
 
     // Check if email already exists
     const existingEmail = await Hostel.findOne({ where: { email } });
@@ -84,9 +80,12 @@ exports.createHostel = async (req, res) => {
       name,
       email,
       subdomain,
-      plan,
+      // Default to Free plan and no subscription
+      plan_id: 'free',
+      subscription_status: null,
+      trial_end: null,
       isActive: true,
-      isPaid: plan === "free" ? true : false, // Free plan is considered paid
+      isPaid: false,
       ownerId,
     });
 
@@ -187,7 +186,7 @@ exports.updateHostel = async (req, res) => {
   try {
     // Extract hostelId from URL parameters
     const { hostelId } = req.params;
-    const { name, email, country, city, address, plan, isActive, subdomain } = req.body;
+  const { name, email, country, city, address, plan, isActive, subdomain } = req.body;
 
     const hostel = await Hostel.findByPk(hostelId);
     if (!hostel) {
@@ -217,9 +216,9 @@ exports.updateHostel = async (req, res) => {
       name: name || hostel.name,
       email: email || hostel.email,
       subdomain: newSubdomain,
-      plan: plan || hostel.plan,
       isActive: isActive !== undefined ? isActive : hostel.isActive
     };
+    // Note: legacy "plan" column is deprecated; use plan_id via billing flow only.
 
     await hostel.update(updateData);
 

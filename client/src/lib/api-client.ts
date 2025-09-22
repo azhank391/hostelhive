@@ -244,6 +244,26 @@ class ApiClient {
       error.code = errorData.code;
       error.details = errorData;
 
+      // Global quota exceeded handling (402 Payment Required)
+      // Dispatch a browser event so UI can respond (toast + redirect to billing)
+      if (typeof window !== 'undefined' && response.status === 402) {
+        try {
+          const upgradeUrl = errorData?.upgradeUrl || '/dashboard/billing';
+          const detail = {
+            message: errorData?.message || 'Plan limit reached. Please upgrade to continue.',
+            code: errorData?.code || 'quota_exceeded',
+            upgradeUrl,
+            resource: errorData?.resource,
+            limit: errorData?.limit,
+          };
+          window.dispatchEvent(
+            new CustomEvent('HOSTELHIVE_QUOTA_EXCEEDED', { detail })
+          );
+        } catch {
+          // no-op if CustomEvent is unavailable for some reason
+        }
+      }
+
       throw error;
     }
 

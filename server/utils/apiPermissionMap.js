@@ -177,7 +177,7 @@ const API_PERMISSION_MAP = {
   "GET /api/superadmin/hostels": ["manage_all_hostels"],
   "GET /api/superadmin/hostels/:id": ["manage_all_hostels"],
   "GET /api/superadmin/hostels/:id/students": ["manage_all_hostels"],
-  "PUT /api/superadmin/hostels/:id/plan": ["manage_all_hostels"],
+  // Plan updates are handled via Stripe checkout/webhooks; no direct endpoint
   "PUT /api/superadmin/hostels/:id/status": ["manage_all_hostels"],
   "PUT /api/superadmin/hostels/:id/billing": ["manage_billing"],
   "DELETE /api/superadmin/hostels/:id": ["manage_all_hostels"],

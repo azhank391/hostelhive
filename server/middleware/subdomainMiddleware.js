@@ -55,7 +55,7 @@ const resolveHostelFromSubdomain = async (req, res, next) => {
         subdomain: req.subdomain,
         isActive: true,
       },
-      attributes: ["id", "name", "subdomain", "plan", "isActive"],
+  attributes: ["id", "name", "subdomain", "plan_id", "isActive"],
     });
 
     if (!hostel) {

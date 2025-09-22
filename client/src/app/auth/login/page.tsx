@@ -43,6 +43,7 @@ function LoginForm() {
   useEffect(() => {
     const errorParam = searchParams?.get('error')
     const messageParam = searchParams?.get('message')
+    const planParam = searchParams?.get('plan')
     
     if (errorParam === 'unauthorized') {
       setError('You must be logged in to access this page. Please sign in to continue.')
@@ -55,6 +56,11 @@ function LoginForm() {
       notification.success('Registration successful!', {
         description: 'Your account has been created. Please sign in to continue.',
       })
+    }
+
+    // If plan is present in query, persist it for post-auth flow
+    if (planParam) {
+      try { localStorage.setItem('HOSTELHIVE_SELECTED_PLAN', planParam) } catch {}
     }
   }, [searchParams])
 
@@ -74,8 +80,12 @@ function LoginForm() {
       // The login function in AuthContext will handle the user state
       // We'll redirect after a brief delay to ensure state is updated
       setTimeout(() => {
-        // Default redirect - the dashboard will handle role-based routing
-        console.log('🚀 DEBUG: Login redirect - redirecting to /dashboard');
+        // If user is a new owner (no hostels yet), the dashboard will push to create-hostel.
+        // Keep selected plan in unified key for the billing page after hostel creation.
+        try {
+          const plan = typeof window !== 'undefined' ? localStorage.getItem('HOSTELHIVE_SELECTED_PLAN') : null
+          if (plan) localStorage.setItem('HOSTELHIVE_SELECTED_PLAN', plan)
+        } catch {}
         router.push('/dashboard')
       }, 100)
     } catch (error) {
@@ -166,7 +176,7 @@ function LoginForm() {
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 Don&apos;t have an account?{' '}
-                <Link href="/auth/register-owner" className="text-blue-600 hover:text-blue-500 font-medium">
+                <Link href={searchParams?.get('plan') ? `/auth/register-owner?plan=${encodeURIComponent(searchParams.get('plan') as string)}` : '/auth/register-owner'} className="text-blue-600 hover:text-blue-500 font-medium">
                   Register as Owner
                 </Link>
               </p>

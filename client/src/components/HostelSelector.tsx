@@ -69,7 +69,7 @@ export function HostelSelector() {
           
           {currentHostel && (
             <div className="text-xs bg-gray-100 text-gray-700 px-3 py-1 rounded-full font-medium">
-              Plan: {currentHostel.plan || 'Free'}
+              Plan: {currentHostel.plan_id || 'basic'}
             </div>
           )}
         </div>

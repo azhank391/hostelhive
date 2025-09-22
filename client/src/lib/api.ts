@@ -58,7 +58,7 @@ export const authApi = {
     password: string;
     hostelData?: {
       name: string;
-      plan: string;
+      // plan is selected post-creation via billing; no plan here
       country?: string;
       city?: string;
       address?: string;
@@ -146,10 +146,10 @@ export const hostelApi = {
 
   async createHostel(hostelData: {
     name: string;
-    plan: string;
     country?: string;
     city?: string;
     address?: string;
+    email?: string;
   }) {
     const result = await apiClient.post<{ message: string; hostel: Hostel }>('/hostels', hostelData, {
       skipCache: true
@@ -475,7 +475,7 @@ interface StudentHostel {
   name: string;
   subdomain: string;
   isActive: boolean;
-  plan: string;
+  plan_id?: string;
   email: string;
 }
 
@@ -640,7 +640,7 @@ export const superadminApi = {
   async getAllHostels(params?: {
     page?: number;
     limit?: number;
-    plan?: string;
+    plan_id?: string;
     isActive?: boolean;
     isPaid?: boolean;
   }) {
@@ -662,16 +662,7 @@ export const superadminApi = {
     });
   },
 
-  async updateHostelPlan(hostelId: string, plan: string) {
-    const result = await apiClient.put(`/superadmin/hostels/${hostelId}/plan`, { plan }, {
-      skipCache: true
-    });
-    
-    // Invalidate hostel caches
-    apiClient.invalidateCache(`/superadmin/hostels/${hostelId}`);
-    apiClient.invalidateCache('/superadmin/hostels');
-    return result;
-  },
+  // Removed legacy plan update endpoint; plan_id is driven by Stripe
 
   async updateHostelStatus(hostelId: string, isActive: boolean) {
     const result = await apiClient.put(`/superadmin/hostels/${hostelId}/status`, { isActive }, {
@@ -711,7 +702,7 @@ export const superadminApi = {
     password: string;
     hostelData?: {
       name: string;
-      plan: string;
+      // plan is selected later; omit here
       country?: string;
       city?: string;
       address?: string;
@@ -733,7 +724,7 @@ export const superadminApi = {
     name: string;
     email: string;
     subdomain: string;
-    plan: string;
+    // plan is selected via billing; omit here
     country?: string;
     city?: string;
     address?: string;

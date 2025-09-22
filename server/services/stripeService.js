@@ -2,12 +2,12 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // Create a new customer in Stripe
 class StripeService {
-    async createCustomer(email,name) {
+    async createCustomer(email, name, metadata = {}) {
         return await stripe.customers.create({
             email,
             name,
-            metaData
-        })
+            metadata, // proper Stripe metadata
+        });
     }
     async createSubscription(customerId, priceId, trialDays) {
         return await stripe.subscriptions.create({
@@ -17,23 +17,43 @@ class StripeService {
             expand: ['latest_invoice.payment_intent'],
         })
 }
-    async createCheckoutSession(customerId,priceId,successUrl,cancelUrl) {
-        return await stripe.checkout.session.create({
-            customer:customerId,
+    async createCheckoutSession(customerId, priceId, successUrl, cancelUrl, clientReferenceId, planId, trialDays) {
+        return await stripe.checkout.sessions.create({
+            customer: customerId,
             payment_method_types: ['card'],
             line_items: [{
-                price:priceId,
-                quantity:1
+                price: priceId,
+                quantity: 1,
             }],
-            mode:'subscription',
-            success_url:successUrl,
-            cancel_url:cancelUrl,
-        })
+            mode: 'subscription',
+            client_reference_id: clientReferenceId,
+            // Trial logic is controlled via Price configuration (trial_period_days)
+            subscription_data: {
+                trial_period_days: trialDays,
+                metadata: planId ? { plan_id: planId } : undefined,
+            },
+            success_url: successUrl,
+            cancel_url: cancelUrl,
+        });
+    }
+
+    async getCheckoutSession(sessionId) {
+        return await stripe.checkout.sessions.retrieve(sessionId);
+    }
+
+    async retrieveSubscription(subscriptionId) {
+        return await stripe.subscriptions.retrieve(subscriptionId, { expand: ['items.data.price'] });
     }
 
     async cancelSubscription(subscriptionId) {
         return await stripe.subscriptions.update(subscriptionId, {
             cancel_at_period_end: true
+        });
+    }
+
+    async resumeSubscription(subscriptionId) {
+        return await stripe.subscriptions.update(subscriptionId, {
+            cancel_at_period_end: false
         });
     }
 
