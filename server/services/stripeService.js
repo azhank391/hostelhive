@@ -30,7 +30,8 @@ class StripeService {
             // Trial logic is controlled via Price configuration (trial_period_days)
             subscription_data: {
                 trial_period_days: trialDays,
-                metadata: planId ? { plan_id: planId } : undefined,
+                // Always set canonical plan_id on the subscription metadata for downstream mapping
+                metadata: planId ? { plan_id: planId } : {},
             },
             success_url: successUrl,
             cancel_url: cancelUrl,
@@ -38,7 +39,9 @@ class StripeService {
     }
 
     async getCheckoutSession(sessionId) {
-        return await stripe.checkout.sessions.retrieve(sessionId);
+        return await stripe.checkout.sessions.retrieve(sessionId, {
+            expand: ['subscription', 'subscription.items', 'subscription.items.data.price']
+        });
     }
 
     async retrieveSubscription(subscriptionId) {
@@ -46,9 +49,15 @@ class StripeService {
     }
 
     async cancelSubscription(subscriptionId) {
+        // Return updated subscription so caller can persist current_period_end
         return await stripe.subscriptions.update(subscriptionId, {
             cancel_at_period_end: true
         });
+    }
+
+    async cancelSubscriptionNow(subscriptionId) {
+        // Immediately cancel the subscription
+        return await stripe.subscriptions.cancel(subscriptionId);
     }
 
     async resumeSubscription(subscriptionId) {

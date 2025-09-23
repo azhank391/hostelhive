@@ -74,9 +74,7 @@ async function handleSubscriptionUpdate(subscription) {
             const fromPriceMetadata = item?.price?.metadata?.plan_id;
             planId = fromSubMetadata || fromPriceMetadata || planId;
         } catch {}
-        // Map any legacy values to canonical IDs
-        if (planId === 'basic_pro') planId = 'basic';
-        if (planId === 'enterprise') planId = 'pro';
+    // Store canonical ids from metadata as-is
 
         await hostel.update({
             stripe_subscription_id: subscription.id,
@@ -110,24 +108,38 @@ async function handlePaymentSucceeded(invoice) {
 
     console.log("✅ Invoice paid for customer:", customerId);
 
-    // Update hostel’s status
+        // Update hostel based on actual subscription status (not assuming 'active')
         const hostel = await Hostel.findOne({ where: { stripe_customer_id: customerId } });
         if (hostel) {
-      hostel.isPaid = true;
-      hostel.isActive = true;
-            // Update plan_id if embedded in price metadata or nickname
-            const price = invoice.lines?.data?.[0]?.price;
-            const inferredPlanId = price?.metadata?.plan_id || price?.nickname || hostel.plan_id;
-            hostel.plan_id = inferredPlanId || hostel.plan_id;
-                        if (subscriptionId) {
-                                hostel.stripe_subscription_id = subscriptionId;
-                                hostel.subscription_status = 'active';
-                        }
-      await hostel.save();
-      console.log("🏠 Hostel updated:", hostel.id);
-    } else {
-      console.warn("⚠️ No hostel found for customer", customerId);
-    }
+            try {
+                let planId = hostel.plan_id;
+                if (subscriptionId) {
+                    const sub = await require('../services/stripeService').retrieveSubscription(subscriptionId);
+                    const item = sub?.items?.data?.[0];
+                    const fromSubMetadata = sub?.metadata?.plan_id;
+                    const fromPriceMetadata = item?.price?.metadata?.plan_id;
+                    planId = fromSubMetadata || fromPriceMetadata || planId;
+                    await hostel.update({
+                        isPaid: true,
+                        isActive: true,
+                        stripe_subscription_id: subscriptionId,
+                        subscription_status: sub?.status || hostel.subscription_status,
+                        current_period_start: sub?.current_period_start ? new Date(sub.current_period_start * 1000) : hostel.current_period_start,
+                        current_period_end: sub?.current_period_end ? new Date(sub.current_period_end * 1000) : hostel.current_period_end,
+                        trial_end: sub?.trial_end ? new Date(sub.trial_end * 1000) : hostel.trial_end,
+                        plan_id: planId,
+                    });
+                } else {
+                    // No subscription id on invoice (rare), still mark paid/active
+                    await hostel.update({ isPaid: true, isActive: true, plan_id: planId });
+                }
+                console.log("🏠 Hostel updated:", hostel.id);
+            } catch (e) {
+                console.error('❌ Error syncing subscription on payment_succeeded:', e);
+            }
+        } else {
+            console.warn("⚠️ No hostel found for customer", customerId);
+        }
   } catch (err) {
     console.error("❌ Error in handlePaymentSucceeded:", err);
   }
@@ -142,18 +154,33 @@ async function handleInvoiceEvent(type, invoice) {
             return;
         }
 
-        if (type === 'invoice.paid' || type === 'invoice.finalized') {
-            // Also try to keep plan_id in sync on invoice events
-            const price = invoice.lines?.data?.[0]?.price;
-            const inferredPlanId = price?.metadata?.plan_id || price?.nickname || hostel.plan_id;
-            await hostel.update({ 
-                isPaid: true, 
-                isActive: true, 
-                plan_id: inferredPlanId,
-                stripe_subscription_id: invoice.subscription || hostel.stripe_subscription_id,
-                subscription_status: invoice.paid ? 'active' : hostel.subscription_status,
-            });
-        }
+                if (type === 'invoice.paid' || type === 'invoice.finalized') {
+                        try {
+                                const subscriptionId = invoice.subscription;
+                                if (subscriptionId) {
+                                        const sub = await require('../services/stripeService').retrieveSubscription(subscriptionId);
+                                        const item = sub?.items?.data?.[0];
+                                        const fromSubMetadata = sub?.metadata?.plan_id;
+                                        const fromPriceMetadata = item?.price?.metadata?.plan_id;
+                                        const planId = fromSubMetadata || fromPriceMetadata || hostel.plan_id;
+                                        await hostel.update({
+                                                isPaid: true,
+                                                isActive: true,
+                                                plan_id: planId,
+                                                stripe_subscription_id: subscriptionId,
+                                                subscription_status: sub?.status || hostel.subscription_status,
+                                                current_period_start: sub?.current_period_start ? new Date(sub.current_period_start * 1000) : hostel.current_period_start,
+                                                current_period_end: sub?.current_period_end ? new Date(sub.current_period_end * 1000) : hostel.current_period_end,
+                                                trial_end: sub?.trial_end ? new Date(sub.trial_end * 1000) : hostel.trial_end,
+                                        });
+                                } else {
+                                        // No subscription on invoice; minimally mark as paid/active
+                                        await hostel.update({ isPaid: true, isActive: true });
+                                }
+                        } catch (e) {
+                                console.error(`❌ Error syncing on ${type}:`, e);
+                        }
+                }
         console.log(`✅ Processed invoice event ${type} for hostel ${hostel.id}`);
     } catch (err) {
         console.error(`❌ Error in handleInvoiceEvent(${type}):`, err);
@@ -194,9 +221,7 @@ async function handleCheckoutSessionCompleted(session) {
             }
         } catch {}
 
-        // Normalize plan ids
-        if (planId === 'basic_pro') planId = 'basic';
-        if (planId === 'enterprise') planId = 'pro';
+    // Store canonical ids from metadata as-is
 
         await hostel.update({
             stripe_subscription_id: subscriptionId || hostel.stripe_subscription_id,

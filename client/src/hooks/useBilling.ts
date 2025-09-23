@@ -26,11 +26,12 @@ export const useBilling = () => {
         }
     }, []);
 
-        const createCheckoutSession = useCallback(async (priceId: string, planId: string) => {
+    const createCheckoutSession = useCallback(async (priceId: string, planId: string, opts?: { isTrial?: boolean }) => {
         try {
                 const response = (await api.post('/billing/create-checkout-session', {
                 priceId,
                 planId,
+        isTrial: opts?.isTrial === true,
                 })) as any;
                 // Expect { sessionId: string }
                 return (response?.sessionId as string) || '';
@@ -50,6 +51,11 @@ export const useBilling = () => {
         await fetchSubscriptionStatus();
     }, [fetchSubscriptionStatus]);
 
+    const cancelSubscriptionNow = useCallback(async () => {
+        await api.post('/billing/cancel-subscription-now', {});
+        await fetchSubscriptionStatus();
+    }, [fetchSubscriptionStatus]);
+
     useEffect(() => {
         fetchSubscriptionStatus();
     }, [fetchSubscriptionStatus]);
@@ -61,5 +67,6 @@ export const useBilling = () => {
         refetchStatus: fetchSubscriptionStatus,
         cancelSubscription,
         resumeSubscription,
+        cancelSubscriptionNow,
     };
 };

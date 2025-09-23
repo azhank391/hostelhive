@@ -17,7 +17,7 @@ export default function BillingPage() {
 function BillingPageClient() {
   const { user } = useAuth();
   const { hasPermission, loading } = usePermissions();
-  const { subscriptionStatus, createCheckoutSession, cancelSubscription, refetchStatus, resumeSubscription } = useBilling();
+  const { subscriptionStatus, createCheckoutSession, cancelSubscription, cancelSubscriptionNow, refetchStatus, resumeSubscription } = useBilling();
   const { stripePromise } = useStripe();
   const searchParams = useSearchParams();
   const selectedPlanId = searchParams?.get('plan');
@@ -47,14 +47,22 @@ function BillingPageClient() {
     );
   }
 
-  const handleSubscribe = async (priceId: string, planId: string) => {
+  const handleSubscribe = async (priceId: string, planId: string, opts?: { isTrial?: boolean }) => {
     try {
-      const sessionId = await createCheckoutSession(priceId, planId);
+      const sessionId = await createCheckoutSession(priceId, planId, { isTrial: opts?.isTrial === true });
       const stripe = await stripePromise;
       const { error } = await stripe!.redirectToCheckout({ sessionId });
       if (error) console.error('Stripe redirect error:', error);
     } catch (error) {
       console.error('Subscribe error:', error);
+    }
+  };
+  const handleCancelNow = async () => {
+    try {
+      await cancelSubscriptionNow();
+      await refetchStatus();
+    } catch (e) {
+      console.error('Cancel now error:', e);
     }
   };
   const handleCancel = async () => {
@@ -99,6 +107,9 @@ function BillingPageClient() {
               : 'Trial is active. Billing will start after the trial period.'}
           </p>
           <p className="mt-1">During trial, limits are reduced compared to the full Basic plan.</p>
+          <div className="mt-2">
+            <Button variant="outline" onClick={handleCancelNow}>Cancel trial now</Button>
+          </div>
         </div>
       )}
 
@@ -149,7 +160,7 @@ function BillingPageClient() {
           </CardHeader>
           <CardContent>
             <p className="text-amber-900 mb-3 text-sm">We'll ask for your card now, but you won't be charged until your trial ends. Cancel anytime.</p>
-            <Button className="w-full" onClick={() => handleSubscribe(PRICING_PLANS.find(p=>p.id==='basic')!.stripePriceIdMonthly, 'basic')}>
+            <Button className="w-full" onClick={() => handleSubscribe(PRICING_PLANS.find(p=>p.id==='basic')!.stripePriceIdMonthly, 'basic', { isTrial: true })}>
               Start free trial (Basic)
             </Button>
           </CardContent>
@@ -177,7 +188,7 @@ function BillingPageClient() {
                   Current plan
                 </Button>
               ) : (
-                <Button onClick={() => handleSubscribe(plan.stripePriceIdMonthly, plan.id)} className="w-full">
+                <Button onClick={() => handleSubscribe(plan.stripePriceIdMonthly, plan.id, { isTrial: false })} className="w-full">
                   {subscriptionStatus?.subscription_status === 'active' ? 'Switch to ' : 'Subscribe to '} {plan.name}
                 </Button>
               )}

@@ -10,5 +10,6 @@ router.get('/subscription-status',verifyToken,requireAuth,billingController.getS
 router.post('/sync-session',verifyToken,requireAuth,billingController.syncCheckoutSession);
 router.post('/cancel-subscription',verifyToken,requireAuth,billingController.cancelSubscription);
 router.post('/resume-subscription',verifyToken,requireAuth,billingController.resumeSubscription);
+router.post('/cancel-subscription-now',verifyToken,requireAuth,billingController.cancelSubscriptionNow);
 
 module.exports = router;

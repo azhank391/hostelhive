@@ -72,22 +72,25 @@ const enforceQuota = (resourceKey) => {
         if (!hostel) {
           return res.status(404).json({ message: 'Hostel not found' });
         }
-        // If subscription is active, use the subscribed plan; otherwise enforce Free during trials or no subscription
-        if (hostel.subscription_status === 'active' && hostel.plan_id) {
+        // Determine enforcement based on subscription_status and period bounds
+        const now = new Date();
+        const hasAccessDuringCancel = hostel.subscription_status === 'canceled' && hostel.current_period_end && now < hostel.current_period_end;
+
+        if ((hostel.subscription_status === 'active' || hasAccessDuringCancel) && hostel.plan_id) {
+          // Active subscription or canceled-but-still-in-period → enforce actual plan limits
           planId = hostel.plan_id;
         } else if (hostel.subscription_status === 'trialing') {
-          // Enforce trial limits
+          // Trial period → enforce trial limits
           planId = 'trial_basic';
         } else {
+          // No subscription/free/expired
           planId = 'free';
         }
       } else {
         // For hostels quota (per-owner), default to free for owners without a hostel subscription
         planId = 'free';
       }
-      // Map legacy values if any
-      if (planId === 'basic_pro') planId = 'basic';
-      if (planId === 'enterprise') planId = 'pro';
+  // Use plan_id as stored in DB; no legacy fallbacks
       const plan = planLimits[planId] || planLimits.free;
 
       const cfg = resourceConfig[resourceKey];
