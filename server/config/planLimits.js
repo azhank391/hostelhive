@@ -21,7 +21,6 @@ module.exports = {
     max_visitors: Number.MAX_SAFE_INTEGER,
     max_complaints: Number.MAX_SAFE_INTEGER,
     max_hostels: Number.MAX_SAFE_INTEGER,
-
   },
   // Trial plan (limited subset of basic)
   trial_basic: {

@@ -41,7 +41,7 @@ router.post(
   "/",
   verifyToken,
   requireOwnerOrPermission("hostel_create"),
-  enforceQuota('hostels'),
+  enforceQuota("hostels"),
   hostelController.createHostel
 );
 
@@ -149,7 +149,7 @@ router.get(
 router.post(
   "/:hostelId/visitors",
   requirePermission("visitor_create"),
-  enforceQuota('visitors'),
+  enforceQuota("visitors"),
   adminController.createVisitorLog
 );
 
@@ -220,7 +220,7 @@ router.get(
 router.post(
   "/:hostelId/students",
   requirePermission("student_create"),
-  enforceQuota('students'),
+  enforceQuota("students"),
   adminController.createStudent
 );
 
@@ -280,7 +280,7 @@ router.get(
 router.post(
   "/:hostelId/complaints",
   requirePermission("complaint_create"),
-  enforceQuota('complaints'),
+  enforceQuota("complaints"),
   adminController.createComplaint
 );
 
@@ -351,7 +351,7 @@ router.get(
 router.post(
   "/:hostelId/rooms",
   requirePermission("room_create"),
-  enforceQuota('rooms'),
+  enforceQuota("rooms"),
   adminController.createRoom
 );
 
@@ -448,7 +448,7 @@ router.get(
 router.post(
   "/:hostelId/wardens",
   requirePermission("staff_create"),
-  enforceQuota('wardens'),
+  enforceQuota("wardens"),
   adminController.createWarden
 );
 
@@ -497,7 +497,7 @@ router.get(
 router.post(
   "/:hostelId/staff",
   requirePermission("staff_create"),
-  enforceQuota('staff'),
+  enforceQuota("staff"),
   adminController.createStaff
 );
 

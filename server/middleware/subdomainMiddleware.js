@@ -6,7 +6,7 @@ const { Hostel } = require("../models");
  */
 const extractSubdomain = (req, res, next) => {
   const host = req.get("host");
-  
+
   console.log("🔍 DEBUG: Subdomain middleware - Host header:", host);
 
   if (!host) {
@@ -43,7 +43,7 @@ const extractSubdomain = (req, res, next) => {
  */
 const resolveHostelFromSubdomain = async (req, res, next) => {
   console.log("🔍 DEBUG: Resolving hostel from subdomain:", req.subdomain);
-  
+
   if (!req.subdomain) {
     console.log("🔍 DEBUG: No subdomain, skipping hostel resolution");
     return next();
@@ -55,7 +55,7 @@ const resolveHostelFromSubdomain = async (req, res, next) => {
         subdomain: req.subdomain,
         isActive: true,
       },
-  attributes: ["id", "name", "subdomain", "plan_id", "isActive"],
+      attributes: ["id", "name", "subdomain", "plan_id", "isActive"],
     });
 
     if (!hostel) {
@@ -66,7 +66,11 @@ const resolveHostelFromSubdomain = async (req, res, next) => {
       });
     }
 
-    console.log("🔍 DEBUG: Hostel found:", { id: hostel.id, name: hostel.name, subdomain: hostel.subdomain });
+    console.log("🔍 DEBUG: Hostel found:", {
+      id: hostel.id,
+      name: hostel.name,
+      subdomain: hostel.subdomain,
+    });
     req.hostel = hostel;
     req.hostelId = hostel.id;
     next();

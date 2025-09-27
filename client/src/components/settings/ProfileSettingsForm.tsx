@@ -64,7 +64,10 @@ export const ProfileSettingsForm: React.FC<ProfileSettingsFormProps> = ({
           setErrors(parsed);
           // show top-level message if present
           if (parsed._form) notification.error(parsed._form as string);
-          else notification.error("Please correct the highlighted fields and try again.");
+          else
+            notification.error(
+              "Please correct the highlighted fields and try again."
+            );
         } else {
           notification.error("Profile update failed");
         }
@@ -88,13 +91,15 @@ export const ProfileSettingsForm: React.FC<ProfileSettingsFormProps> = ({
         clientErrors.currentPassword = "Current password is required";
       }
       if (!pass.newPassword || pass.newPassword.length < 6) {
-        clientErrors.newPassword = "New password must be at least 6 characters long";
+        clientErrors.newPassword =
+          "New password must be at least 6 characters long";
       }
       if (pass.newPassword === "123456") {
         clientErrors.newPassword = "Cannot use the default password (123456)";
       }
       if (pass.currentPassword && pass.currentPassword === pass.newPassword) {
-        clientErrors.newPassword = "New password must be different from the current password";
+        clientErrors.newPassword =
+          "New password must be different from the current password";
       }
 
       if (Object.keys(clientErrors).length) {
@@ -134,14 +139,25 @@ export const ProfileSettingsForm: React.FC<ProfileSettingsFormProps> = ({
           if (parsed._form) notification.error(parsed._form as string);
           else {
             // Map common backend strings to friendly messages
-            const backendMsg = parsed._form || (err?.response?.data?.message as string) || err?.message;
+            const backendMsg =
+              parsed._form ||
+              (err?.response?.data?.message as string) ||
+              err?.message;
             if (/cannot\s*use\s*default\s*password/i.test(backendMsg || "")) {
-              notification.error("Please choose a new password. You cannot use the default password.");
-            } else if (/incorrect\s*current\s*password|invalid\s*credentials/i.test(backendMsg || "")) {
+              notification.error(
+                "Please choose a new password. You cannot use the default password."
+              );
+            } else if (
+              /incorrect\s*current\s*password|invalid\s*credentials/i.test(
+                backendMsg || ""
+              )
+            ) {
               notification.error("Your current password is incorrect.");
             } else if (/minimum|length|6/i.test(backendMsg || "")) {
               // Likely a min length validation from backend
-              notification.error("New password must be at least 6 characters long.");
+              notification.error(
+                "New password must be at least 6 characters long."
+              );
             } else {
               notification.error("Password change failed");
             }
@@ -184,7 +200,8 @@ export const ProfileSettingsForm: React.FC<ProfileSettingsFormProps> = ({
       if (Array.isArray(data.errors)) {
         // errors: [{ field: 'password', message: '...' }]
         for (const item of data.errors) {
-          if (item && item.field) result[item.field] = item.message || item.msg || String(item);
+          if (item && item.field)
+            result[item.field] = item.message || item.msg || String(item);
         }
       }
 
@@ -288,10 +305,13 @@ export const ProfileSettingsForm: React.FC<ProfileSettingsFormProps> = ({
                 required
               />
               {errors.newPassword && (
-                <p className="text-sm text-red-500 mt-1">{errors.newPassword}</p>
+                <p className="text-sm text-red-500 mt-1">
+                  {errors.newPassword}
+                </p>
               )}
               <p className="text-xs text-muted-foreground mt-1">
-                Password rules: at least 6 characters, cannot be "123456", and must differ from your current password.
+                Password rules: at least 6 characters, cannot be "123456", and
+                must differ from your current password.
               </p>
             </div>
             <div>
@@ -307,7 +327,9 @@ export const ProfileSettingsForm: React.FC<ProfileSettingsFormProps> = ({
                 required
               />
               {errors.confirmPassword && (
-                <p className="text-sm text-red-500 mt-1">{errors.confirmPassword}</p>
+                <p className="text-sm text-red-500 mt-1">
+                  {errors.confirmPassword}
+                </p>
               )}
             </div>
           </div>

@@ -141,8 +141,6 @@ export default function HostelSettingsPage() {
     setIsDarkTheme(newTheme);
   };
 
-
-
   const handleHostelUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentHostel) return;

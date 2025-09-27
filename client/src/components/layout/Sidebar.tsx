@@ -1,15 +1,35 @@
-'use client'
+"use client";
 
-import React, { memo, useMemo, useState, useEffect } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
-import { useHostel } from '@/context/HostelContext';
-import { useAdminApiWithHostel, useCurrentHostelId } from '@/lib/context-aware-api';
-import { usePermissions } from '@/contexts/PermissionContext';
-import { getAccessibleSidebarSections } from '@/lib/permission-routing';
+import React, { memo, useMemo, useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { useHostel } from "@/context/HostelContext";
+import {
+  useAdminApiWithHostel,
+  useCurrentHostelId,
+} from "@/lib/context-aware-api";
+import { usePermissions } from "@/contexts/PermissionContext";
+import { getAccessibleSidebarSections } from "@/lib/permission-routing";
 
-import { BuildingIcon, LayoutDashboardIcon, BedIcon, SettingsIcon, HelpCircleIcon, XIcon, GraduationCapIcon, AlertCircleIcon, UserCheckIcon, CreditCardIcon, BarChart3Icon, EyeIcon, UserPlusIcon, MessageCircleIcon, FileTextIcon, ShieldIcon } from 'lucide-react';
+import {
+  BuildingIcon,
+  LayoutDashboardIcon,
+  BedIcon,
+  SettingsIcon,
+  HelpCircleIcon,
+  XIcon,
+  GraduationCapIcon,
+  AlertCircleIcon,
+  UserCheckIcon,
+  CreditCardIcon,
+  BarChart3Icon,
+  EyeIcon,
+  UserPlusIcon,
+  MessageCircleIcon,
+  FileTextIcon,
+  ShieldIcon,
+} from "lucide-react";
 
 interface SidebarProps {
   mobile?: boolean;
@@ -38,143 +58,159 @@ interface SidebarItem {
 // Simplified - no sub-sections for reduced complexity
 const SIDEBAR_ITEMS: SidebarItem[] = [
   {
-    id: 'rooms',
-    name: 'Room Management',
+    id: "rooms",
+    name: "Room Management",
     icon: BedIcon,
-    path: '/dashboard/hostels/:hostelId/rooms',
-    permission: 'room_read'
+    path: "/dashboard/hostels/:hostelId/rooms",
+    permission: "room_read",
   },
   {
-    id: 'students',
-    name: 'Students',
+    id: "students",
+    name: "Students",
     icon: GraduationCapIcon,
-    path: '/dashboard/hostels/:hostelId/students',
-    permission: 'student_read'
+    path: "/dashboard/hostels/:hostelId/students",
+    permission: "student_read",
   },
   {
-    id: 'staff',
-    name: 'Staff Management',
+    id: "staff",
+    name: "Staff Management",
     icon: ShieldIcon,
-    path: '/dashboard/hostels/:hostelId/staff/manage',
-    permission: 'staff_read' // Updated to use staff permission instead of role permission
+    path: "/dashboard/hostels/:hostelId/staff/manage",
+    permission: "staff_read", // Updated to use staff permission instead of role permission
   },
   {
-    id: 'complaints',
-    name: 'Complaints',
+    id: "complaints",
+    name: "Complaints",
     icon: AlertCircleIcon,
-    path: '/complaints',
-    permission: 'complaint_read' // Using actual database permission
+    path: "/complaints",
+    permission: "complaint_read", // Using actual database permission
   },
   {
-    id: 'visitors',
-    name: 'Visitor Management',
+    id: "visitors",
+    name: "Visitor Management",
     icon: UserCheckIcon,
-    path: '/visitors',
-    permission: 'visitor_read' // Using actual database permission
-  }, 
+    path: "/visitors",
+    permission: "visitor_read", // Using actual database permission
+  },
   //this is owner dashboard page
   {
-    id: 'billing',
-    name: 'Billing',
+    id: "billing",
+    name: "Billing",
     icon: CreditCardIcon,
-    path: '/billing',
-    permission: 'view_billing'
-  }
+    path: "/billing",
+    permission: "view_billing",
+  },
 ];
 
+const NavItem = memo(
+  ({ to, icon, children, end = false, count }: NavItemProps) => {
+    const pathname = usePathname();
+    const { currentHostel } = useHostel();
 
+    // Replace :hostelId with actual hostel ID in the path
+    const actualPath = currentHostel
+      ? to.replace(":hostelId", currentHostel.id)
+      : to;
+    const isActive = pathname
+      ? end
+        ? pathname === actualPath
+        : pathname.startsWith(actualPath)
+      : false;
 
-const NavItem = memo(({
-  to,
-  icon,
-  children,
-  end = false,
-  count
-}: NavItemProps) => {
-  const pathname = usePathname();
-  const { currentHostel } = useHostel();
-  
-  // Replace :hostelId with actual hostel ID in the path
-  const actualPath = currentHostel ? to.replace(':hostelId', currentHostel.id) : to;
-  const isActive = pathname ? (end ? pathname === actualPath : pathname.startsWith(actualPath)) : false;
-  
-  const linkClassName = useMemo(() => `
+    const linkClassName = useMemo(
+      () => `
     flex items-center px-4 sm:px-6 py-3 sm:py-2 text-base sm:text-sm font-medium rounded-lg sm:rounded-md transition-all duration-200
-    ${isActive ? 'bg-white text-gray-900 shadow-md' : 'text-gray-300 hover:bg-gray-800 hover:text-white active:bg-gray-700'}
-  `, [isActive]);
+    ${
+      isActive
+        ? "bg-white text-gray-900 shadow-md"
+        : "text-gray-300 hover:bg-gray-800 hover:text-white active:bg-gray-700"
+    }
+  `,
+      [isActive]
+    );
 
-  const countClassName = useMemo(() => `
+    const countClassName = useMemo(
+      () => `
     ml-auto px-2 py-1 text-xs font-medium rounded-full
-    ${isActive ? 'bg-gray-900 text-white' : 'bg-gray-700 text-gray-300'}
-  `, [isActive]);
-  
-  return (
-    <Link href={to} className={linkClassName}>
-      <span className="mr-3 sm:mr-3 flex-shrink-0">{icon}</span>
-      <span className="flex-1">{children}</span>
-      {count !== undefined && count > 0 && (
-        <span className={countClassName}>
-          {count}
-        </span>
-      )}
-    </Link>
-  );
-})
+    ${isActive ? "bg-gray-900 text-white" : "bg-gray-700 text-gray-300"}
+  `,
+      [isActive]
+    );
 
-NavItem.displayName = 'NavItem'
+    return (
+      <Link href={to} className={linkClassName}>
+        <span className="mr-3 sm:mr-3 flex-shrink-0">{icon}</span>
+        <span className="flex-1">{children}</span>
+        {count !== undefined && count > 0 && (
+          <span className={countClassName}>{count}</span>
+        )}
+      </Link>
+    );
+  }
+);
 
-export const Sidebar = memo(({
-  mobile = false,
-  onClose
-}: SidebarProps) => {
+NavItem.displayName = "NavItem";
+
+export const Sidebar = memo(({ mobile = false, onClose }: SidebarProps) => {
   const { user } = useAuth();
   // Access both currentHostel and hostels list so we can suppress invalid links for first-time owners
   const { currentHostel, hostels } = useHostel();
   const { hasPermission, userRole, loading } = usePermissions();
-  const [activeItem, setActiveItem] = useState<string>('dashboard');
+  const [activeItem, setActiveItem] = useState<string>("dashboard");
   // Removed expandedSections state since we no longer have sub-sections
-  
+
   // 🚀 NEW: Skip hostel-related hooks for superadmin users
-  const isSuperadmin = user?.role === 'superadmin';
-  
+  const isSuperadmin = user?.role === "superadmin";
+
   // Only call hostel-related hooks for non-superadmin users
-  const { hasHostel, getHostelIdSafe, isReady } = isSuperadmin ? { hasHostel: false, getHostelIdSafe: () => null, isReady: true } : useCurrentHostelId();
+  const { hasHostel, getHostelIdSafe, isReady } = isSuperadmin
+    ? { hasHostel: false, getHostelIdSafe: () => null, isReady: true }
+    : useCurrentHostelId();
   const admin = isSuperadmin ? null : useAdminApiWithHostel();
   const [visitorCount, setVisitorCount] = useState(0);
-  
-  const { isOwner, isWarden, isStudent } = useMemo(() => ({
-    isOwner: user?.role === 'owner',
-    isWarden: user?.role === 'warden',
-    isStudent: user?.role === 'student',
-  }), [user?.role]);
+
+  const { isOwner, isWarden, isStudent } = useMemo(
+    () => ({
+      isOwner: user?.role === "owner",
+      isWarden: user?.role === "warden",
+      isStudent: user?.role === "student",
+    }),
+    [user?.role]
+  );
 
   // Get current hostel ID for URL construction
-  const currentHostelId = isSuperadmin ? null : (typeof getHostelIdSafe === 'function' ? getHostelIdSafe() : getHostelIdSafe);
+  const currentHostelId = isSuperadmin
+    ? null
+    : typeof getHostelIdSafe === "function"
+    ? getHostelIdSafe()
+    : getHostelIdSafe;
 
   // Fetch visitor count for owners/wardens using context-aware API with caching
   useEffect(() => {
     // 🚀 NEW: Skip for superadmin users or if admin API is not available
     if (isSuperadmin || !admin) return;
-    
+
     if ((isOwner || isWarden) && hasHostel && isReady) {
       let isMounted = true;
-      
+
       const fetchVisitorCount = async () => {
         try {
           // 🎯 Use context-aware API - hostelId automatically injected
-          const result = await admin.getVisitorLogs({ 
-            page: 1, 
-            limit: 100, 
-            status: 'checked-in' 
+          const result = await admin.getVisitorLogs({
+            page: 1,
+            limit: 100,
+            status: "checked-in",
           });
-          
+
           if (isMounted) {
             // Count visitors who are still checked in (no exitTime)
-            const currentVisitors = (result as any)?.data?.filter((visitor: any) => !visitor.exitTime)?.length || 0;
+            const currentVisitors =
+              (result as any)?.data?.filter((visitor: any) => !visitor.exitTime)
+                ?.length || 0;
             setVisitorCount(currentVisitors);
           }
         } catch (error) {
-          console.error('Failed to fetch visitor count:', error);
+          console.error("Failed to fetch visitor count:", error);
           if (isMounted) {
             setVisitorCount(0);
           }
@@ -182,24 +218,35 @@ export const Sidebar = memo(({
       };
 
       // Only fetch if we have a valid hostel ID
-      const hostelId = typeof getHostelIdSafe === 'function' ? getHostelIdSafe() : getHostelIdSafe;
+      const hostelId =
+        typeof getHostelIdSafe === "function"
+          ? getHostelIdSafe()
+          : getHostelIdSafe;
       if (hostelId) {
         // Initial fetch
         fetchVisitorCount();
-        
+
         // Set up periodic refresh every 30 seconds for real-time updates
         const interval = setInterval(fetchVisitorCount, 30000);
-        
+
         return () => {
           isMounted = false;
           clearInterval(interval);
         };
       }
     }
-  }, [isOwner, isWarden, hasHostel, isReady, admin, getHostelIdSafe, isSuperadmin]);
+  }, [
+    isOwner,
+    isWarden,
+    hasHostel,
+    isReady,
+    admin,
+    getHostelIdSafe,
+    isSuperadmin,
+  ]);
 
-  const userInitial = useMemo(() => 
-    user?.name ? user.name.charAt(0).toUpperCase() : 'U',
+  const userInitial = useMemo(
+    () => (user?.name ? user.name.charAt(0).toUpperCase() : "U"),
     [user?.name]
   );
 
@@ -208,29 +255,29 @@ export const Sidebar = memo(({
     if (!user) return [];
 
     // Guard: First-time owner (no hostels yet) should NOT see operational sidebar items that depend on a hostel context.
-    if (user.role === 'owner' && (!hostels || hostels.length === 0)) {
+    if (user.role === "owner" && (!hostels || hostels.length === 0)) {
       return [];
     }
 
     // Get accessible sections for this user
     const accessibleSections = getAccessibleSidebarSections(user);
-    
-    return items.filter(item => {
+
+    return items.filter((item) => {
       // Map item IDs to section names for filtering
       const sectionMap: Record<string, string> = {
-        'students': 'students',
-        'staff': 'staff', 
-        'complaints': 'complaints',
-        'rooms': 'rooms',
-        'visitors': 'visitors',
-        'billing': 'billing'
+        students: "students",
+        staff: "staff",
+        complaints: "complaints",
+        rooms: "rooms",
+        visitors: "visitors",
+        billing: "billing",
       };
-      
+
       const section = sectionMap[item.id];
       if (section) {
         return accessibleSections.includes(section);
       }
-      
+
       // Default: use permission check
       return item.permission ? hasPermission(item.permission) : false;
     });
@@ -239,28 +286,39 @@ export const Sidebar = memo(({
   // Check if GENERAL section should be visible
   const shouldShowGeneralSection = useMemo(() => {
     // Always show for system roles
-    if (user?.role === 'superadmin' || user?.role === 'owner' || user?.role === 'warden' || user?.role === 'student') {
+    if (
+      user?.role === "superadmin" ||
+      user?.role === "owner" ||
+      user?.role === "warden" ||
+      user?.role === "student"
+    ) {
       return true;
     }
-    
+
     // For custom roles, only show if they have dashboard access or are an owner
-  return hasPermission('view_hostel_stats') || isOwner;
+    return hasPermission("view_hostel_stats") || isOwner;
   }, [user?.role, hasPermission, isOwner]);
 
   // Check if there are any visible items in GENERAL section
   const hasGeneralItems = useMemo(() => {
     let itemCount = 0;
-    
+
     // Dashboard item
-  if (user?.role === 'superadmin' || user?.role === 'owner' || user?.role === 'warden' || user?.role === 'student' || hasPermission('view_hostel_stats')) {
+    if (
+      user?.role === "superadmin" ||
+      user?.role === "owner" ||
+      user?.role === "warden" ||
+      user?.role === "student" ||
+      hasPermission("view_hostel_stats")
+    ) {
       itemCount++;
     }
-    
+
     // My Hostels item (owner only)
     if (isOwner) {
       itemCount++;
     }
-    
+
     return itemCount > 0;
   }, [user?.role, hasPermission, isOwner]);
 
@@ -271,18 +329,18 @@ export const Sidebar = memo(({
   const renderSidebarItem = (item: SidebarItem) => {
     const Icon = item.icon;
     const isActive = activeItem === item.id;
-    
+
     // Build the correct path based on user role and hostel context
     let itemPath = item.path;
-    if (item.id === 'dashboard') {
+    if (item.id === "dashboard") {
       if (isSuperadmin) {
-        itemPath = '/dashboard/superadmin';
+        itemPath = "/dashboard/superadmin";
       } else if (isStudent) {
         // Students always go to their student dashboard
-        itemPath = '/dashboard/student';
+        itemPath = "/dashboard/student";
       } else if (isWarden) {
         // Wardens always go to their warden dashboard
-        itemPath = '/dashboard/warden';
+        itemPath = "/dashboard/warden";
       } else if (isOwner && currentHostelId) {
         itemPath = `/dashboard/hostels/${currentHostelId}`;
       } else if (user?.hostelId) {
@@ -295,7 +353,7 @@ export const Sidebar = memo(({
         // Last resort - use role-based path
         itemPath = `/dashboard/${user?.role}`;
       }
-    } else if (item.id === 'rooms') {
+    } else if (item.id === "rooms") {
       if (isOwner && currentHostelId) {
         itemPath = `/dashboard/hostels/${currentHostelId}/rooms`;
       } else if (user?.hostelId) {
@@ -305,7 +363,7 @@ export const Sidebar = memo(({
       } else {
         itemPath = `/dashboard/${user?.role}/rooms`;
       }
-    } else if (item.id === 'students') {
+    } else if (item.id === "students") {
       if (isOwner && currentHostelId) {
         itemPath = `/dashboard/hostels/${currentHostelId}/students`;
       } else if (user?.hostelId) {
@@ -315,7 +373,7 @@ export const Sidebar = memo(({
       } else {
         itemPath = `/dashboard/${user?.role}/students`;
       }
-    } else if (item.id === 'staff') {
+    } else if (item.id === "staff") {
       if (isOwner && currentHostelId) {
         itemPath = `/dashboard/hostels/${currentHostelId}/staff`;
       } else if (user?.hostelId) {
@@ -325,7 +383,7 @@ export const Sidebar = memo(({
       } else {
         itemPath = `/dashboard/${user?.role}/staff`;
       }
-    } else if (item.id === 'view-staff') {
+    } else if (item.id === "view-staff") {
       if (isOwner && currentHostelId) {
         itemPath = `/dashboard/hostels/${currentHostelId}/staff`;
       } else if (user?.hostelId) {
@@ -335,7 +393,7 @@ export const Sidebar = memo(({
       } else {
         itemPath = `/dashboard/${user?.role}/staff`;
       }
-    } else if (item.id === 'manage-staff') {
+    } else if (item.id === "manage-staff") {
       if (isOwner && currentHostelId) {
         itemPath = `/dashboard/hostels/${currentHostelId}/staff/manage`;
       } else if (user?.hostelId) {
@@ -345,7 +403,7 @@ export const Sidebar = memo(({
       } else {
         itemPath = `/dashboard/${user?.role}/staff/manage`;
       }
-    } else if (item.id === 'custom-roles') {
+    } else if (item.id === "custom-roles") {
       if (isOwner && currentHostelId) {
         itemPath = `/dashboard/hostels/${currentHostelId}/staff/roles`;
       } else if (user?.hostelId) {
@@ -355,7 +413,7 @@ export const Sidebar = memo(({
       } else {
         itemPath = `/dashboard/${user?.role}/staff/roles`;
       }
-    } else if (item.id === 'complaints') {
+    } else if (item.id === "complaints") {
       if (isOwner && currentHostelId) {
         itemPath = `/dashboard/hostels/${currentHostelId}/complaints`;
       } else if (user?.hostelId) {
@@ -365,7 +423,7 @@ export const Sidebar = memo(({
       } else {
         itemPath = `/dashboard/${user?.role}/complaints`;
       }
-    } else if (item.id === 'visitors') {
+    } else if (item.id === "visitors") {
       if (isOwner && currentHostelId) {
         itemPath = `/dashboard/hostels/${currentHostelId}/visitors`;
       } else if (user?.hostelId) {
@@ -375,24 +433,24 @@ export const Sidebar = memo(({
       } else {
         itemPath = `/dashboard/${user?.role}/visitors`;
       }
-    } else if (item.id === 'billing') {
+    } else if (item.id === "billing") {
       // Billing is available to users with view_billing permission
       if (isSuperadmin) {
-        itemPath = '/dashboard/superadmin/billing';
+        itemPath = "/dashboard/superadmin/billing";
       } else if (currentHostelId) {
         itemPath = `/dashboard/hostels/${currentHostelId}/billing`;
       } else {
         itemPath = `/dashboard/${user?.role}/billing`;
       }
     }
-    
+
     return (
       <div key={item.id} className="mb-1">
         <NavItem
           to={itemPath}
           icon={<Icon size={24} className="sm:w-5 sm:h-5" />}
-          end={item.id === 'dashboard'}
-          count={item.id === 'visitors' ? visitorCount : undefined}
+          end={item.id === "dashboard"}
+          count={item.id === "visitors" ? visitorCount : undefined}
         >
           {item.name}
         </NavItem>
@@ -425,8 +483,8 @@ export const Sidebar = memo(({
           </span>
         </div>
         {mobile && onClose && (
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="text-gray-400 hover:text-white focus:outline-none p-2 rounded-full hover:bg-gray-800 transition-colors touch-manipulation"
             aria-label="Close sidebar"
           >
@@ -434,9 +492,8 @@ export const Sidebar = memo(({
           </button>
         )}
       </div>
-      
-      <div className="flex-1 flex flex-col overflow-y-auto pt-5 lg:pt-2 pb-4">
 
+      <div className="flex-1 flex flex-col overflow-y-auto pt-5 lg:pt-2 pb-4">
         {/* Legacy navigation for backward compatibility - only show if there are visible items */}
         {shouldShowGeneralSection && hasGeneralItems && (
           <div className="px-3 sm:px-4 mt-2 lg:mt-0">
@@ -445,26 +502,38 @@ export const Sidebar = memo(({
             </p>
             <nav className="mt-2 lg:mt-1 space-y-2 sm:space-y-1">
               {/* Dashboard access - only show if user has explicit dashboard permission */}
-              {(user?.role === 'superadmin' || user?.role === 'owner' || user?.role === 'warden' || user?.role === 'student' || hasPermission('view_hostel_stats')) && (
-                <NavItem 
+              {(user?.role === "superadmin" ||
+                user?.role === "owner" ||
+                user?.role === "warden" ||
+                user?.role === "student" ||
+                hasPermission("view_hostel_stats")) && (
+                <NavItem
                   to={
-                    isSuperadmin ? '/dashboard/superadmin' : 
-                    isStudent ? '/dashboard/student' :
-                    isWarden ? '/dashboard/warden' :
-                    (isOwner && currentHostelId ? `/dashboard/hostels/${currentHostelId}` : 
-                    (user?.hostelId ? `/dashboard/hostels/${user.hostelId}` :
-                    (currentHostelId ? `/dashboard/hostels/${currentHostelId}` : 
-                    `/dashboard/${user?.role}`)))
-                  } 
-                  icon={<LayoutDashboardIcon size={24} className="sm:w-5 sm:h-5" />} 
+                    isSuperadmin
+                      ? "/dashboard/superadmin"
+                      : isStudent
+                      ? "/dashboard/student"
+                      : isWarden
+                      ? "/dashboard/warden"
+                      : isOwner && currentHostelId
+                      ? `/dashboard/hostels/${currentHostelId}`
+                      : user?.hostelId
+                      ? `/dashboard/hostels/${user.hostelId}`
+                      : currentHostelId
+                      ? `/dashboard/hostels/${currentHostelId}`
+                      : `/dashboard/${user?.role}`
+                  }
+                  icon={
+                    <LayoutDashboardIcon size={24} className="sm:w-5 sm:h-5" />
+                  }
                   end
                 >
                   Dashboard
                 </NavItem>
               )}
               {isOwner && (
-                <NavItem 
-                  to="/dashboard/owner/hostels" 
+                <NavItem
+                  to="/dashboard/owner/hostels"
                   icon={<BuildingIcon size={24} className="sm:w-5 sm:h-5" />}
                 >
                   My Hostels
@@ -473,7 +542,7 @@ export const Sidebar = memo(({
             </nav>
           </div>
         )}
-        
+
         {/* 🚀 NEW: Superadmin-specific navigation */}
         {isSuperadmin && (
           <div className="px-3 sm:px-4 mt-6 lg:mt-4">
@@ -481,20 +550,20 @@ export const Sidebar = memo(({
               Superadmin
             </p>
             <nav className="mt-2 lg:mt-1 space-y-2 sm:space-y-1">
-              <NavItem 
-                to="/dashboard/superadmin/hostels" 
+              <NavItem
+                to="/dashboard/superadmin/hostels"
                 icon={<BuildingIcon size={24} className="sm:w-5 sm:h-5" />}
               >
                 All Hostels
               </NavItem>
-              <NavItem 
-                to="/dashboard/superadmin/billing" 
+              <NavItem
+                to="/dashboard/superadmin/billing"
                 icon={<CreditCardIcon size={24} className="sm:w-5 sm:h-5" />}
               >
                 Billing Overview
               </NavItem>
-              <NavItem 
-                to="/dashboard/superadmin/analytics" 
+              <NavItem
+                to="/dashboard/superadmin/analytics"
                 icon={<BarChart3Icon size={24} className="sm:w-5 sm:h-5" />}
               >
                 Analytics
@@ -502,26 +571,29 @@ export const Sidebar = memo(({
             </nav>
           </div>
         )}
-        
+
         {/* Permission-based navigation - Hide for students */}
-        {(!isStudent) && (
+        {!isStudent && (
           <div className="px-3 sm:px-4 mt-6 lg:mt-4">
             <p className="px-2 sm:px-4 text-sm sm:text-xs font-semibold text-gray-300 uppercase tracking-wider mb-3 sm:mb-2">
               Operations
             </p>
             {filteredItems.length > 0 ? (
               <nav className="mt-2 lg:mt-1 space-y-2 sm:space-y-1">
-                {filteredItems.map(item => renderSidebarItem(item))}
+                {filteredItems.map((item) => renderSidebarItem(item))}
               </nav>
             ) : (
               <div className="mt-2 text-xs text-gray-400 bg-gray-800 border border-dashed border-gray-700 rounded-md p-3 leading-relaxed">
                 <p className="font-medium text-gray-300 mb-1">No Hostels Yet</p>
-                <p>Create a hostel to unlock management features like Rooms, Students, Staff, Visitors, Complaints, and Billing.</p>
+                <p>
+                  Create a hostel to unlock management features like Rooms,
+                  Students, Staff, Visitors, Complaints, and Billing.
+                </p>
               </div>
             )}
           </div>
         )}
-        
+
         {/* Legacy student navigation */}
         {isStudent && (
           <div className="px-3 sm:px-4 mt-6 lg:mt-4">
@@ -529,20 +601,20 @@ export const Sidebar = memo(({
               Student
             </p>
             <nav className="mt-2 lg:mt-1 space-y-2 sm:space-y-1">
-              <NavItem 
-                to="/dashboard/student/rooms" 
+              <NavItem
+                to="/dashboard/student/rooms"
                 icon={<BedIcon size={24} className="sm:w-5 sm:h-5" />}
               >
                 My Room
               </NavItem>
-              <NavItem 
-                to="/dashboard/student/complaints" 
+              <NavItem
+                to="/dashboard/student/complaints"
                 icon={<AlertCircleIcon size={24} className="sm:w-5 sm:h-5" />}
               >
                 My Complaints
               </NavItem>
-              <NavItem 
-                to="/dashboard/student/visitors" 
+              <NavItem
+                to="/dashboard/student/visitors"
                 icon={<UserCheckIcon size={24} className="sm:w-5 sm:h-5" />}
               >
                 My Visitors
@@ -550,7 +622,7 @@ export const Sidebar = memo(({
             </nav>
           </div>
         )}
-        
+
         {/* System section - only show if there are visible items */}
         {user && (
           <div className="px-3 sm:px-4 mt-6 lg:mt-4">
@@ -558,10 +630,10 @@ export const Sidebar = memo(({
               System
             </p>
             <nav className="mt-2 lg:mt-1 space-y-2 sm:space-y-1">
-              <NavItem 
+              <NavItem
                 to={
                   isSuperadmin
-                    ? '/dashboard/superadmin/settings'
+                    ? "/dashboard/superadmin/settings"
                     : isOwner && currentHostelId
                     ? `/dashboard/hostels/${currentHostelId}/settings`
                     : user?.hostelId
@@ -569,32 +641,39 @@ export const Sidebar = memo(({
                     : currentHostelId
                     ? `/dashboard/hostels/${currentHostelId}/settings`
                     : `/dashboard/${user?.role}/settings`
-                } 
+                }
                 icon={<SettingsIcon size={24} className="sm:w-5 sm:h-5" />}
               >
                 Settings
               </NavItem>
-              <NavItem to={`/dashboard/${user?.role}/help`} icon={<HelpCircleIcon size={24} className="sm:w-5 sm:h-5" />}>
+              <NavItem
+                to={`/dashboard/${user?.role}/help`}
+                icon={<HelpCircleIcon size={24} className="sm:w-5 sm:h-5" />}
+              >
                 Help & Support
               </NavItem>
             </nav>
           </div>
         )}
       </div>
-      
+
       <div className="flex-shrink-0 flex border-t border-gray-700 p-4 sm:p-6">
         <div className="flex items-center w-full">
           <div className="h-12 w-12 sm:h-10 sm:w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium text-lg sm:text-lg flex-shrink-0">
             {userInitial}
           </div>
           <div className="ml-3 sm:ml-3 flex-1 min-w-0">
-            <p className="text-base sm:text-sm font-semibold text-white truncate">{user?.name || 'Loading...'}</p>
-            <p className="text-sm sm:text-xs text-gray-300 capitalize truncate">{user?.role || '...'}</p>
+            <p className="text-base sm:text-sm font-semibold text-white truncate">
+              {user?.name || "Loading..."}
+            </p>
+            <p className="text-sm sm:text-xs text-gray-300 capitalize truncate">
+              {user?.role || "..."}
+            </p>
           </div>
         </div>
       </div>
     </div>
   );
-})
+});
 
-Sidebar.displayName = 'Sidebar'
+Sidebar.displayName = "Sidebar";

@@ -96,7 +96,7 @@ router.post(
   "/complaints",
   verifyToken,
   requirePermission("complaint_create"),
-  enforceQuota('complaints'),
+  enforceQuota("complaints"),
   lodgeComplaint
 );
 router.get(
@@ -135,7 +135,7 @@ router.post(
   "/visitor-logs",
   verifyToken,
   requirePermission("visitor_create"),
-  enforceQuota('visitors'),
+  enforceQuota("visitors"),
   createMyVisitorLog
 );
 router.put(

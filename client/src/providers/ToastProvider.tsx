@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { useEffect } from 'react'
-import { Toaster, toast } from 'sonner'
-import { useRouter } from 'next/navigation'
+import { useEffect } from "react";
+import { Toaster, toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export function ToastProvider() {
   const router = useRouter();
@@ -17,25 +17,31 @@ export function ToastProvider() {
         resource?: string;
         limit?: number | string;
       };
-      const message = detail.message || 'Plan limit reached';
-      const upgradeUrl = detail.upgradeUrl || '/dashboard/billing';
+      const message = detail.message || "Plan limit reached";
+      const upgradeUrl = detail.upgradeUrl || "/dashboard/billing";
 
       toast.error(message, {
-        description: 'Upgrade your plan to continue.',
+        description: "Upgrade your plan to continue.",
         action: {
-          label: 'Upgrade',
+          label: "Upgrade",
           onClick: () => router.push(upgradeUrl),
         },
         duration: 6000,
       });
     };
 
-    if (typeof window !== 'undefined') {
-      window.addEventListener('HOSTELHIVE_QUOTA_EXCEEDED', handler as EventListener);
+    if (typeof window !== "undefined") {
+      window.addEventListener(
+        "HOSTELHIVE_QUOTA_EXCEEDED",
+        handler as EventListener
+      );
     }
     return () => {
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('HOSTELHIVE_QUOTA_EXCEEDED', handler as EventListener);
+      if (typeof window !== "undefined") {
+        window.removeEventListener(
+          "HOSTELHIVE_QUOTA_EXCEEDED",
+          handler as EventListener
+        );
       }
     };
   }, [router]);
@@ -47,9 +53,9 @@ export function ToastProvider() {
       richColors
       closeButton
       toastOptions={{
-        className: 'font-sans',
+        className: "font-sans",
         duration: 3000,
       }}
     />
-  )
+  );
 }

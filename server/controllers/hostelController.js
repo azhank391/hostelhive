@@ -43,26 +43,24 @@ const generateUniqueSubdomain = async (hostelName) => {
 exports.createHostel = async (req, res) => {
   try {
     const ownerId = req.user.id;
-  const { name, email, country, city, address } = req.body;
+    const { name, email, country, city, address } = req.body;
 
     console.log("🏢 Creating hostel:", {
       ownerId,
       name,
       email,
-      
+
       country,
       city,
       address,
     });
 
     if (!name || !email) {
-      return res
-        .status(400)
-        .json({ message: "Name and email are required" });
+      return res.status(400).json({ message: "Name and email are required" });
     }
 
-  // Default new hostels to Free plan with no active subscription.
-  // Owners can upgrade via billing to 'basic' or 'pro'.
+    // Default new hostels to Free plan with no active subscription.
+    // Owners can upgrade via billing to 'basic' or 'pro'.
 
     // Check if email already exists
     const existingEmail = await Hostel.findOne({ where: { email } });
@@ -81,7 +79,7 @@ exports.createHostel = async (req, res) => {
       email,
       subdomain,
       // Default to Free plan and no subscription
-      plan_id: 'free',
+      plan_id: "free",
       subscription_status: null,
       trial_end: null,
       isActive: true,
@@ -121,11 +119,9 @@ exports.createHostel = async (req, res) => {
   } catch (err) {
     console.error("❌ Error creating hostel:", err);
     if (err.message === "Unable to generate unique subdomain") {
-      res
-        .status(500)
-        .json({
-          message: "Failed to generate unique subdomain. Please try again.",
-        });
+      res.status(500).json({
+        message: "Failed to generate unique subdomain. Please try again.",
+      });
     } else {
       res.status(500).json({ message: "Failed to create hostel" });
     }
@@ -186,7 +182,8 @@ exports.updateHostel = async (req, res) => {
   try {
     // Extract hostelId from URL parameters
     const { hostelId } = req.params;
-  const { name, email, country, city, address, plan, isActive, subdomain } = req.body;
+    const { name, email, country, city, address, plan, isActive, subdomain } =
+      req.body;
 
     const hostel = await Hostel.findByPk(hostelId);
     if (!hostel) {
@@ -205,7 +202,7 @@ exports.updateHostel = async (req, res) => {
     let newSubdomain = hostel.subdomain;
     if (name && name !== hostel.name) {
       console.log("🔄 Hostel name changed from", hostel.name, "to", name);
-      
+
       // Generate new subdomain
       newSubdomain = await generateUniqueSubdomain(name);
       console.log("🔗 Generated new subdomain:", newSubdomain);
@@ -216,7 +213,7 @@ exports.updateHostel = async (req, res) => {
       name: name || hostel.name,
       email: email || hostel.email,
       subdomain: newSubdomain,
-      isActive: isActive !== undefined ? isActive : hostel.isActive
+      isActive: isActive !== undefined ? isActive : hostel.isActive,
     };
     // Note: legacy "plan" column is deprecated; use plan_id via billing flow only.
 
@@ -246,10 +243,10 @@ exports.updateHostel = async (req, res) => {
       ],
     });
 
-    res.json({ 
-      message: "Hostel updated successfully", 
+    res.json({
+      message: "Hostel updated successfully",
       hostel: updatedHostel,
-      subdomainUpdated: name !== hostel.name
+      subdomainUpdated: name !== hostel.name,
     });
   } catch (err) {
     console.error("❌ Error updating hostel:", err);
@@ -451,9 +448,9 @@ exports.getUserHostels = async (req, res) => {
 
     // Disable caching to prevent 304 responses
     res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
     });
     res.json({ hostels, userRole });
   } catch (error) {
@@ -531,7 +528,7 @@ exports.getVisitors = async (req, res) => {
     if (search) {
       whereClause[Op.or] = [
         { visitorName: { [Op.iLike]: `%${search}%` } },
-        { relation: { [Op.iLike]: `%${search}%` } }
+        { relation: { [Op.iLike]: `%${search}%` } },
       ];
     }
 
@@ -541,9 +538,9 @@ exports.getVisitors = async (req, res) => {
       offset: (parseInt(page) - 1) * parseInt(limit),
       order: [["createdAt", "DESC"]],
       include: [
-        { 
-          model: User, 
-          as: "student", 
+        {
+          model: User,
+          as: "student",
           attributes: ["id", "name", "email"],
           where: { hostelId, role: "student" },
           include: [
@@ -556,12 +553,12 @@ exports.getVisitors = async (req, res) => {
                 {
                   model: Room,
                   as: "room",
-                  attributes: ["id", "roomNumber"]
-                }
-              ]
-            }
-          ]
-        }
+                  attributes: ["id", "roomNumber"],
+                },
+              ],
+            },
+          ],
+        },
       ],
     });
 
@@ -600,31 +597,32 @@ exports.getStudents = async (req, res) => {
       include: [
         {
           model: RoomAllocation,
-          as: 'allocations',
-          where: { status: 'active' },
+          as: "allocations",
+          where: { status: "active" },
           required: false,
           include: [
             {
               model: Room,
-              as: 'room',
-              attributes: ['id', 'roomNumber', 'capacity', 'occupied', 'block']
-            }
-          ]
-        }
-      ]
+              as: "room",
+              attributes: ["id", "roomNumber", "capacity", "occupied", "block"],
+            },
+          ],
+        },
+      ],
     });
 
     const total = await User.count({ where: whereClause });
 
     // Transform the data to include room information and allocation status
-    const studentsWithRooms = students.map(student => {
+    const studentsWithRooms = students.map((student) => {
       const studentData = student.toJSON();
-      
+
       // Check if student has an active room allocation
-      const hasActiveAllocation = studentData.allocations && 
-        studentData.allocations.length > 0 && 
-        studentData.allocations[0].status === 'active';
-      
+      const hasActiveAllocation =
+        studentData.allocations &&
+        studentData.allocations.length > 0 &&
+        studentData.allocations[0].status === "active";
+
       if (hasActiveAllocation && studentData.allocations[0].room) {
         studentData.roomNumber = studentData.allocations[0].room.roomNumber;
         studentData.roomId = studentData.allocations[0].room.id;
@@ -638,7 +636,7 @@ exports.getStudents = async (req, res) => {
         studentData.roomBlock = null;
         studentData.allocationId = null;
       }
-      
+
       return studentData;
     });
 
@@ -674,27 +672,27 @@ exports.getComplaints = async (req, res) => {
       offset: (parseInt(page) - 1) * parseInt(limit),
       order: [["createdAt", "DESC"]],
       include: [
-        { 
-          model: User, 
-          as: "user", 
+        {
+          model: User,
+          as: "user",
           attributes: ["id", "name", "email", "role"],
           include: [
             {
               model: RoomAllocation,
-              as: 'allocations',
-              where: { status: 'active' },
+              as: "allocations",
+              where: { status: "active" },
               required: false,
               include: [
                 {
                   model: Room,
-                  as: 'room',
-                  attributes: ['id', 'roomNumber', 'block']
-                }
-              ]
-            }
-          ]
+                  as: "room",
+                  attributes: ["id", "roomNumber", "block"],
+                },
+              ],
+            },
+          ],
         },
-        { model: Hostel, as: "hostel", attributes: ["id", "name"] }
+        { model: Hostel, as: "hostel", attributes: ["id", "name"] },
       ],
     });
 
@@ -730,7 +728,16 @@ exports.getRooms = async (req, res) => {
       limit: parseInt(limit),
       offset: (parseInt(page) - 1) * parseInt(limit),
       order: [["roomNumber", "ASC"]],
-      attributes: ["id", "roomNumber", "capacity", "block", "occupied", "hostelId", "createdAt", "updatedAt"],
+      attributes: [
+        "id",
+        "roomNumber",
+        "capacity",
+        "block",
+        "occupied",
+        "hostelId",
+        "createdAt",
+        "updatedAt",
+      ],
       include: [{ model: User, as: "student", attributes: ["id", "name"] }],
     });
 
@@ -761,48 +768,48 @@ exports.deleteHostel = async (req, res) => {
 
     // Verify the hostel exists and user owns it
     const hostel = await Hostel.findOne({
-      where: { id: hostelId, ownerId: userId }
+      where: { id: hostelId, ownerId: userId },
     });
 
     if (!hostel) {
-      return res.status(404).json({ 
-        message: "Hostel not found or you don't have permission to delete it" 
+      return res.status(404).json({
+        message: "Hostel not found or you don't have permission to delete it",
       });
     }
 
     // 🚀 CASCADE DELETE: Remove all related data
     // This will automatically delete due to foreign key constraints with CASCADE
-    
+
     // Delete in order to avoid foreign key constraint issues
     console.log("🗑️ Deleting related data for hostel:", hostelId);
-    
+
     // 1. Delete visitor logs
     const visitorLogsDeleted = await VisitorLog.destroy({
-      where: { hostelId }
+      where: { hostelId },
     });
     console.log("🗑️ Deleted visitor logs:", visitorLogsDeleted);
 
     // 2. Delete complaints
     const complaintsDeleted = await Complaint.destroy({
-      where: { hostelId }
+      where: { hostelId },
     });
     console.log("🗑️ Deleted complaints:", complaintsDeleted);
 
     // 3. Delete room allocations
     const allocationsDeleted = await RoomAllocation.destroy({
-      where: { hostelId }
+      where: { hostelId },
     });
     console.log("🗑️ Deleted room allocations:", allocationsDeleted);
 
     // 4. Delete rooms
     const roomsDeleted = await Room.destroy({
-      where: { hostelId }
+      where: { hostelId },
     });
     console.log("🗑️ Deleted rooms:", roomsDeleted);
 
     // 5. Delete location
     const locationDeleted = await TenantLocation.destroy({
-      where: { hostelId }
+      where: { hostelId },
     });
     console.log("🗑️ Deleted location:", locationDeleted);
 
@@ -817,7 +824,7 @@ exports.deleteHostel = async (req, res) => {
     await hostel.destroy();
     console.log("✅ Hostel deleted successfully:", hostelId);
 
-    res.json({ 
+    res.json({
       message: "Hostel and all related data deleted successfully",
       deleted: {
         hostel: true,
@@ -826,15 +833,14 @@ exports.deleteHostel = async (req, res) => {
         roomAllocations: allocationsDeleted,
         rooms: roomsDeleted,
         location: locationDeleted,
-        usersUpdated: usersUpdated[0] // Sequelize returns [affectedCount]
-      }
+        usersUpdated: usersUpdated[0], // Sequelize returns [affectedCount]
+      },
     });
-
   } catch (error) {
     console.error("❌ Error deleting hostel:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: "Failed to delete hostel",
-      error: error.message 
+      error: error.message,
     });
   }
 };

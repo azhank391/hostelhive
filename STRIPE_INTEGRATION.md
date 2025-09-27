@@ -25,6 +25,7 @@ Configure these in the server environment (.env):
 - BACKEND_URL=http://localhost:5000
 
 Client-side:
+
 - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
 
 ## Price and Plan Mapping
@@ -39,6 +40,7 @@ Stripe Prices should include a clear mapping to your internal plan identifiers. 
 ## Database Fields (Hostel model)
 
 The `Hostel` table includes:
+
 - plan_id: string (our internal logical plan)
 - subscription_status: string (Stripe status)
 - stripe_customer_id, stripe_subscription_id: strings
@@ -50,6 +52,7 @@ Legacy `plan` column has been dropped via migration.
 ## Default Trial Behavior
 
 When a new hostel is created (owner self-serve or superadmin assisted):
+
 - plan_id defaults to `basic`
 - subscription_status is set to `trialing`
 - trial_end is set to now + 14 days
@@ -69,10 +72,12 @@ Important: The client HTTP helper returns parsed JSON directly; don’t access `
 ## Webhooks
 
 We handle key events in `server/controllers/webhookController.js`:
+
 - customer.subscription.created/updated/deleted
 - invoice.finalized/paid/payment_succeeded
 
 On these events, we update:
+
 - subscription_status
 - stripe_customer_id and stripe_subscription_id
 - current_period_start, current_period_end, trial_end

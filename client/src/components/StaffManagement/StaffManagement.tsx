@@ -96,8 +96,7 @@ const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
       "view_hostel_stats", // View hostel information (basic access)
       "hostel_read", // View hostel details
       "manage_profile", // update their own information
-      "hostel_settings_update" // update hostel settings in the settings page
-
+      "hostel_settings_update", // update hostel settings in the settings page
     ],
     icon: "🏠",
     required: false,
@@ -285,7 +284,6 @@ const generatePermissionDisplayNames = (): Record<string, string> => {
 
     // Profile Management
     view_own_data: "View Own Data",
-    
   };
 
   // Apply display names from the mapping
@@ -1098,7 +1096,10 @@ function StaffManagement() {
         permissions: finalPermissions,
       };
 
-      await apiClient.post(`/rbac/hostels/${hostelId}/roles`, roleDataWithPermissions);
+      await apiClient.post(
+        `/rbac/hostels/${hostelId}/roles`,
+        roleDataWithPermissions
+      );
       notification.success("Custom role created successfully");
       const wasCreatingStaff = showCreateForm;
       await fetchAvailableRoles(true);
@@ -1106,7 +1107,7 @@ function StaffManagement() {
       if (wasCreatingStaff) {
         // ensure select reflects new roles immediately
         setShowCreateForm(false);
-        setTimeout(()=> setShowCreateForm(true),0);
+        setTimeout(() => setShowCreateForm(true), 0);
       } else {
         setShowCreateForm(true);
       }
@@ -1571,330 +1572,352 @@ function StaffManagement() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {[...staff].sort((a,b)=>{
-                    const aUn = (!a.role || !a.role.id) ? 0 : 1;
-                    const bUn = (!b.role || !b.role.id) ? 0 : 1;
-                    if (aUn !== bUn) return aUn - bUn;
-                    return a.name.localeCompare(b.name);
-                  }).map((member) => (
-                    <tr key={member.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="h-10 w-10 flex-shrink-0">
-                            <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center">
-                              <span className="text-sm font-medium text-white">
-                                {member.name.charAt(0).toUpperCase()}
-                              </span>
+                  {[...staff]
+                    .sort((a, b) => {
+                      const aUn = !a.role || !a.role.id ? 0 : 1;
+                      const bUn = !b.role || !b.role.id ? 0 : 1;
+                      if (aUn !== bUn) return aUn - bUn;
+                      return a.name.localeCompare(b.name);
+                    })
+                    .map((member) => (
+                      <tr key={member.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="h-10 w-10 flex-shrink-0">
+                              <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center">
+                                <span className="text-sm font-medium text-white">
+                                  {member.name.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {member.name}
-                            </div>
-                            <div className="text-sm text-gray-500 flex items-center">
-                              <MailIcon className="h-3 w-3 mr-1" />
-                              {member.email}
-                            </div>
-                            {member.phone && (
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">
+                                {member.name}
+                              </div>
                               <div className="text-sm text-gray-500 flex items-center">
-                                <PhoneIcon className="h-3 w-3 mr-1" />
-                                {member.phone}
+                                <MailIcon className="h-3 w-3 mr-1" />
+                                {member.email}
                               </div>
+                              {member.phone && (
+                                <div className="text-sm text-gray-500 flex items-center">
+                                  <PhoneIcon className="h-3 w-3 mr-1" />
+                                  {member.phone}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <ShieldIcon className="h-4 w-4 text-gray-400 mr-2" />
+                            <span className="text-sm text-gray-900 flex items-center gap-2">
+                              {!member.role || !member.role.id
+                                ? "Assign a role"
+                                : member.role.displayName || member.role.name}
+                              {(!member.role || !member.role.id) && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingStaff(member as any);
+                                    setShowStaffEditModal(true);
+                                  }}
+                                  className="text-xs px-2 py-0.5 rounded border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition"
+                                >
+                                  Reassign
+                                </button>
+                              )}
+                            </span>
+                            {member.role && !member.role.isSystemRole && (
+                              <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Custom
+                              </span>
                             )}
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <ShieldIcon className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-sm text-gray-900 flex items-center gap-2">
-                            {(!member.role || !member.role.id) ? 'Assign a role' : (member.role.displayName || member.role.name)}
-                            {(!member.role || !member.role.id) && (
-                              <button
-                                type="button"
-                                onClick={() => { setEditingStaff(member as any); setShowStaffEditModal(true); }}
-                                className="text-xs px-2 py-0.5 rounded border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition"
-                              >Reassign</button>
-                            )}
-                          </span>
-                          {member.role && !member.role.isSystemRole && (
-                            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Custom</span>
-                          )}
-                        </div>
-                      </td>
-                      <PermissionGate permission="staff_read">
-                        <td className="px-6 py-4">
-                          {!member.role || !member.role.id ? (
-                            <div className="text-sm text-amber-600">
-                              No permissions (assign a role)
-                            </div>
-                          ) : (
-                            <>
-                              <div className="text-sm text-gray-900">
-                                {member.permissions?.length || 0} permission
-                                {(member.permissions?.length || 0) !== 1
-                                  ? "s"
-                                  : ""}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {member.permissions
-                                  ?.slice(0, 2)
-                                  .map(
-                                    (p) =>
-                                      permissionDisplayNames[p.name] ||
-                                      p.display_name ||
-                                      p.display_name ||
-                                      p.name
-                                  )
-                                  .filter(Boolean)
-                                  .join(", ") || "No permissions"}
-                                {(member.permissions?.length || 0) > 2 &&
-                                  ` +${
-                                    (member.permissions?.length || 0) - 2
-                                  } more`}
-                              </div>
-                            </>
-                          )}
                         </td>
-                      </PermissionGate>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            member.isActive
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {member.isActive ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <PermissionGate
-                        permissions={["staff_update", "role_assign"]}
-                        requireAll={false}
-                        fallback={
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div className="text-gray-400 text-xs">
-                              No permissions
-                            </div>
-                          </td>
-                        }
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div
-                            className="relative dropdown-container"
-                            style={{
-                              zIndex:
-                                openDropdown === member.id ? 9999 : "auto",
-                            }}
-                          >
-                            <button
-                              onClick={() =>
-                                setOpenDropdown(
-                                  openDropdown === member.id ? null : member.id
-                                )
-                              }
-                              className="inline-flex items-center p-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:outline-none focus:ring-gray-200 disabled:opacity-50"
-                              disabled={
-                                loadingOperations.has(`update-${member.id}`) ||
-                                loadingOperations.has(`delete-${member.id}`) ||
-                                loadingOperations.has(`toggle-${member.id}`)
-                              }
-                            >
-                              <MoreVerticalIcon className="w-4 h-4" />
-                            </button>
-
-                            {openDropdown === member.id && (
+                        <PermissionGate permission="staff_read">
+                          <td className="px-6 py-4">
+                            {!member.role || !member.role.id ? (
+                              <div className="text-sm text-amber-600">
+                                No permissions (assign a role)
+                              </div>
+                            ) : (
                               <>
-                                {/* Backdrop to ensure dropdown is visible */}
-                                <div
-                                  className="fixed inset-0 z-[9998]"
-                                  onClick={() => setOpenDropdown(null)}
-                                ></div>
-                                <div className="absolute right-0 z-[9999] mt-2 w-48 bg-white rounded-md shadow-xl ring-1 ring-black ring-opacity-5 border border-gray-200">
-                                  <div className="py-1" role="menu">
-                                    <PermissionGate permission="staff_update">
-                                      <button
-                                        onClick={() => {
-                                          setEditingStaff(member);
-                                          setShowStaffEditModal(true);
-                                          setOpenDropdown(null);
-                                        }}
-                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                        role="menuitem"
-                                      >
-                                        <PencilIcon className="w-4 h-4 mr-3" />
-                                        Edit Staff
-                                      </button>
-                                    </PermissionGate>
-                                    <PermissionGate permission="role_assign">
-                                      <button
-                                        onClick={async () => {
-                                          await fetchStaff();
-                                          setTimeout(() => {
-                                            const latestMember =
-                                              staff.find(
-                                                (s) => s.id === member.id
-                                              ) || member;
-                                            setEditingStaffRole(latestMember);
-                                            // Set permissions for the current role
-                                            const perms = new Set(
-                                              (
-                                                latestMember.role
-                                                  ?.permissions || []
-                                              ).map((p) => p.name)
-                                            );
-                                            setEditingRolePermissions(perms);
-                                            setIsEditingPermissions(false);
-                                            setModalMode("changeRole");
-                                            setShowEditRoleModal(true);
-                                            setOpenDropdown(null);
-                                          }, 0);
-                                        }}
-                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                        role="menuitem"
-                                      >
-                                        <ShieldIcon className="w-4 h-4 mr-3" />
-                                        Change Role
-                                      </button>
-                                    </PermissionGate>
-                                    <PermissionGate permission="role_assign">
-                                      <button
-                                        onClick={async () => {
-                                          await fetchStaff();
-                                          setTimeout(() => {
-                                            const latestMember =
-                                              staff.find(
-                                                (s) => s.id === member.id
-                                              ) || member;
-                                            setEditingStaffRole(latestMember);
+                                <div className="text-sm text-gray-900">
+                                  {member.permissions?.length || 0} permission
+                                  {(member.permissions?.length || 0) !== 1
+                                    ? "s"
+                                    : ""}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {member.permissions
+                                    ?.slice(0, 2)
+                                    .map(
+                                      (p) =>
+                                        permissionDisplayNames[p.name] ||
+                                        p.display_name ||
+                                        p.display_name ||
+                                        p.name
+                                    )
+                                    .filter(Boolean)
+                                    .join(", ") || "No permissions"}
+                                  {(member.permissions?.length || 0) > 2 &&
+                                    ` +${
+                                      (member.permissions?.length || 0) - 2
+                                    } more`}
+                                </div>
+                              </>
+                            )}
+                          </td>
+                        </PermissionGate>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              member.isActive
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {member.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <PermissionGate
+                          permissions={["staff_update", "role_assign"]}
+                          requireAll={false}
+                          fallback={
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <div className="text-gray-400 text-xs">
+                                No permissions
+                              </div>
+                            </td>
+                          }
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div
+                              className="relative dropdown-container"
+                              style={{
+                                zIndex:
+                                  openDropdown === member.id ? 9999 : "auto",
+                              }}
+                            >
+                              <button
+                                onClick={() =>
+                                  setOpenDropdown(
+                                    openDropdown === member.id
+                                      ? null
+                                      : member.id
+                                  )
+                                }
+                                className="inline-flex items-center p-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:outline-none focus:ring-gray-200 disabled:opacity-50"
+                                disabled={
+                                  loadingOperations.has(
+                                    `update-${member.id}`
+                                  ) ||
+                                  loadingOperations.has(
+                                    `delete-${member.id}`
+                                  ) ||
+                                  loadingOperations.has(`toggle-${member.id}`)
+                                }
+                              >
+                                <MoreVerticalIcon className="w-4 h-4" />
+                              </button>
 
-                                            // Get the full role information from available roles to ensure we have complete permission data
-                                            const fullRole =
-                                              availableRoles.find(
-                                                (r) =>
-                                                  r.id === latestMember.role?.id
-                                              );
-                                            if (fullRole) {
-                                              const perms = new Set(
-                                                (
-                                                  fullRole.permissions || []
-                                                ).map((p) => p.name || p.id)
-                                              );
-                                              setEditingRolePermissions(perms);
-                                            } else {
-                                              // Fallback to permissions from the staff member's role
+                              {openDropdown === member.id && (
+                                <>
+                                  {/* Backdrop to ensure dropdown is visible */}
+                                  <div
+                                    className="fixed inset-0 z-[9998]"
+                                    onClick={() => setOpenDropdown(null)}
+                                  ></div>
+                                  <div className="absolute right-0 z-[9999] mt-2 w-48 bg-white rounded-md shadow-xl ring-1 ring-black ring-opacity-5 border border-gray-200">
+                                    <div className="py-1" role="menu">
+                                      <PermissionGate permission="staff_update">
+                                        <button
+                                          onClick={() => {
+                                            setEditingStaff(member);
+                                            setShowStaffEditModal(true);
+                                            setOpenDropdown(null);
+                                          }}
+                                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                          role="menuitem"
+                                        >
+                                          <PencilIcon className="w-4 h-4 mr-3" />
+                                          Edit Staff
+                                        </button>
+                                      </PermissionGate>
+                                      <PermissionGate permission="role_assign">
+                                        <button
+                                          onClick={async () => {
+                                            await fetchStaff();
+                                            setTimeout(() => {
+                                              const latestMember =
+                                                staff.find(
+                                                  (s) => s.id === member.id
+                                                ) || member;
+                                              setEditingStaffRole(latestMember);
+                                              // Set permissions for the current role
                                               const perms = new Set(
                                                 (
                                                   latestMember.role
                                                     ?.permissions || []
-                                                ).map((p) => p.name || p.id)
+                                                ).map((p) => p.name)
                                               );
                                               setEditingRolePermissions(perms);
-                                            }
+                                              setIsEditingPermissions(false);
+                                              setModalMode("changeRole");
+                                              setShowEditRoleModal(true);
+                                              setOpenDropdown(null);
+                                            }, 0);
+                                          }}
+                                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                          role="menuitem"
+                                        >
+                                          <ShieldIcon className="w-4 h-4 mr-3" />
+                                          Change Role
+                                        </button>
+                                      </PermissionGate>
+                                      <PermissionGate permission="role_assign">
+                                        <button
+                                          onClick={async () => {
+                                            await fetchStaff();
+                                            setTimeout(() => {
+                                              const latestMember =
+                                                staff.find(
+                                                  (s) => s.id === member.id
+                                                ) || member;
+                                              setEditingStaffRole(latestMember);
 
-                                            setIsEditingPermissions(true);
-                                            setModalMode("updatePermissions");
-                                            setShowEditRoleModal(true);
-                                            setOpenDropdown(null);
-                                          }, 0);
-                                        }}
-                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                        role="menuitem"
-                                      >
-                                        <SettingsIcon className="w-4 h-4 mr-3" />
-                                        Update Permissions
-                                      </button>
-                                    </PermissionGate>
-                                    <PermissionGate permission="role_assign">
-                                      <button
-                                        onClick={() => {
-                                          if (!member.role.isSystemRole) {
-                                            handleDeleteRole(member.role.id);
-                                          }
-                                          setOpenDropdown(null);
-                                        }}
-                                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                                        role="menuitem"
-                                        disabled={
-                                          loadingOperations.has(
-                                            `delete-role-${member.role.id}`
-                                          ) || member.role.isSystemRole
-                                        }
-                                      >
-                                        {loadingOperations.has(
-                                          `delete-role-${member.role.id}`
-                                        ) ? (
-                                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-3"></div>
-                                        ) : (
-                                          <TrashIcon className="w-4 h-4 mr-3" />
-                                        )}
-                                        {member.role.isSystemRole
-                                          ? "Cannot Delete System Role"
-                                          : "Delete Role"}
-                                      </button>
-                                    </PermissionGate>
-                                    <PermissionGate permission="staff_update">
-                                      <button
-                                        onClick={() => {
-                                          handleToggleStaffStatus(
-                                            member.id,
-                                            !member.isActive
-                                          );
-                                          setOpenDropdown(null);
-                                        }}
-                                        className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
-                                          member.isActive
-                                            ? "text-red-600"
-                                            : "text-green-600"
-                                        }`}
-                                        role="menuitem"
-                                        disabled={loadingOperations.has(
-                                          `toggle-${member.id}`
-                                        )}
-                                      >
-                                        {loadingOperations.has(
-                                          `toggle-${member.id}`
-                                        ) ? (
-                                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-3"></div>
-                                        ) : (
+                                              // Get the full role information from available roles to ensure we have complete permission data
+                                              const fullRole =
+                                                availableRoles.find(
+                                                  (r) =>
+                                                    r.id ===
+                                                    latestMember.role?.id
+                                                );
+                                              if (fullRole) {
+                                                const perms = new Set(
+                                                  (
+                                                    fullRole.permissions || []
+                                                  ).map((p) => p.name || p.id)
+                                                );
+                                                setEditingRolePermissions(
+                                                  perms
+                                                );
+                                              } else {
+                                                // Fallback to permissions from the staff member's role
+                                                const perms = new Set(
+                                                  (
+                                                    latestMember.role
+                                                      ?.permissions || []
+                                                  ).map((p) => p.name || p.id)
+                                                );
+                                                setEditingRolePermissions(
+                                                  perms
+                                                );
+                                              }
+
+                                              setIsEditingPermissions(true);
+                                              setModalMode("updatePermissions");
+                                              setShowEditRoleModal(true);
+                                              setOpenDropdown(null);
+                                            }, 0);
+                                          }}
+                                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                          role="menuitem"
+                                        >
                                           <SettingsIcon className="w-4 h-4 mr-3" />
-                                        )}
-                                        {member.isActive
-                                          ? "Deactivate"
-                                          : "Activate"}
-                                      </button>
-                                    </PermissionGate>
-                                    <PermissionGate permission="staff_delete">
-                                      <button
-                                        onClick={() => {
-                                          handleDeleteStaff(member.id);
-                                          setOpenDropdown(null);
-                                        }}
-                                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                                        role="menuitem"
-                                        disabled={loadingOperations.has(
-                                          `delete-${member.id}`
-                                        )}
-                                      >
-                                        {loadingOperations.has(
-                                          `delete-${member.id}`
-                                        ) ? (
-                                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-3"></div>
-                                        ) : (
-                                          <TrashIcon className="w-4 h-4 mr-3" />
-                                        )}
-                                        Delete
-                                      </button>
-                                    </PermissionGate>
+                                          Update Permissions
+                                        </button>
+                                      </PermissionGate>
+                                      <PermissionGate permission="role_assign">
+                                        <button
+                                          onClick={() => {
+                                            if (!member.role.isSystemRole) {
+                                              handleDeleteRole(member.role.id);
+                                            }
+                                            setOpenDropdown(null);
+                                          }}
+                                          className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                                          role="menuitem"
+                                          disabled={
+                                            loadingOperations.has(
+                                              `delete-role-${member.role.id}`
+                                            ) || member.role.isSystemRole
+                                          }
+                                        >
+                                          {loadingOperations.has(
+                                            `delete-role-${member.role.id}`
+                                          ) ? (
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-3"></div>
+                                          ) : (
+                                            <TrashIcon className="w-4 h-4 mr-3" />
+                                          )}
+                                          {member.role.isSystemRole
+                                            ? "Cannot Delete System Role"
+                                            : "Delete Role"}
+                                        </button>
+                                      </PermissionGate>
+                                      <PermissionGate permission="staff_update">
+                                        <button
+                                          onClick={() => {
+                                            handleToggleStaffStatus(
+                                              member.id,
+                                              !member.isActive
+                                            );
+                                            setOpenDropdown(null);
+                                          }}
+                                          className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
+                                            member.isActive
+                                              ? "text-red-600"
+                                              : "text-green-600"
+                                          }`}
+                                          role="menuitem"
+                                          disabled={loadingOperations.has(
+                                            `toggle-${member.id}`
+                                          )}
+                                        >
+                                          {loadingOperations.has(
+                                            `toggle-${member.id}`
+                                          ) ? (
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-3"></div>
+                                          ) : (
+                                            <SettingsIcon className="w-4 h-4 mr-3" />
+                                          )}
+                                          {member.isActive
+                                            ? "Deactivate"
+                                            : "Activate"}
+                                        </button>
+                                      </PermissionGate>
+                                      <PermissionGate permission="staff_delete">
+                                        <button
+                                          onClick={() => {
+                                            handleDeleteStaff(member.id);
+                                            setOpenDropdown(null);
+                                          }}
+                                          className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                                          role="menuitem"
+                                          disabled={loadingOperations.has(
+                                            `delete-${member.id}`
+                                          )}
+                                        >
+                                          {loadingOperations.has(
+                                            `delete-${member.id}`
+                                          ) ? (
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-3"></div>
+                                          ) : (
+                                            <TrashIcon className="w-4 h-4 mr-3" />
+                                          )}
+                                          Delete
+                                        </button>
+                                      </PermissionGate>
+                                    </div>
                                   </div>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </PermissionGate>
-                    </tr>
-                  ))}
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </PermissionGate>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>

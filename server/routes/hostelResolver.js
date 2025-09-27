@@ -2,9 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { Hostel, User } = require("../models");
 const { verifyToken } = require("../middleware/authMiddleware");
-const { 
-  requirePermission
-} = require("../middleware/permissionMiddleware");
+const { requirePermission } = require("../middleware/permissionMiddleware");
 
 /**
  * Get hostel by subdomain (public endpoint for frontend)
@@ -23,7 +21,7 @@ router.get("/by-subdomain/:subdomain", async (req, res) => {
         subdomain: subdomain.toLowerCase(),
         isActive: true,
       },
-  attributes: ["id", "name", "subdomain", "plan_id", "isActive"],
+      attributes: ["id", "name", "subdomain", "plan_id", "isActive"],
     });
 
     if (!hostel) {
@@ -44,30 +42,35 @@ router.get("/by-subdomain/:subdomain", async (req, res) => {
  * Get all hostels owned by the authenticated owner
  * Used for multi-hostel owner dropdown
  */
-router.get("/hostels", verifyToken, requirePermission('hostel_read'), async (req, res) => {
-  try {
-    // Find all hostels where the owner is associated
-    const hostels = await Hostel.findAll({
-      include: [
-        {
-          model: User,
-          where: {
-            id: req.user.id,
-            role: "owner",
+router.get(
+  "/hostels",
+  verifyToken,
+  requirePermission("hostel_read"),
+  async (req, res) => {
+    try {
+      // Find all hostels where the owner is associated
+      const hostels = await Hostel.findAll({
+        include: [
+          {
+            model: User,
+            where: {
+              id: req.user.id,
+              role: "owner",
+            },
+            attributes: [],
           },
-          attributes: [],
-        },
-      ],
-  attributes: ["id", "name", "subdomain", "isActive", "plan_id"],
-      where: { isActive: true },
-      order: [["name", "ASC"]],
-    });
+        ],
+        attributes: ["id", "name", "subdomain", "isActive", "plan_id"],
+        where: { isActive: true },
+        order: [["name", "ASC"]],
+      });
 
-    res.json(hostels);
-  } catch (error) {
-    console.error("Error fetching owner hostels:", error);
-    res.status(500).json({ message: "Failed to fetch hostels" });
+      res.json(hostels);
+    } catch (error) {
+      console.error("Error fetching owner hostels:", error);
+      res.status(500).json({ message: "Failed to fetch hostels" });
+    }
   }
-});
+);
 
 module.exports = router;

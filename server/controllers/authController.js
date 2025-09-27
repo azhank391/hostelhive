@@ -599,7 +599,7 @@ exports.getAllOwnerHostels = async (req, res) => {
         "id",
         "name",
         "subdomain",
-  "plan_id",
+        "plan_id",
         "isActive",
         "email",
         "createdAt",

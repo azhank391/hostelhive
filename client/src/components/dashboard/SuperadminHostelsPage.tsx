@@ -1,33 +1,38 @@
-'use client'
+"use client";
 
-import React, { useState, useEffect } from 'react'
-import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { BuildingIcon, UsersIcon, MapPinIcon, CreditCardIcon } from 'lucide-react'
+import React, { useState, useEffect } from "react";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import {
+  BuildingIcon,
+  UsersIcon,
+  MapPinIcon,
+  CreditCardIcon,
+} from "lucide-react";
 
 interface Hostel {
-  id: string
-  name: string
-  email: string
-  subdomain: string
-  plan_id?: string
-  isActive: boolean
-  isPaid: boolean
-  createdAt: string
+  id: string;
+  name: string;
+  email: string;
+  subdomain: string;
+  plan_id?: string;
+  isActive: boolean;
+  isPaid: boolean;
+  createdAt: string;
   location?: {
-    country: string
-    city: string
-  }
+    country: string;
+    city: string;
+  };
 }
 
 export const SuperadminHostelsPage = () => {
-  const [hostels, setHostels] = useState<Hostel[]>([])
-  const [loading, setLoading] = useState(true)
+  const [hostels, setHostels] = useState<Hostel[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // TODO: Fetch hostels from superadmin API
-    setLoading(false)
-  }, [])
+    setLoading(false);
+  }, []);
 
   if (loading) {
     return (
@@ -37,7 +42,7 @@ export const SuperadminHostelsPage = () => {
           <p className="mt-4 text-gray-600">Loading hostels...</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -48,7 +53,9 @@ export const SuperadminHostelsPage = () => {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-6 space-y-3 sm:space-y-0">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">All Hostels</h1>
-              <p className="text-gray-600">Manage all registered hostels in the system</p>
+              <p className="text-gray-600">
+                Manage all registered hostels in the system
+              </p>
             </div>
             <Button>
               <BuildingIcon className="h-4 w-4 mr-2" />
@@ -65,20 +72,31 @@ export const SuperadminHostelsPage = () => {
               <div className="col-span-full text-center py-12 text-gray-500">
                 <BuildingIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                 <p>No hostels found</p>
-                <p className="text-sm">Hostels will appear here once registered</p>
+                <p className="text-sm">
+                  Hostels will appear here once registered
+                </p>
               </div>
             ) : (
               hostels.map((hostel) => (
-                <div key={hostel.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div
+                  key={hostel.id}
+                  className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                >
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900">{hostel.name}</h3>
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      hostel.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {hostel.isActive ? 'Active' : 'Inactive'}
+                    <h3 className="font-semibold text-gray-900">
+                      {hostel.name}
+                    </h3>
+                    <span
+                      className={`px-2 py-1 text-xs rounded-full ${
+                        hostel.isActive
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {hostel.isActive ? "Active" : "Inactive"}
                     </span>
                   </div>
-                  
+
                   <div className="space-y-2 text-sm text-gray-600">
                     <div className="flex items-center">
                       <UsersIcon className="h-4 w-4 mr-2" />
@@ -96,14 +114,17 @@ export const SuperadminHostelsPage = () => {
                     )}
                     <div className="flex items-center">
                       <CreditCardIcon className="h-4 w-4 mr-2" />
-                      <span className={`font-medium ${
-                        hostel.isPaid ? 'text-green-600' : 'text-orange-600'
-                      }`}>
-                        {hostel.plan_id || 'basic'} Plan {hostel.isPaid ? '(Paid)' : '(Unpaid)'}
+                      <span
+                        className={`font-medium ${
+                          hostel.isPaid ? "text-green-600" : "text-orange-600"
+                        }`}
+                      >
+                        {hostel.plan_id || "basic"} Plan{" "}
+                        {hostel.isPaid ? "(Paid)" : "(Unpaid)"}
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="mt-4 flex space-x-2">
                     <Button variant="outline" size="sm" className="flex-1">
                       View Details
@@ -119,7 +140,7 @@ export const SuperadminHostelsPage = () => {
         </Card>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default SuperadminHostelsPage
+export default SuperadminHostelsPage;

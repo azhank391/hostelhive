@@ -135,7 +135,8 @@ exports.getDashboardData = async (req, res) => {
 // ✅ Register New Hostel
 exports.registerHostel = async (req, res) => {
   try {
-    const { name, email, subdomain, plan_id, country, city, address } = req.body;
+    const { name, email, subdomain, plan_id, country, city, address } =
+      req.body;
 
     if (!name || !email || !subdomain) {
       return res
@@ -161,7 +162,7 @@ exports.registerHostel = async (req, res) => {
       email,
       subdomain,
       // Legacy `plan` deprecated; use plan_id which will be finalized by billing flow/webhooks
-      plan_id: plan_id || 'basic',
+      plan_id: plan_id || "basic",
       isActive: true,
       isPaid: false,
     });
@@ -186,13 +187,13 @@ exports.registerHostel = async (req, res) => {
 // ✅ Get All Hostels
 exports.getAllHostels = async (req, res) => {
   try {
-  const { page = 1, limit = 10, plan, plan_id, isActive, isPaid } = req.query;
+    const { page = 1, limit = 10, plan, plan_id, isActive, isPaid } = req.query;
     const offset = (page - 1) * limit;
 
-  const whereClause = {};
-  if (plan_id) whereClause.plan_id = plan_id;
-  // Backward-compat: support legacy `plan` filter if present
-  if (!plan_id && plan) whereClause.plan_id = plan;
+    const whereClause = {};
+    if (plan_id) whereClause.plan_id = plan_id;
+    // Backward-compat: support legacy `plan` filter if present
+    if (!plan_id && plan) whereClause.plan_id = plan;
     if (isActive !== undefined) whereClause.isActive = isActive === "true";
     if (isPaid !== undefined) whereClause.isPaid = isPaid === "true";
 
@@ -366,7 +367,14 @@ exports.getHostelsByRegion = async (req, res) => {
         {
           model: Hostel,
           as: "hostel",
-          attributes: ["id", "name", "subdomain", "plan_id", "isActive", "isPaid"],
+          attributes: [
+            "id",
+            "name",
+            "subdomain",
+            "plan_id",
+            "isActive",
+            "isPaid",
+          ],
         },
       ],
       order: [
@@ -468,9 +476,7 @@ exports.createOwner = async (req, res) => {
       const { name: hostelName, plan_id, country, city, address } = hostelData;
 
       if (!hostelName) {
-        return res
-          .status(400)
-          .json({ message: "Hostel name is required" });
+        return res.status(400).json({ message: "Hostel name is required" });
       }
 
       // Auto-generate unique subdomain
@@ -509,13 +515,15 @@ exports.createOwner = async (req, res) => {
       // Default to trialing/basic if plan_id not provided
       const TRIAL_DAYS = 14;
       const now = new Date();
-      const trialEnd = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+      const trialEnd = new Date(
+        now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000
+      );
       hostel = await Hostel.create({
         name: hostelName,
         email,
         subdomain,
-        plan_id: plan_id || 'basic',
-        subscription_status: 'trialing',
+        plan_id: plan_id || "basic",
+        subscription_status: "trialing",
         trial_end: trialEnd,
         isActive: true,
         isPaid: false,

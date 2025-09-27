@@ -16,7 +16,7 @@ module.exports = {
     await queryInterface.changeColumn("hostels", "plan_id", {
       type: Sequelize.STRING(50),
       allowNull: true,
-      defaultValue: 'basic',
+      defaultValue: "basic",
     });
   },
 };

@@ -1,23 +1,26 @@
-'use client';
-import React, { useCallback } from 'react';
-import { Button } from '../ui/Button';
-import { Card, CardHeader, CardContent, CardFooter } from '../ui/Card';
-import { Badge } from '../ui/Badge';
-import { CheckIcon } from 'lucide-react';
-import { PRICING_PLANS } from '@/config/pricing';
-import { useAuth } from '@/contexts/AuthContext';
-import { useHostel } from '@/context/HostelContext';
-import { useRouter } from 'next/navigation';
+"use client";
+import React, { useCallback } from "react";
+import { Button } from "../ui/Button";
+import { Card, CardHeader, CardContent, CardFooter } from "../ui/Card";
+import { Badge } from "../ui/Badge";
+import { CheckIcon } from "lucide-react";
+import { PRICING_PLANS } from "@/config/pricing";
+import { useAuth } from "@/contexts/AuthContext";
+import { useHostel } from "@/context/HostelContext";
+import { useRouter } from "next/navigation";
 interface PricingFeatureProps {
   children: React.ReactNode;
 }
-function PricingFeature({
-  children
-}: PricingFeatureProps) {
-  return <div className="flex items-start mb-4">
-      <CheckIcon size={18} className="text-[#10B981] mr-2 mt-0.5 flex-shrink-0" />
+function PricingFeature({ children }: PricingFeatureProps) {
+  return (
+    <div className="flex items-start mb-4">
+      <CheckIcon
+        size={18}
+        className="text-[#10B981] mr-2 mt-0.5 flex-shrink-0"
+      />
       <span className="text-gray-600">{children}</span>
-    </div>;
+    </div>
+  );
 }
 interface PricingTierProps {
   name: string;
@@ -31,49 +34,67 @@ function PricingTier({
   price,
   description,
   features,
-  isPopular = false
+  isPopular = false,
 }: PricingTierProps) {
-  return <Card className={`flex flex-col h-full ${isPopular ? 'border-2 border-[#3B82F6] relative' : ''}`}>
-      {isPopular && <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+  return (
+    <Card
+      className={`flex flex-col h-full ${
+        isPopular ? "border-2 border-[#3B82F6] relative" : ""
+      }`}
+    >
+      {isPopular && (
+        <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
           <Badge variant="primary">Most Popular</Badge>
-        </div>}
-      <CardHeader className={`border-b ${isPopular ? 'bg-blue-50' : ''}`}>
+        </div>
+      )}
+      <CardHeader className={`border-b ${isPopular ? "bg-blue-50" : ""}`}>
         <h3 className="text-xl font-bold mb-2">{name}</h3>
         <div className="mb-2">
           <span className="text-3xl font-bold">{price}</span>
-          {price !== 'Free' && <span className="text-gray-600">/month</span>}
+          {price !== "Free" && <span className="text-gray-600">/month</span>}
         </div>
         <p className="text-gray-600">{description}</p>
       </CardHeader>
       <CardContent className="flex-grow">
         <div className="space-y-4">
-          {features.map((feature, index) => <PricingFeature key={index}>{feature}</PricingFeature>)}
+          {features.map((feature, index) => (
+            <PricingFeature key={index}>{feature}</PricingFeature>
+          ))}
         </div>
       </CardContent>
       {/* This generic tier component is used only for static rendering; explicit plan routing handled below */}
-  <CardFooter>{null}</CardFooter>
-    </Card>;
+      <CardFooter>{null}</CardFooter>
+    </Card>
+  );
 }
 export function PricingSection() {
   const { user } = useAuth();
   const { currentHostel } = useHostel();
   const router = useRouter();
 
-  const handleSelectPlan = useCallback((planId: string) => {
-    try {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('HOSTELHIVE_SELECTED_PLAN', planId);
+  const handleSelectPlan = useCallback(
+    (planId: string) => {
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("HOSTELHIVE_SELECTED_PLAN", planId);
+        }
+      } catch {}
+      // If logged in and has a hostel, go straight to billing with pre-selected plan
+      if (user && currentHostel?.id) {
+        router.push(
+          `/dashboard/hostels/${
+            currentHostel.id
+          }/billing?plan=${encodeURIComponent(planId)}`
+        );
+        return;
       }
-    } catch {}
-    // If logged in and has a hostel, go straight to billing with pre-selected plan
-    if (user && currentHostel?.id) {
-      router.push(`/dashboard/hostels/${currentHostel.id}/billing?plan=${encodeURIComponent(planId)}`);
-      return;
-    }
-    // Otherwise, send to register-owner and carry plan forward
-    router.push(`/auth/register-owner?plan=${encodeURIComponent(planId)}`);
-  }, [user, currentHostel?.id, router]);
-  return <section id="pricing" className="py-16 bg-[#F9FAFB]">
+      // Otherwise, send to register-owner and carry plan forward
+      router.push(`/auth/register-owner?plan=${encodeURIComponent(planId)}`);
+    },
+    [user, currentHostel?.id, router]
+  );
+  return (
+    <section id="pricing" className="py-16 bg-[#F9FAFB]">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold mb-4">
@@ -108,7 +129,11 @@ export function PricingSection() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button variant="outline" fullWidth onClick={() => handleSelectPlan('free')}>
+                <Button
+                  variant="outline"
+                  fullWidth
+                  onClick={() => handleSelectPlan("free")}
+                >
                   Get Started
                 </Button>
               </CardFooter>
@@ -117,19 +142,29 @@ export function PricingSection() {
 
           {PRICING_PLANS.map((plan) => (
             <div key={plan.id} className="flex">
-              <Card className={`flex flex-col h-full ${plan.isPopular ? 'border-2 border-[#3B82F6] relative' : ''}`}>
+              <Card
+                className={`flex flex-col h-full ${
+                  plan.isPopular ? "border-2 border-[#3B82F6] relative" : ""
+                }`}
+              >
                 {plan.isPopular && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                     <Badge variant="primary">Most Popular</Badge>
                   </div>
                 )}
-                <CardHeader className={`border-b ${plan.isPopular ? 'bg-blue-50' : ''}`}>
+                <CardHeader
+                  className={`border-b ${plan.isPopular ? "bg-blue-50" : ""}`}
+                >
                   <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
                   <div className="mb-2">
-                    <span className="text-3xl font-bold">${plan.priceMonthly}</span>
+                    <span className="text-3xl font-bold">
+                      ${plan.priceMonthly}
+                    </span>
                     <span className="text-gray-600">/month</span>
                   </div>
-                  <p className="text-gray-600">{plan.isPopular ? 'Most Popular' : 'Paid plan'}</p>
+                  <p className="text-gray-600">
+                    {plan.isPopular ? "Most Popular" : "Paid plan"}
+                  </p>
                 </CardHeader>
                 <CardContent className="flex-grow">
                   <div className="space-y-4">
@@ -139,7 +174,11 @@ export function PricingSection() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button variant={plan.isPopular ? 'primary' : 'outline'} fullWidth onClick={() => handleSelectPlan(plan.id)}>
+                  <Button
+                    variant={plan.isPopular ? "primary" : "outline"}
+                    fullWidth
+                    onClick={() => handleSelectPlan(plan.id)}
+                  >
                     Get Started
                   </Button>
                 </CardFooter>
@@ -148,5 +187,6 @@ export function PricingSection() {
           ))}
         </div>
       </div>
-    </section>;
+    </section>
+  );
 }

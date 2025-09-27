@@ -1,12 +1,13 @@
 "use client";
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useHostel } from '../context/HostelContext';
-import { BuildingIcon } from 'lucide-react';
-import { ShareableLink } from './ShareableLink';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useHostel } from "../context/HostelContext";
+import { BuildingIcon } from "lucide-react";
+import { ShareableLink } from "./ShareableLink";
 
 export function HostelSelector() {
-  const { currentHostel, hostels, setActiveHostel, isMultiHostelOwner } = useHostel();
+  const { currentHostel, hostels, setActiveHostel, isMultiHostelOwner } =
+    useHostel();
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -15,7 +16,7 @@ export function HostelSelector() {
 
   const handleHostelChange = async (hostelId: string) => {
     if (loading) return;
-    
+
     try {
       setLoading(true);
       // Update the hostel context
@@ -23,7 +24,7 @@ export function HostelSelector() {
       // 🚀 CRITICAL FIX: Navigate to the correct hostel-specific dashboard URL
       router.push(`/dashboard/hostels/${hostelId}`);
     } catch (error) {
-      console.error('Failed to switch hostel:', error);
+      console.error("Failed to switch hostel:", error);
     } finally {
       setLoading(false);
     }
@@ -36,40 +37,41 @@ export function HostelSelector() {
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2 sm:gap-3">
             <BuildingIcon className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0" />
-            <span className="text-sm font-medium text-gray-700">Active Hostel:</span>
+            <span className="text-sm font-medium text-gray-700">
+              Active Hostel:
+            </span>
           </div>
-          
+
           <select
-            value={currentHostel?.id || ''}
+            value={currentHostel?.id || ""}
             onChange={(e) => handleHostelChange(e.target.value)}
             disabled={loading}
             className={`px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-gray-400 transition-colors min-w-[180px] sm:min-w-[200px] ${
-              loading ? 'opacity-50 cursor-not-allowed' : ''
+              loading ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
             <option value="" disabled>
-              {loading ? 'Switching...' : 'Select Hostel'}
+              {loading ? "Switching..." : "Select Hostel"}
             </option>
-            {hostels.map(hostel => (
+            {hostels.map((hostel) => (
               <option key={hostel.id} value={hostel.id}>
                 {hostel.name} ({hostel.subdomain || hostel.id})
               </option>
             ))}
           </select>
-          
         </div>
-        
+
         {/* Right side - Info and Shareable Link */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
           <ShareableLink />
-          
+
           <div className="text-sm text-gray-500">
-            {hostels.length} hostel{hostels.length !== 1 ? 's' : ''} available
+            {hostels.length} hostel{hostels.length !== 1 ? "s" : ""} available
           </div>
-          
+
           {currentHostel && (
             <div className="text-xs bg-gray-100 text-gray-700 px-3 py-1 rounded-full font-medium">
-              Plan: {currentHostel.plan_id || 'basic'}
+              Plan: {currentHostel.plan_id || "basic"}
             </div>
           )}
         </div>
@@ -82,7 +84,8 @@ export function HostelSelector() {
  * Compact version for mobile or tight spaces
  */
 export function CompactHostelSelector() {
-  const { currentHostel, hostels, setActiveHostel, isMultiHostelOwner } = useHostel();
+  const { currentHostel, hostels, setActiveHostel, isMultiHostelOwner } =
+    useHostel();
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -90,7 +93,7 @@ export function CompactHostelSelector() {
 
   const handleHostelChange = async (hostelId: string) => {
     if (loading) return;
-    
+
     try {
       setLoading(true);
       // Update the hostel context
@@ -98,7 +101,7 @@ export function CompactHostelSelector() {
       // Navigate to the dashboard with the selected hostel ID
       router.push(`/dashboard/hostels/${hostelId}`);
     } catch (error) {
-      console.error('Failed to switch hostel:', error);
+      console.error("Failed to switch hostel:", error);
     } finally {
       setLoading(false);
     }
@@ -109,15 +112,15 @@ export function CompactHostelSelector() {
       <BuildingIcon className="h-4 w-4 text-blue-600 flex-shrink-0" />
       <span className="text-xs text-gray-600 font-medium">Hostel:</span>
       <select
-        value={currentHostel?.id || ''}
+        value={currentHostel?.id || ""}
         onChange={(e) => handleHostelChange(e.target.value)}
         disabled={loading}
         className={`text-xs border-0 bg-transparent focus:outline-none font-medium text-gray-800 min-w-[100px] sm:min-w-[120px] ${
-          loading ? 'opacity-50 cursor-not-allowed' : ''
+          loading ? "opacity-50 cursor-not-allowed" : ""
         }`}
       >
         <option value="" disabled>
-          {loading ? 'Switching...' : 'Select'}
+          {loading ? "Switching..." : "Select"}
         </option>
         {hostels.map((hostel) => (
           <option key={hostel.id} value={hostel.id}>

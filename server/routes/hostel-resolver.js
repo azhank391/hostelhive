@@ -6,17 +6,14 @@ const { verifyToken } = require("../middleware/authMiddleware");
 // Get all hostels for the authenticated user (hostel owner)
 router.get("/hostels", verifyToken, async (req, res) => {
   try {
-
     if (req.user.role !== "owner") {
-      return res
-        .status(403)
-        .json({
-          message: "Access denied. Only hostel owners can access this.",
-        });
+      return res.status(403).json({
+        message: "Access denied. Only hostel owners can access this.",
+      });
     }
 
-    console.log('✅ DEBUG: User is owner, proceeding with query');
-    
+    console.log("✅ DEBUG: User is owner, proceeding with query");
+
     const hostels = await Hostel.findAll({
       where: { ownerId: req.user.id },
       attributes: [
@@ -32,7 +29,10 @@ router.get("/hostels", verifyToken, async (req, res) => {
       order: [["name", "ASC"]],
     });
 
-    console.log('✅ DEBUG: Database query successful, hostels found:', hostels.length);
+    console.log(
+      "✅ DEBUG: Database query successful, hostels found:",
+      hostels.length
+    );
     res.json(hostels);
   } catch (error) {
     console.error("❌ Error fetching owner hostels:", error);
@@ -54,7 +54,7 @@ router.get("/resolve/:subdomain", async (req, res) => {
         subdomain: subdomain.toLowerCase(),
         isActive: true,
       },
-  attributes: ["id", "name", "subdomain", "isActive", "plan_id", "email"],
+      attributes: ["id", "name", "subdomain", "isActive", "plan_id", "email"],
     });
 
     if (!hostel) {
@@ -154,6 +154,5 @@ router.get("/context", verifyToken, async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
-
 
 module.exports = router;
