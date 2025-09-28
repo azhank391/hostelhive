@@ -92,6 +92,19 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATE,
         allowNull: true,
       },
+      // Subscription lifecycle helpers
+      canceled_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      cancel_at_period_end: {
+        type: DataTypes.BOOLEAN,
+        allowNull: true,
+      },
+      billing_cycle_anchor: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
       // Logical plan identifier in our system (basic, pro, etc.)
       plan_id: {
         type: DataTypes.STRING(50),

@@ -9,11 +9,14 @@ dotenv.config();
 
 //intialize express app
 const app = express();
+
+// Mount Stripe webhook BEFORE json parser; the route itself uses express.raw
 const webhookRoutes = require("./routes/webhook");
 app.use('/api/webhooks', webhookRoutes);
+
 //middleware
 app.use(cors()); //enable CORS
-app.use(express.json()); //parse JSON bodies
+app.use(express.json()); //parse JSON bodies for regular routes
 app.use(morgan("dev")); //HTTP request logger
 
 //health check route

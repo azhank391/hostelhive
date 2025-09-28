@@ -22,7 +22,7 @@ const {
   updateComplaintStatus,
   getAllVisitorLogs,
   createVisitorLog,
-  checkoutVisitor,
+  createStaff,
   updateVisitorLog, // ✅ NEW
   deleteVisitorLog, // ✅ NEW
   getVisitorStats, // ✅ NEW
@@ -30,6 +30,7 @@ const {
   exportStudents, // ✅ NEW
 } = require("../controllers/adminController");
 const { getUserHostels } = require("../controllers/authController");
+const { enforceQuota } = require("../middleware/quotaMiddleware");
 const { verifyToken } = require("../middleware/authMiddleware");
 const {
   validateHostelAccess,
@@ -91,6 +92,7 @@ router.post(
   "/rooms",
   verifyToken,
   requirePermission("room_create"),
+  enforceQuota("rooms"),
   createRoom
 );
 router.put(
@@ -117,6 +119,7 @@ router.post(
   "/students",
   verifyToken,
   requirePermission("student_create"),
+  enforceQuota("students"),
   createStudent
 );
 router.put(
@@ -143,6 +146,7 @@ router.post(
   "/wardens",
   verifyToken,
   requirePermission("staff_create"),
+  enforceQuota("wardens"),
   createWarden
 );
 router.put(
@@ -209,13 +213,15 @@ router.post(
   "/visitor-logs",
   verifyToken,
   requirePermission("visitor_create"),
+  enforceQuota("visitors"),
   createVisitorLog
 );
-router.put(
-  "/visitor-logs/:id/checkout",
+router.post(
+  "/staff",
   verifyToken,
-  requirePermission("visitor_update"),
-  checkoutVisitor
+  requirePermission("staff_create"),
+  enforceQuota("staff"),
+  createStaff
 );
 router.put(
   "/visitor-logs/:id",

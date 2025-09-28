@@ -155,24 +155,26 @@ function BillingPageClient() {
       )}
 
       {/* Canceled banner */}
-      {subscriptionStatus?.subscription_status === "canceled" &&
-        subscriptionStatus?.current_period_end && (
-          <div className="rounded-md bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900">
-            <p className="font-medium">
-              Subscription will end on{" "}
-              {new Date(subscriptionStatus.current_period_end).toLocaleString()}
-            </p>
-            <p className="mt-1">
-              You have access until the end of the current billing period. You
-              can resume before it ends.
-            </p>
-            <div className="mt-2">
-              <Button variant="outline" onClick={handleResume}>
-                Resume subscription
-              </Button>
-            </div>
+      {subscriptionStatus?.subscription_status === "canceled" && (
+        <div className="rounded-md bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900">
+          <p className="font-medium">
+            {subscriptionStatus?.current_period_end
+              ? `Subscription will end on ${new Date(
+                  subscriptionStatus.current_period_end
+                ).toLocaleString()}`
+              : "Subscription cancellation scheduled. End date is being confirmed."}
+          </p>
+          <p className="mt-1">
+            You have access until the end of the current billing period. You
+            can resume before it ends.
+          </p>
+          <div className="mt-2">
+            <Button variant="outline" onClick={handleResume}>
+              Resume subscription
+            </Button>
           </div>
-        )}
+        </div>
+      )}
 
       {/* Current Status */}
       <Card>
@@ -207,7 +209,8 @@ function BillingPageClient() {
               {new Date(subscriptionStatus.trial_end).toLocaleDateString()}
             </p>
           )}
-          {subscriptionStatus?.stripe_subscription_id && (
+          {subscriptionStatus?.stripe_subscription_id &&
+            subscriptionStatus?.subscription_status !== 'canceled' && (
             <div className="mt-4">
               <Button variant="outline" onClick={handleCancel}>
                 Cancel at period end

@@ -1,8 +1,62 @@
+
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const { Hostel } = require("../models");
+const stripeService = require("../services/stripeService");
+const { normalizePlanId, derivePeriodDatesFromSubscription } = require("../utils/billingUtils");
+
+// Helper function to update hostel subscription data
+async function updateHostelWithSubscription(hostel, subscription) {
+  if (!subscription) return;
+
+  // Defensive: if subscription is a lightweight object without period dates, refetch full
+  if (!subscription.current_period_end || !subscription.current_period_start) {
+    try {
+      const fresh = await stripeService.retrieveSubscription(subscription.id);
+      if (fresh) subscription = fresh;
+    } catch (e) {
+      console.warn('Webhook: failed to refetch subscription for full data', e?.message || e);
+    }
+  }
+
+  // Get plan from subscription metadata or price metadata
+  const item = subscription.items?.data?.[0];
+  const fromSubMetadata = subscription.metadata?.plan_id;
+  const fromPriceMetadata = item?.price?.metadata?.plan_id;
+  const planId = normalizePlanId(fromSubMetadata || fromPriceMetadata || "basic");
+
+  const updateData = {
+    stripe_subscription_id: subscription.id,
+    subscription_status: subscription.cancel_at_period_end
+      ? "canceled"
+      : subscription.status,
+    current_period_start: subscription.current_period_start
+      ? new Date(subscription.current_period_start * 1000)
+      : derivePeriodDatesFromSubscription(subscription).start || hostel.current_period_start,
+    current_period_end: subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000)
+      : derivePeriodDatesFromSubscription(subscription).end || hostel.current_period_end,
+    trial_end: subscription.trial_end
+      ? new Date(subscription.trial_end * 1000)
+      : hostel.trial_end,
+    plan_id: planId,
+    isPaid: true,
+    isActive: true,
+    cancel_at_period_end: !!subscription.cancel_at_period_end,
+    canceled_at: subscription.canceled_at
+      ? new Date(subscription.canceled_at * 1000)
+      : hostel.canceled_at,
+    billing_cycle_anchor: subscription.billing_cycle_anchor
+      ? new Date(subscription.billing_cycle_anchor * 1000)
+      : hostel.billing_cycle_anchor,
+  };
+
+  console.log("📝 Updating hostel:", hostel.id, JSON.stringify(updateData, null, 2));
+  await hostel.update(updateData);
+}
 
 exports.handleStripeWebhook = async (req, res) => {
   const sig = req.headers["stripe-signature"];
+
   let event;
   try {
     event = stripe.webhooks.constructEvent(
@@ -11,271 +65,78 @@ exports.handleStripeWebhook = async (req, res) => {
       process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
-    console.log("webhook signature verification failed:", err.message);
+    console.error("❌ Webhook signature verification failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
-  // Handle the event
+
+  console.log("🎯 Processing webhook:", event.type, event.id);
+
   try {
     switch (event.type) {
-      case "checkout.session.completed":
-        await handleCheckoutSessionCompleted(event.data.object);
+      case "checkout.session.completed": {
+        const session = event.data.object;
+        console.log("💳 Checkout completed:", session.id);
+
+        const hostel = await Hostel.findOne({
+          where: { stripe_customer_id: session.customer },
+        });
+
+        if (!hostel) {
+          console.error("❌ No hostel found for customer:", session.customer);
+          break;
+        }
+
+        if (session.subscription) {
+          const subscription = await stripeService.retrieveSubscription(
+            session.subscription
+          );
+          await updateHostelWithSubscription(hostel, subscription);
+        }
         break;
+      }
+
       case "customer.subscription.created":
-      case "customer.subscription.updated":
-        await handleSubscriptionUpdate(event.data.object);
+      case "customer.subscription.updated": {
+        const subscription = event.data.object;
+        console.log("🔄 Subscription event:", subscription.id);
+
+        const hostelForSub = await Hostel.findOne({
+          where: { stripe_customer_id: subscription.customer },
+        });
+
+        if (hostelForSub) {
+          await updateHostelWithSubscription(hostelForSub, subscription);
+        }
         break;
-      case "customer.subscription.deleted":
-        await handleSubscriptionCanceled(event.data.object);
-        break;
-      case "invoice.payment_succeeded":
-        await handlePaymentSucceeded(event.data.object);
-        break;
-      case "invoice.payment_failed":
-        await handlePaymentFailed(event.data.object);
-        break;
-      case "invoice.created":
-      case "invoice.finalized":
+      }
+
       case "invoice.paid":
-        await handleInvoiceEvent(event.type, event.data.object);
+      case "invoice.finalized": {
+        const invoice = event.data.object;
+        console.log("📄 Invoice event:", invoice.id);
+
+        if (invoice.subscription) {
+          const sub = await stripeService.retrieveSubscription(
+            invoice.subscription
+          );
+          const hostelForInvoice = await Hostel.findOne({
+            where: { stripe_customer_id: invoice.customer },
+          });
+
+          if (hostelForInvoice) {
+            await updateHostelWithSubscription(hostelForInvoice, sub);
+          }
+        }
         break;
-      case "payment_intent.succeeded":
-      case "payment_intent.created":
-        console.log(
-          `ℹ️ Payment Intent event: ${event.type} for ${event.data.object.id}`
-        );
-        break;
-      case "customer.created":
-      case "customer.updated":
-      case "payment_method.attached":
-      case "product.created":
-      case "plan.created":
-      case "price.created":
-      case "charge.succeeded":
-        console.log(`ℹ️ Informational event: ${event.type}`);
-        break;
+      }
+
       default:
-        console.log(`Unhandled event type ${event.type}`);
+        console.log("ℹ️ Unhandled event type:", event.type);
     }
+
     res.json({ received: true });
-  } catch (error) {
-    console.error("webhook handler error;", error);
-    res.status(500).json({ error: "Webhook handler failed" });
+  } catch (err) {
+    console.error("❌ Webhook handler error:", err.message);
+    return res.status(500).send(`Webhook Handler Error: ${err.message}`);
   }
 };
-async function handleSubscriptionUpdate(subscription) {
-  const hostel = await Hostel.findOne({
-    where: { stripe_customer_id: subscription.customer },
-  });
-  if (hostel) {
-    // Prefer canonical plan_id from price metadata; never blindly trust nickname
-    let planId = hostel.plan_id;
-    try {
-      // Prefer subscription metadata set during Checkout
-      const fromSubMetadata = subscription?.metadata?.plan_id;
-      const item = subscription.items?.data?.[0];
-      const fromPriceMetadata = item?.price?.metadata?.plan_id;
-      planId = fromSubMetadata || fromPriceMetadata || planId;
-    } catch {}
-    // Store canonical ids from metadata as-is
-
-    await hostel.update({
-      stripe_subscription_id: subscription.id,
-      subscription_status: subscription.status,
-      current_period_start: subscription.current_period_start
-        ? new Date(subscription.current_period_start * 1000)
-        : null,
-      current_period_end: subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000)
-        : null,
-      trial_end: subscription.trial_end
-        ? new Date(subscription.trial_end * 1000)
-        : null,
-      plan_id: planId || hostel.plan_id,
-    });
-  }
-}
-async function handleSubscriptionCanceled(subscription) {
-  const hostel = await Hostel.findOne({
-    where: { stripe_subscription_id: subscription.id },
-  });
-  if (hostel) {
-    await hostel.update({
-      subscription_status: "canceled",
-    });
-  }
-}
-
-async function handlePaymentSucceeded(invoice) {
-  try {
-    const customerId = invoice.customer;
-    const subscriptionId = invoice.subscription;
-
-    console.log("✅ Invoice paid for customer:", customerId);
-
-    // Update hostel based on actual subscription status (not assuming 'active')
-    const hostel = await Hostel.findOne({
-      where: { stripe_customer_id: customerId },
-    });
-    if (hostel) {
-      try {
-        let planId = hostel.plan_id;
-        if (subscriptionId) {
-          const sub =
-            await require("../services/stripeService").retrieveSubscription(
-              subscriptionId
-            );
-          const item = sub?.items?.data?.[0];
-          const fromSubMetadata = sub?.metadata?.plan_id;
-          const fromPriceMetadata = item?.price?.metadata?.plan_id;
-          planId = fromSubMetadata || fromPriceMetadata || planId;
-          await hostel.update({
-            isPaid: true,
-            isActive: true,
-            stripe_subscription_id: subscriptionId,
-            subscription_status: sub?.status || hostel.subscription_status,
-            current_period_start: sub?.current_period_start
-              ? new Date(sub.current_period_start * 1000)
-              : hostel.current_period_start,
-            current_period_end: sub?.current_period_end
-              ? new Date(sub.current_period_end * 1000)
-              : hostel.current_period_end,
-            trial_end: sub?.trial_end
-              ? new Date(sub.trial_end * 1000)
-              : hostel.trial_end,
-            plan_id: planId,
-          });
-        } else {
-          // No subscription id on invoice (rare), still mark paid/active
-          await hostel.update({
-            isPaid: true,
-            isActive: true,
-            plan_id: planId,
-          });
-        }
-        console.log("🏠 Hostel updated:", hostel.id);
-      } catch (e) {
-        console.error("❌ Error syncing subscription on payment_succeeded:", e);
-      }
-    } else {
-      console.warn("⚠️ No hostel found for customer", customerId);
-    }
-  } catch (err) {
-    console.error("❌ Error in handlePaymentSucceeded:", err);
-  }
-}
-
-async function handleInvoiceEvent(type, invoice) {
-  try {
-    const customerId = invoice.customer;
-    const hostel = await Hostel.findOne({
-      where: { stripe_customer_id: customerId },
-    });
-    if (!hostel) {
-      console.warn(
-        `⚠️ Invoice event ${type} but no hostel for customer ${customerId}`
-      );
-      return;
-    }
-
-    if (type === "invoice.paid" || type === "invoice.finalized") {
-      try {
-        const subscriptionId = invoice.subscription;
-        if (subscriptionId) {
-          const sub =
-            await require("../services/stripeService").retrieveSubscription(
-              subscriptionId
-            );
-          const item = sub?.items?.data?.[0];
-          const fromSubMetadata = sub?.metadata?.plan_id;
-          const fromPriceMetadata = item?.price?.metadata?.plan_id;
-          const planId = fromSubMetadata || fromPriceMetadata || hostel.plan_id;
-          await hostel.update({
-            isPaid: true,
-            isActive: true,
-            plan_id: planId,
-            stripe_subscription_id: subscriptionId,
-            subscription_status: sub?.status || hostel.subscription_status,
-            current_period_start: sub?.current_period_start
-              ? new Date(sub.current_period_start * 1000)
-              : hostel.current_period_start,
-            current_period_end: sub?.current_period_end
-              ? new Date(sub.current_period_end * 1000)
-              : hostel.current_period_end,
-            trial_end: sub?.trial_end
-              ? new Date(sub.trial_end * 1000)
-              : hostel.trial_end,
-          });
-        } else {
-          // No subscription on invoice; minimally mark as paid/active
-          await hostel.update({ isPaid: true, isActive: true });
-        }
-      } catch (e) {
-        console.error(`❌ Error syncing on ${type}:`, e);
-      }
-    }
-    console.log(`✅ Processed invoice event ${type} for hostel ${hostel.id}`);
-  } catch (err) {
-    console.error(`❌ Error in handleInvoiceEvent(${type}):`, err);
-  }
-}
-
-async function handleCheckoutSessionCompleted(session) {
-  try {
-    // session.subscription can be a string ID
-    const subscriptionId = session.subscription;
-    const customerId = session.customer;
-    const hostel = await Hostel.findOne({
-      where: { stripe_customer_id: customerId },
-    });
-    if (!hostel) return;
-
-    // Try to infer plan_id
-    let planId = hostel.plan_id;
-    let subStatus = "active";
-    let currentPeriodStart = hostel.current_period_start;
-    let currentPeriodEnd = hostel.current_period_end;
-    let trialEnd = hostel.trial_end;
-    try {
-      const subscription = subscriptionId
-        ? await require("../services/stripeService").retrieveSubscription(
-            subscriptionId
-          )
-        : null;
-      const item = subscription?.items?.data?.[0];
-      const fromSubMetadata = subscription?.metadata?.plan_id;
-      const fromPriceMetadata = item?.price?.metadata?.plan_id;
-      planId = fromSubMetadata || fromPriceMetadata || planId;
-      if (subscription) {
-        subStatus = subscription.status || subStatus;
-        currentPeriodStart = subscription.current_period_start
-          ? new Date(subscription.current_period_start * 1000)
-          : currentPeriodStart;
-        currentPeriodEnd = subscription.current_period_end
-          ? new Date(subscription.current_period_end * 1000)
-          : currentPeriodEnd;
-        trialEnd = subscription.trial_end
-          ? new Date(subscription.trial_end * 1000)
-          : trialEnd;
-      }
-    } catch {}
-
-    // Store canonical ids from metadata as-is
-
-    await hostel.update({
-      stripe_subscription_id: subscriptionId || hostel.stripe_subscription_id,
-      subscription_status: subStatus,
-      plan_id: planId || hostel.plan_id,
-      isPaid: true,
-      isActive: true,
-      current_period_start: currentPeriodStart,
-      current_period_end: currentPeriodEnd,
-      trial_end: trialEnd,
-    });
-    console.log(
-      "✅ checkout.session.completed processed for hostel",
-      hostel.id
-    );
-  } catch (err) {
-    console.error("❌ Error in handleCheckoutSessionCompleted:", err);
-  }
-}

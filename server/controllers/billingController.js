@@ -1,9 +1,12 @@
-const stripeService = require("../services/stripeService");
-const { Hostel, User } = require("../models");
 
+const stripeService = require("../services/stripeService");
+const { Hostel } = require("../models");
+const { normalizePlanId, derivePeriodDatesFromSubscription } = require("../utils/billingUtils");
+
+// Create a Stripe Checkout session for subscriptions
 exports.createCheckoutSession = async (req, res) => {
   try {
-    const { priceId, planId, isTrial } = req.body;
+    const { priceId, planId: rawPlanId, isTrial } = req.body;
     const hostelId = req.user.hostelId;
 
     if (req.user.role !== "owner") {
@@ -16,6 +19,9 @@ exports.createCheckoutSession = async (req, res) => {
     if (!hostel) {
       return res.status(404).send("Hostel not found");
     }
+
+    const planId = normalizePlanId(rawPlanId);
+
     // Prevent re-subscribing to the same plan while active
     if (hostel.subscription_status === "active" && hostel.plan_id === planId) {
       return res.status(400).json({
@@ -23,7 +29,8 @@ exports.createCheckoutSession = async (req, res) => {
         code: "already_subscribed",
       });
     }
-    //create customer if not exists
+
+    // Ensure Stripe customer exists
     let customerId = hostel.stripe_customer_id;
     if (!customerId) {
       const customer = await stripeService.createCustomer(
@@ -34,11 +41,10 @@ exports.createCheckoutSession = async (req, res) => {
       customerId = customer.id;
       await hostel.update({ stripe_customer_id: customerId });
     }
-    //create session
-    // Do NOT persist plan selection yet; DB updates only via Checkout success/webhooks
 
-    // Dynamic trials: apply 14-day trial only when isTrial=true AND planId==='basic'
+    // Dynamic trials: 14-day trial only when isTrial=true AND planId==='basic'
     const trialDays = isTrial && planId === "basic" ? 14 : undefined;
+
     const session = await stripeService.createCheckoutSession(
       customerId,
       priceId,
@@ -55,6 +61,7 @@ exports.createCheckoutSession = async (req, res) => {
   }
 };
 
+// Get current subscription status and reconcile missing dates if needed
 exports.getSubscriptionStatus = async (req, res) => {
   try {
     const hostelId = req.user.hostelId;
@@ -62,8 +69,9 @@ exports.getSubscriptionStatus = async (req, res) => {
     if (!hostel) {
       return res.status(404).send("Hostel not found");
     }
-    // If we have a Stripe subscription but missing dates, fetch from Stripe as a safety net
+
     try {
+      // Reconcile from Stripe if subscription exists but dates missing
       if (
         hostel.stripe_subscription_id &&
         (!hostel.current_period_end || !hostel.current_period_start)
@@ -72,20 +80,24 @@ exports.getSubscriptionStatus = async (req, res) => {
           hostel.stripe_subscription_id
         );
         const item = sub?.items?.data?.[0];
-        const fromMetadata = item?.price?.metadata?.plan_id;
-        const planId = fromMetadata || hostel.plan_id;
+        const fromMetadata = sub?.metadata?.plan_id || item?.price?.metadata?.plan_id;
+        const planId = normalizePlanId(fromMetadata || hostel.plan_id);
+        const derived = derivePeriodDatesFromSubscription(sub);
         await hostel.update({
           current_period_start: sub?.current_period_start
             ? new Date(sub.current_period_start * 1000)
-            : hostel.current_period_start,
+            : derived.start || hostel.current_period_start,
           current_period_end: sub?.current_period_end
             ? new Date(sub.current_period_end * 1000)
-            : hostel.current_period_end,
+            : derived.end || hostel.current_period_end,
           trial_end: sub?.trial_end
             ? new Date(sub.trial_end * 1000)
             : hostel.trial_end,
-          subscription_status: sub?.status || hostel.subscription_status,
+          subscription_status: sub?.cancel_at_period_end ? "canceled" : sub?.status || hostel.subscription_status,
           plan_id: planId,
+          cancel_at_period_end: !!sub?.cancel_at_period_end,
+          canceled_at: sub?.canceled_at ? new Date(sub.canceled_at * 1000) : hostel.canceled_at,
+          billing_cycle_anchor: sub?.billing_cycle_anchor ? new Date(sub.billing_cycle_anchor * 1000) : hostel.billing_cycle_anchor,
         });
       }
     } catch (e) {
@@ -94,15 +106,17 @@ exports.getSubscriptionStatus = async (req, res) => {
         e?.message || e
       );
     }
-    // Return canonical plan id stored in DB as-is (source of truth)
-    let plan_id = hostel.plan_id;
+
     res.json({
       subscription_status: hostel.subscription_status,
-      plan_id,
+      plan_id: hostel.plan_id,
       stripe_subscription_id: hostel.stripe_subscription_id,
       current_period_start: hostel.current_period_start,
       current_period_end: hostel.current_period_end,
       trial_end: hostel.trial_end,
+      cancel_at_period_end: hostel.cancel_at_period_end,
+      canceled_at: hostel.canceled_at,
+      billing_cycle_anchor: hostel.billing_cycle_anchor,
     });
   } catch (error) {
     console.error("Error fetching subscription status:", error);
@@ -116,65 +130,91 @@ exports.syncCheckoutSession = async (req, res) => {
     const { sessionId } = req.body;
     if (!sessionId)
       return res.status(400).json({ message: "sessionId required" });
+
     const hostelId = req.user.hostelId;
     const hostel = await Hostel.findByPk(hostelId);
     if (!hostel) return res.status(404).json({ message: "Hostel not found" });
 
+    console.log('🔄 Syncing checkout session:', { sessionId, hostelId });
+
     const session = await stripeService.getCheckoutSession(sessionId);
     if (!session) return res.status(404).json({ message: "Session not found" });
 
-    const subscriptionId =
-      typeof session.subscription === "string"
-        ? session.subscription
-        : session.subscription?.id;
+    const subscriptionId = session.subscription?.id || session.subscription;
+    if (!subscriptionId) {
+      console.error('⚠️ No subscription found in session:', sessionId);
+      return res.status(400).json({ message: "No subscription in session" });
+    }
+
     let planId = hostel.plan_id;
     let currentPeriodStart = hostel.current_period_start;
     let currentPeriodEnd = hostel.current_period_end;
     let trialEnd = hostel.trial_end;
-    let subStatus = hostel.subscription_status;
+  let subStatus = hostel.subscription_status;
+  let cancelAtPeriodEnd; // boolean | undefined
+  let canceledAt; // Date | undefined
+  let billingCycleAnchor; // Date | undefined
+
     try {
-      // Prefer expanded subscription from session if available
-      const sub =
-        typeof session.subscription === "object"
-          ? session.subscription
-          : subscriptionId
-          ? await stripeService.retrieveSubscription(subscriptionId)
-          : null;
+      const sub = await stripeService.retrieveSubscription(subscriptionId);
+      console.log('📦 Retrieved subscription:', {
+        id: sub.id,
+        status: sub.status,
+        periodStart: sub.current_period_start,
+        periodEnd: sub.current_period_end,
+        metadata: sub.metadata
+      });
+
       if (sub) {
+        const derived = derivePeriodDatesFromSubscription(sub);
         const item = sub?.items?.data?.[0];
         const fromSubMetadata = sub?.metadata?.plan_id;
         const fromPriceMetadata = item?.price?.metadata?.plan_id;
         if (fromSubMetadata || fromPriceMetadata)
-          planId = fromSubMetadata || fromPriceMetadata;
+          planId = normalizePlanId(fromSubMetadata || fromPriceMetadata);
         currentPeriodStart = sub?.current_period_start
           ? new Date(sub.current_period_start * 1000)
-          : currentPeriodStart;
+          : derived.start || currentPeriodStart;
         currentPeriodEnd = sub?.current_period_end
           ? new Date(sub.current_period_end * 1000)
-          : currentPeriodEnd;
+          : derived.end || currentPeriodEnd;
         trialEnd = sub?.trial_end ? new Date(sub.trial_end * 1000) : trialEnd;
-        subStatus = sub?.status || subStatus;
+        subStatus = sub?.cancel_at_period_end ? "canceled" : sub?.status || subStatus;
+        cancelAtPeriodEnd = !!sub?.cancel_at_period_end;
+        canceledAt = sub?.canceled_at ? new Date(sub.canceled_at * 1000) : undefined;
+        billingCycleAnchor = sub?.billing_cycle_anchor
+          ? new Date(sub.billing_cycle_anchor * 1000)
+          : undefined;
       }
     } catch {}
 
-    // Keep canonical plan ids as provided by Stripe metadata
-
-    await hostel.update({
+    const updateData = {
       stripe_subscription_id: subscriptionId || hostel.stripe_subscription_id,
       subscription_status: subStatus,
-      plan_id: planId || hostel.plan_id,
+      plan_id: normalizePlanId(planId || hostel.plan_id),
       isPaid: !!subscriptionId || hostel.isPaid,
       isActive: !!subscriptionId || hostel.isActive,
       current_period_start: currentPeriodStart,
       current_period_end: currentPeriodEnd,
       trial_end: trialEnd,
-    });
+    };
+
+    // add cycle flags if present
+  if (typeof cancelAtPeriodEnd !== 'undefined') updateData.cancel_at_period_end = cancelAtPeriodEnd;
+  if (typeof canceledAt !== 'undefined') updateData.canceled_at = canceledAt;
+  if (typeof billingCycleAnchor !== 'undefined') updateData.billing_cycle_anchor = billingCycleAnchor;
+
+    await hostel.update(updateData);
 
     res.json({
       subscription_status: hostel.subscription_status,
       plan_id: hostel.plan_id,
+      current_period_start: hostel.current_period_start,
       current_period_end: hostel.current_period_end,
       trial_end: hostel.trial_end,
+      cancel_at_period_end: hostel.cancel_at_period_end,
+      canceled_at: hostel.canceled_at,
+      billing_cycle_anchor: hostel.billing_cycle_anchor,
     });
   } catch (error) {
     console.error("Error syncing checkout session:", error);
@@ -182,7 +222,7 @@ exports.syncCheckoutSession = async (req, res) => {
   }
 };
 
-// Cancel subscription at period end
+// Cancel subscription at period end (grace access until end)
 exports.cancelSubscription = async (req, res) => {
   try {
     const hostelId = req.user.hostelId;
@@ -193,15 +233,40 @@ exports.cancelSubscription = async (req, res) => {
         .status(400)
         .json({ message: "No active subscription to cancel" });
 
+    console.log('🔄 Canceling subscription:', {
+      hostelId,
+      subId: hostel.stripe_subscription_id
+    });
+
     const sub = await stripeService.cancelSubscription(
       hostel.stripe_subscription_id
     );
-    await hostel.update({
-      // Stripe keeps status 'active' until the end of the period; we set local status to 'canceled' for UX
+
+    const updateData = {
       subscription_status: "canceled",
       current_period_end: sub?.current_period_end
         ? new Date(sub.current_period_end * 1000)
         : hostel.current_period_end,
+      plan_id: hostel.plan_id,
+      isPaid: true,
+      isActive: true,
+      cancel_at_period_end: true,
+      canceled_at: sub?.canceled_at ? new Date(sub.canceled_at * 1000) : hostel.canceled_at,
+      billing_cycle_anchor: sub?.billing_cycle_anchor
+        ? new Date(sub.billing_cycle_anchor * 1000)
+        : hostel.billing_cycle_anchor,
+    };
+
+    console.log('💾 Updating hostel for cancellation:', updateData);
+
+    await hostel.update(updateData);
+
+    const updated = await Hostel.findByPk(hostelId);
+    console.log('✅ Hostel after cancel:', {
+      id: updated.id,
+      status: updated.subscription_status,
+      planId: updated.plan_id,
+      end: updated.current_period_end
     });
 
     res.json({
@@ -224,19 +289,30 @@ exports.resumeSubscription = async (req, res) => {
     if (!hostel.stripe_subscription_id)
       return res.status(400).json({ message: "No subscription to resume" });
 
-    const sub = await require("../services/stripeService").resumeSubscription(
+    const sub = await stripeService.resumeSubscription(
       hostel.stripe_subscription_id
     );
     await hostel.update({
       subscription_status: sub?.status || "active",
+      current_period_start: sub?.current_period_start
+        ? new Date(sub.current_period_start * 1000)
+        : hostel.current_period_start,
       current_period_end: sub?.current_period_end
         ? new Date(sub.current_period_end * 1000)
         : hostel.current_period_end,
+      cancel_at_period_end: false,
+      canceled_at: null,
+      billing_cycle_anchor: sub?.billing_cycle_anchor
+        ? new Date(sub.billing_cycle_anchor * 1000)
+        : hostel.billing_cycle_anchor,
+      isActive: true,
+      isPaid: true,
     });
     res.json({
       message: "Subscription resumed",
       subscription_status: hostel.subscription_status,
       current_period_end: hostel.current_period_end,
+      cancel_at_period_end: hostel.cancel_at_period_end,
     });
   } catch (error) {
     console.error("Error resuming subscription:", error);
@@ -244,7 +320,7 @@ exports.resumeSubscription = async (req, res) => {
   }
 };
 
-// Cancel immediately (used for trials or if the user wants to end access now)
+// Cancel immediately (end access now)
 exports.cancelSubscriptionNow = async (req, res) => {
   try {
     const hostelId = req.user.hostelId;
@@ -253,10 +329,9 @@ exports.cancelSubscriptionNow = async (req, res) => {
     if (!hostel.stripe_subscription_id)
       return res.status(400).json({ message: "No subscription to cancel" });
 
-    const sub =
-      await require("../services/stripeService").cancelSubscriptionNow(
-        hostel.stripe_subscription_id
-      );
+    const sub = await stripeService.cancelSubscriptionNow(
+      hostel.stripe_subscription_id
+    );
     await hostel.update({
       subscription_status: sub?.status || "canceled",
       current_period_end: sub?.canceled_at
@@ -274,3 +349,4 @@ exports.cancelSubscriptionNow = async (req, res) => {
       .json({ message: "Failed to cancel subscription immediately" });
   }
 };
+

@@ -1,5 +1,6 @@
 const { Hostel, User, Room, VisitorLog, Complaint } = require("../models");
 const planLimits = require("../config/planLimits");
+const { normalizePlanId } = require("../utils/billingUtils");
 
 // Map resource keys to models and count predicates
 const resourceConfig = {
@@ -63,7 +64,7 @@ const enforceQuota = (resourceKey) => {
       const isOwnerHostelQuota = resourceKey === "hostels";
       let hostelId = req.params.hostelId || req.hostelId || req.user?.hostelId;
       let hostel = null;
-      let planId;
+  let planId;
       if (!isOwnerHostelQuota) {
         if (!hostelId) {
           return res
@@ -78,14 +79,17 @@ const enforceQuota = (resourceKey) => {
           return res.status(404).json({ message: "Hostel not found" });
         }
         // Determine enforcement based on subscription_status and period bounds
-        const now = new Date();
-        const hasAccessDuringCancel =
+        const now = Date.now();
+        const periodEnd = hostel.current_period_end
+          ? new Date(hostel.current_period_end).getTime()
+          : null;
+        const withinGrace =
           hostel.subscription_status === "canceled" &&
-          hostel.current_period_end &&
-          now < hostel.current_period_end;
+          !!periodEnd &&
+          now < periodEnd;
 
         if (
-          (hostel.subscription_status === "active" || hasAccessDuringCancel) &&
+          (hostel.subscription_status === "active" || withinGrace) &&
           hostel.plan_id
         ) {
           // Active subscription or canceled-but-still-in-period → enforce actual plan limits
@@ -98,11 +102,35 @@ const enforceQuota = (resourceKey) => {
           planId = "free";
         }
       } else {
-        // For hostels quota (per-owner), default to free for owners without a hostel subscription
+        // For hostels quota (per-owner), derive the owner's best plan from any of their hostels
+        const ownerId = req?.user?.id;
         planId = "free";
+        if (ownerId) {
+          const ownerHostels = await Hostel.findAll({ where: { ownerId } });
+          // Determine highest entitlement: pro > basic > trial_basic > free
+          let best = "free";
+          const nowTs = Date.now();
+          for (const h of ownerHostels) {
+            const status = h.subscription_status;
+            const periodEndTs = h.current_period_end ? new Date(h.current_period_end).getTime() : null;
+            const inGrace = status === "canceled" && !!periodEndTs && nowTs < periodEndTs;
+            const isActiveLike = status === "active" || inGrace;
+            const isTrial = status === "trialing";
+            let candidate = "free";
+            if (isActiveLike && h.plan_id) {
+              candidate = normalizePlanId(h.plan_id) || h.plan_id;
+            } else if (isTrial) {
+              candidate = "trial_basic";
+            }
+            const rank = (p) => (p === "pro" ? 3 : p === "basic" ? 2 : p === "trial_basic" ? 1 : 0);
+            if (rank(candidate) > rank(best)) best = candidate;
+          }
+          planId = best;
+        }
       }
-      // Use plan_id as stored in DB; no legacy fallbacks
-      const plan = planLimits[planId] || planLimits.free;
+  // Normalize plan id and map to limits
+  const normalized = normalizePlanId(planId) || planId;
+  const plan = planLimits[normalized] || planLimits.free;
 
       const cfg = resourceConfig[resourceKey];
       if (!cfg) return next();
@@ -111,6 +139,9 @@ const enforceQuota = (resourceKey) => {
       const limit = plan[cfg.limitKey] ?? Number.MAX_SAFE_INTEGER;
 
       if (currentUsage >= limit) {
+        const upgradeUrl = hostelId
+          ? `/dashboard/hostels/${hostelId}/billing?plan=pro`
+          : `/dashboard/billing?plan=pro`;
         return res.status(402).json({
           message: `Quota exceeded for ${resourceKey}`,
           code: "quota_exceeded",
@@ -119,7 +150,7 @@ const enforceQuota = (resourceKey) => {
           plan_id: planId,
           limit,
           currentUsage,
-          upgradeUrl: `/dashboard/hostels/${hostelId}/billing?plan=pro`,
+          upgradeUrl,
         });
       }
 

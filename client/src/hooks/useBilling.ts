@@ -2,12 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/http';
 
 interface SubscriptionStatus {
-    subscription_status: string;
-    plan_id: string;
-    stripe_subscription_id?: string;
-    current_period_start?: string;
-    current_period_end:string;
-    trial_end:string;
+    subscription_status?: 'active' | 'canceled' | 'past_due' | 'unpaid' | 'trialing' | string | null;
+    plan_id?: string | null;
+    stripe_subscription_id?: string | null;
+    current_period_start?: string | null;
+    current_period_end?: string | null;
+    trial_end?: string | null;
 }
 
 export const useBilling = () => {
