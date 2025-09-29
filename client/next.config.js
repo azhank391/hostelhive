@@ -1,21 +1,21 @@
-const path = require('path');
+const path = require("path");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Tell Next.js to treat client folder as the root for file tracing
   outputFileTracingRoot: __dirname,
-  
+
   // Alternative: Point to workspace root but be explicit
   // outputFileTracingRoot: path.join(__dirname, '../'),
-  
+
   // Maximum SWC performance (Next.js 15 compatible)
-  
+
   // Next.js 15 experimental features for speed
   experimental: {
-    optimizePackageImports: ['react', 'react-dom'], // Removed lucide-react to fix module resolution
+    optimizePackageImports: ["react", "react-dom"], // Removed lucide-react to fix module resolution
     optimizeCss: true,
   },
-  
+
   // Next.js 15 moved options to root level
   typescript: {
     ignoreBuildErrors: false, // Re-enable TypeScript checking during build
@@ -29,18 +29,18 @@ const nextConfig = {
 
   // Optimized image configuration for faster builds
   images: {
-    formats: ['image/webp'], // Reduce formats for faster processing
+    formats: ["image/webp"], // Reduce formats for faster processing
     deviceSizes: [640, 828, 1200, 1920], // Fewer device sizes for faster builds
     imageSizes: [32, 64, 128, 256], // Fewer image sizes
     minimumCacheTTL: 60,
     dangerouslyAllowSVG: true,
-    contentDispositionType: 'attachment',
+    contentDispositionType: "attachment",
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-        port: '',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        port: "",
+        pathname: "/**",
       },
     ],
   },
@@ -50,74 +50,83 @@ const nextConfig = {
     // ALWAYS apply lucide-react alias (both dev and production)
     config.resolve.alias = {
       ...config.resolve.alias,
-      'lucide-react': path.resolve(__dirname, 'node_modules/lucide-react/dist/esm/lucide-react.js')
+      "lucide-react": path.resolve(
+        __dirname,
+        "node_modules/lucide-react/dist/esm/lucide-react.js"
+      ),
     };
-    
+
     // Ensure proper module resolution for lucide-react
-    config.resolve.extensions = ['.js', '.jsx', '.ts', '.tsx', ...(config.resolve.extensions || [])];
-    config.resolve.mainFields = ['browser', 'module', 'main'];
-    
+    config.resolve.extensions = [
+      ".js",
+      ".jsx",
+      ".ts",
+      ".tsx",
+      ...(config.resolve.extensions || []),
+    ];
+    config.resolve.mainFields = ["browser", "module", "main"];
+
     // Production optimizations
     if (!dev && !isServer) {
       // Disable source maps for faster builds
       config.devtool = false;
-      
+
       // Maximum tree shaking
       config.optimization.usedExports = true;
       config.optimization.sideEffects = true;
       config.optimization.minimize = true;
-      
+
       // Ultra-aggressive chunk splitting for faster builds
       config.optimization.splitChunks = {
-        chunks: 'all',
+        chunks: "all",
         maxSize: 50000, // 50KB chunks for maximum parallelization
         cacheGroups: {
           react: {
             test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
-            name: 'react',
-            chunks: 'all',
+            name: "react",
+            chunks: "all",
             priority: 20,
-            enforce: true
+            enforce: true,
           },
           vendor: {
             test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
+            name: "vendors",
+            chunks: "all",
             priority: 10,
-            enforce: true
+            enforce: true,
           },
           common: {
-            name: 'common',
+            name: "common",
             minChunks: 2,
-            chunks: 'all',
+            chunks: "all",
             priority: 5,
-            reuseExistingChunk: true
-          }
-        }
+            reuseExistingChunk: true,
+          },
+        },
       };
 
       // Remove all performance hints
       config.performance = false;
-      
+
       // Only disable BundleAnalyzerPlugin for faster builds (keep TypeScript and ESLint)
-      config.plugins = config.plugins.filter(plugin => {
+      config.plugins = config.plugins.filter((plugin) => {
         const pluginName = plugin.constructor.name;
-        return !['BundleAnalyzerPlugin'].includes(pluginName);
+        return !["BundleAnalyzerPlugin"].includes(pluginName);
       });
 
       // Maximum parallelization
-      config.parallelism = require('os').cpus().length;
-      
+      config.parallelism = require("os").cpus().length;
+
       // Faster module resolution
       config.resolve.symlinks = false;
       config.resolve.cacheWithContext = false;
-      
+
       // Enable persistent caching for faster subsequent builds
       config.cache = {
-        type: 'filesystem',
+        type: "filesystem",
         buildDependencies: {
-          config: [__filename]
-        }
+          config: [__filename],
+        },
       };
     }
 
@@ -132,11 +141,11 @@ const nextConfig = {
     }
 
     // Bundle analyzer (only in development)
-    if (dev && process.env.ANALYZE === 'true') {
-      const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+    if (dev && process.env.ANALYZE === "true") {
+      const { BundleAnalyzerPlugin } = require("webpack-bundle-analyzer");
       config.plugins.push(
         new BundleAnalyzerPlugin({
-          analyzerMode: 'server',
+          analyzerMode: "server",
           analyzerPort: 8888,
           openAnalyzer: true,
         })
@@ -156,19 +165,19 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: '/(.*)',
+        source: "/(.*)",
         headers: [
           {
-            key: 'X-Frame-Options',
-            value: 'DENY',
+            key: "X-Frame-Options",
+            value: "DENY",
           },
           {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
+            key: "X-Content-Type-Options",
+            value: "nosniff",
           },
           {
-            key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin',
+            key: "Referrer-Policy",
+            value: "origin-when-cross-origin",
           },
         ],
       },
@@ -184,13 +193,11 @@ const nextConfig = {
   async rewrites() {
     return [
       {
-        source: '/api/:path*',
-        destination: 'http://localhost:5000/api/:path*',
+        source: "/api/:path*",
+        destination: "http://localhost:5000/api/:path*",
       },
     ];
   },
-
-
 };
 
 module.exports = nextConfig;

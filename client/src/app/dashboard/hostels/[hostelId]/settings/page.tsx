@@ -165,13 +165,19 @@ export default function HostelSettingsPage() {
       const data = apiErr?.response?.data;
 
       if (data && typeof data === "object") {
-        const msg = (data as any)?.message || (data as any)?.error || (data as any)?.errors;
+        const msg =
+          (data as any)?.message ||
+          (data as any)?.error ||
+          (data as any)?.errors;
         if (typeof msg === "string" && msg.length < 200) return msg;
       }
 
       if (status && mapping[status]) return mapping[status];
 
-      if (apiErr?.message && /network|timeout|failed to fetch/i.test(apiErr.message)) {
+      if (
+        apiErr?.message &&
+        /network|timeout|failed to fetch/i.test(apiErr.message)
+      ) {
         return "Network error. Please check your connection and try again.";
       }
       return null;

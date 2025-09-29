@@ -1,10 +1,10 @@
-'use client'
+"use client";
 
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { LockIcon, EyeIcon, EyeOffIcon, AlertTriangleIcon } from 'lucide-react';
-import { notification } from '@/lib/toast';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { LockIcon, EyeIcon, EyeOffIcon, AlertTriangleIcon } from "lucide-react";
+import { notification } from "@/lib/toast";
 
 interface PasswordChangeModalProps {
   isOpen: boolean;
@@ -14,17 +14,17 @@ interface PasswordChangeModalProps {
   userRole?: string; // Add user role to check if modal should be shown
 }
 
-export function PasswordChangeModal({ 
-  isOpen, 
-  onClose, 
-  onSubmit, 
+export function PasswordChangeModal({
+  isOpen,
+  onClose,
+  onSubmit,
   isLoading = false,
-  userRole 
+  userRole,
 }: PasswordChangeModalProps) {
   const [formData, setFormData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -32,7 +32,11 @@ export function PasswordChangeModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Only show modal for students, wardens, and custom roles (not owners/superadmins)
-  if (!isOpen || !userRole || ['owner', 'superadmin', 'admin'].includes(userRole)) {
+  if (
+    !isOpen ||
+    !userRole ||
+    ["owner", "superadmin", "admin"].includes(userRole)
+  ) {
     return null;
   }
 
@@ -40,21 +44,21 @@ export function PasswordChangeModal({
     const newErrors: Record<string, string> = {};
 
     if (!formData.currentPassword) {
-      newErrors.currentPassword = 'Current password is required';
+      newErrors.currentPassword = "Current password is required";
     }
 
     if (!formData.newPassword) {
-      newErrors.newPassword = 'New password is required';
+      newErrors.newPassword = "New password is required";
     } else if (formData.newPassword.length < 6) {
-      newErrors.newPassword = 'Password must be at least 6 characters';
-    } else if (formData.newPassword === '123456') {
-      newErrors.newPassword = 'Cannot use the default password (123456)';
+      newErrors.newPassword = "Password must be at least 6 characters";
+    } else if (formData.newPassword === "123456") {
+      newErrors.newPassword = "Cannot use the default password (123456)";
     }
 
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
+      newErrors.confirmPassword = "Please confirm your password";
     } else if (formData.newPassword !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = "Passwords do not match";
     }
 
     setErrors(newErrors);
@@ -63,26 +67,36 @@ export function PasswordChangeModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     try {
       await onSubmit(formData.currentPassword, formData.newPassword);
-      setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setFormData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
       setErrors({});
-      notification.success('Password changed successfully!', {
-        description: 'You can now access the dashboard with your new password when you log in again.'
+      notification.success("Password changed successfully!", {
+        description:
+          "You can now access the dashboard with your new password when you log in again.",
       });
     } catch (error) {
-      notification.error('Failed to change password', {
-        description: error instanceof Error ? error.message : 'Please try again.'
+      notification.error("Failed to change password", {
+        description:
+          error instanceof Error ? error.message : "Please try again.",
       });
     }
   };
 
   const handleClose = () => {
     if (!isLoading) {
-      setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setFormData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
       setErrors({});
       onClose();
     }
@@ -97,8 +111,13 @@ export function PasswordChangeModal({
             <AlertTriangleIcon className="h-6 w-6 text-orange-500" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Change Your Password</h3>
-            <p className="text-sm text-gray-600">You&apos;re using a default password. We recommend changing it for security.</p>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Change Your Password
+            </h3>
+            <p className="text-sm text-gray-600">
+              You&apos;re using a default password. We recommend changing it for
+              security.
+            </p>
           </div>
         </div>
 
@@ -113,9 +132,11 @@ export function PasswordChangeModal({
                 <LockIcon className="h-5 w-5 text-gray-400" />
               </div>
               <Input
-                type={showCurrentPassword ? 'text' : 'password'}
+                type={showCurrentPassword ? "text" : "password"}
                 value={formData.currentPassword}
-                onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, currentPassword: e.target.value })
+                }
                 className="pl-10 pr-10"
                 placeholder="Enter current password"
                 required
@@ -125,11 +146,17 @@ export function PasswordChangeModal({
                 onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
               >
-                {showCurrentPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                {showCurrentPassword ? (
+                  <EyeOffIcon className="h-5 w-5" />
+                ) : (
+                  <EyeIcon className="h-5 w-5" />
+                )}
               </button>
             </div>
             {errors.currentPassword && (
-              <p className="mt-1 text-sm text-red-600">{errors.currentPassword}</p>
+              <p className="mt-1 text-sm text-red-600">
+                {errors.currentPassword}
+              </p>
             )}
           </div>
 
@@ -143,9 +170,11 @@ export function PasswordChangeModal({
                 <LockIcon className="h-5 w-5 text-gray-400" />
               </div>
               <Input
-                type={showPassword ? 'text' : 'password'}
+                type={showPassword ? "text" : "password"}
                 value={formData.newPassword}
-                onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, newPassword: e.target.value })
+                }
                 className="pl-10 pr-10"
                 placeholder="Enter new password"
                 minLength={6}
@@ -156,7 +185,11 @@ export function PasswordChangeModal({
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
               >
-                {showPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                {showPassword ? (
+                  <EyeOffIcon className="h-5 w-5" />
+                ) : (
+                  <EyeIcon className="h-5 w-5" />
+                )}
               </button>
             </div>
             {errors.newPassword && (
@@ -174,9 +207,11 @@ export function PasswordChangeModal({
                 <LockIcon className="h-5 w-5 text-gray-400" />
               </div>
               <Input
-                type={showConfirmPassword ? 'text' : 'password'}
+                type={showConfirmPassword ? "text" : "password"}
                 value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, confirmPassword: e.target.value })
+                }
                 className="pl-10 pr-10"
                 placeholder="Confirm new password"
                 required
@@ -186,11 +221,17 @@ export function PasswordChangeModal({
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
               >
-                {showConfirmPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                {showConfirmPassword ? (
+                  <EyeOffIcon className="h-5 w-5" />
+                ) : (
+                  <EyeIcon className="h-5 w-5" />
+                )}
               </button>
             </div>
             {errors.confirmPassword && (
-              <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
+              <p className="mt-1 text-sm text-red-600">
+                {errors.confirmPassword}
+              </p>
             )}
           </div>
 
@@ -218,9 +259,14 @@ export function PasswordChangeModal({
               type="submit"
               variant="primary"
               className="flex-1"
-              disabled={isLoading || !formData.currentPassword || !formData.newPassword || !formData.confirmPassword}
+              disabled={
+                isLoading ||
+                !formData.currentPassword ||
+                !formData.newPassword ||
+                !formData.confirmPassword
+              }
             >
-              {isLoading ? 'Changing Password...' : 'Change Password'}
+              {isLoading ? "Changing Password..." : "Change Password"}
             </Button>
           </div>
         </form>

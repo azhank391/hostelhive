@@ -1,17 +1,17 @@
 "use strict";
 
-import React, { ReactNode } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { usePermissions } from '@/hooks/usePermissions';
-import { Permission } from '@/lib/permissionUtils';
+import React, { ReactNode } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
+import { Permission } from "@/lib/permissionUtils";
 
 /**
  * 🔐 Permission Gate Component
- * 
+ *
  * A reusable component for conditionally rendering content based on user permissions.
  * This component uses JWT permissions directly from the AuthContext for better performance
  * and real-time permission checking.
- * 
+ *
  * @author HostelHive RBAC System
  * @version 2.0.0
  */
@@ -48,7 +48,9 @@ export const PermissionGate: React.FC<PermissionGateProps> = ({
   fallback = null,
   children,
   showLoading = true,
-  loadingComponent = <div className="text-gray-500">Loading permissions...</div>,
+  loadingComponent = (
+    <div className="text-gray-500">Loading permissions...</div>
+  ),
 }) => {
   // Call hooks unconditionally at the top-level to satisfy Rules of Hooks
   const { user, isLoading } = useAuth();
@@ -110,12 +112,17 @@ export const PermissionGate: React.FC<PermissionGateProps> = ({
 /**
  * Gate for hostel management permissions
  */
-export const HostelManagementGate: React.FC<{ children: ReactNode; fallback?: ReactNode }> = ({ 
-  children, 
-  fallback = null 
-}) => (
+export const HostelManagementGate: React.FC<{
+  children: ReactNode;
+  fallback?: ReactNode;
+}> = ({ children, fallback = null }) => (
   <PermissionGate
-    permissions={['hostel_read', 'hostel_update', 'hostel_settings_update', 'view_hostel_stats']}
+    permissions={[
+      "hostel_read",
+      "hostel_update",
+      "hostel_settings_update",
+      "view_hostel_stats",
+    ]}
     fallback={fallback}
   >
     {children}
@@ -125,12 +132,17 @@ export const HostelManagementGate: React.FC<{ children: ReactNode; fallback?: Re
 /**
  * Gate for student management permissions
  */
-export const StudentManagementGate: React.FC<{ children: ReactNode; fallback?: ReactNode }> = ({ 
-  children, 
-  fallback = null 
-}) => (
+export const StudentManagementGate: React.FC<{
+  children: ReactNode;
+  fallback?: ReactNode;
+}> = ({ children, fallback = null }) => (
   <PermissionGate
-    permissions={['student_read', 'student_update', 'room_allocation_read', 'room_read']}
+    permissions={[
+      "student_read",
+      "student_update",
+      "room_allocation_read",
+      "room_read",
+    ]}
     fallback={fallback}
   >
     {children}
@@ -140,12 +152,17 @@ export const StudentManagementGate: React.FC<{ children: ReactNode; fallback?: R
 /**
  * Gate for room management permissions
  */
-export const RoomManagementGate: React.FC<{ children: ReactNode; fallback?: ReactNode }> = ({ 
-  children, 
-  fallback = null 
-}) => (
+export const RoomManagementGate: React.FC<{
+  children: ReactNode;
+  fallback?: ReactNode;
+}> = ({ children, fallback = null }) => (
   <PermissionGate
-    permissions={['room_update', 'room_read', 'room_allocation_create', 'room_allocation_delete']}
+    permissions={[
+      "room_update",
+      "room_read",
+      "room_allocation_create",
+      "room_allocation_delete",
+    ]}
     fallback={fallback}
   >
     {children}
@@ -155,12 +172,17 @@ export const RoomManagementGate: React.FC<{ children: ReactNode; fallback?: Reac
 /**
  * Gate for complaint management permissions
  */
-export const ComplaintManagementGate: React.FC<{ children: ReactNode; fallback?: ReactNode }> = ({ 
-  children, 
-  fallback = null 
-}) => (
+export const ComplaintManagementGate: React.FC<{
+  children: ReactNode;
+  fallback?: ReactNode;
+}> = ({ children, fallback = null }) => (
   <PermissionGate
-    permissions={['complaint_create', 'complaint_read', 'complaint_update', 'complaint_delete']}
+    permissions={[
+      "complaint_create",
+      "complaint_read",
+      "complaint_update",
+      "complaint_delete",
+    ]}
     fallback={fallback}
   >
     {children}
@@ -170,12 +192,12 @@ export const ComplaintManagementGate: React.FC<{ children: ReactNode; fallback?:
 /**
  * Gate for visitor management permissions
  */
-export const VisitorManagementGate: React.FC<{ children: ReactNode; fallback?: ReactNode }> = ({ 
-  children, 
-  fallback = null 
-}) => (
+export const VisitorManagementGate: React.FC<{
+  children: ReactNode;
+  fallback?: ReactNode;
+}> = ({ children, fallback = null }) => (
   <PermissionGate
-    permissions={['visitor_create', 'visitor_read', 'visitor_update']}
+    permissions={["visitor_create", "visitor_read", "visitor_update"]}
     fallback={fallback}
   >
     {children}
@@ -185,13 +207,13 @@ export const VisitorManagementGate: React.FC<{ children: ReactNode; fallback?: R
 /**
  * Gate for warden management permissions
  */
-export const WardenManagementGate: React.FC<{ children: ReactNode; fallback?: ReactNode }> = ({ 
-  children, 
-  fallback = null 
-}) => (
+export const WardenManagementGate: React.FC<{
+  children: ReactNode;
+  fallback?: ReactNode;
+}> = ({ children, fallback = null }) => (
   <PermissionGate
     // Warden now only has staff_read (no staff CRUD or role assignment)
-    permissions={['staff_read']}
+    permissions={["staff_read"]}
     fallback={fallback}
   >
     {children}
@@ -201,12 +223,12 @@ export const WardenManagementGate: React.FC<{ children: ReactNode; fallback?: Re
 /**
  * Gate for role management permissions
  */
-export const RoleManagementGate: React.FC<{ children: ReactNode; fallback?: ReactNode }> = ({ 
-  children, 
-  fallback = null 
-}) => (
+export const RoleManagementGate: React.FC<{
+  children: ReactNode;
+  fallback?: ReactNode;
+}> = ({ children, fallback = null }) => (
   <PermissionGate
-    permissions={['staff_read', 'staff_update', 'role_assign']}
+    permissions={["staff_read", "staff_update", "role_assign"]}
     fallback={fallback}
   >
     {children}
@@ -216,10 +238,10 @@ export const RoleManagementGate: React.FC<{ children: ReactNode; fallback?: Reac
 /**
  * Gate for system administration permissions
  */
-export const SystemAdminGate: React.FC<{ children: ReactNode; fallback?: ReactNode }> = ({ 
-  children, 
-  fallback = null 
-}) => (
+export const SystemAdminGate: React.FC<{
+  children: ReactNode;
+  fallback?: ReactNode;
+}> = ({ children, fallback = null }) => (
   <PermissionGate
     // Use canonical system-level permission (superadmin holds manage_system)
     permission="manage_system"
@@ -232,14 +254,11 @@ export const SystemAdminGate: React.FC<{ children: ReactNode; fallback?: ReactNo
 /**
  * Gate for owner permissions
  */
-export const OwnerGate: React.FC<{ children: ReactNode; fallback?: ReactNode }> = ({ 
-  children, 
-  fallback = null 
-}) => (
-  <PermissionGate
-    permission="hostel_update"
-    fallback={fallback}
-  >
+export const OwnerGate: React.FC<{
+  children: ReactNode;
+  fallback?: ReactNode;
+}> = ({ children, fallback = null }) => (
+  <PermissionGate permission="hostel_update" fallback={fallback}>
     {children}
   </PermissionGate>
 );
@@ -247,12 +266,19 @@ export const OwnerGate: React.FC<{ children: ReactNode; fallback?: ReactNode }> 
 /**
  * Gate for basic user permissions (students, etc.)
  */
-export const BasicUserGate: React.FC<{ children: ReactNode; fallback?: ReactNode }> = ({ 
-  children, 
-  fallback = null 
-}) => (
+export const BasicUserGate: React.FC<{
+  children: ReactNode;
+  fallback?: ReactNode;
+}> = ({ children, fallback = null }) => (
   <PermissionGate
-    permissions={['manage_profile', 'view_own_data', 'complaint_create', 'complaint_read', 'visitor_create', 'visitor_read']}
+    permissions={[
+      "manage_profile",
+      "view_own_data",
+      "complaint_create",
+      "complaint_read",
+      "visitor_create",
+      "visitor_read",
+    ]}
     fallback={fallback}
   >
     {children}
@@ -272,22 +298,26 @@ interface RoleGateProps {
   fallback?: ReactNode;
 }
 
-export const RoleGate: React.FC<RoleGateProps> = ({ roles, children, fallback = null }) => {
+export const RoleGate: React.FC<RoleGateProps> = ({
+  roles,
+  children,
+  fallback = null,
+}) => {
   const { user } = useAuth();
-  
+
   const hasRole = user?.role && roles.includes(user.role);
-  
+
   return hasRole ? <>{children}</> : <>{fallback}</>;
 };
 
 /**
  * Gate for owner role
  */
-export const OwnerRoleGate: React.FC<{ children: ReactNode; fallback?: ReactNode }> = ({ 
-  children, 
-  fallback = null 
-}) => (
-  <RoleGate roles={['owner']} fallback={fallback}>
+export const OwnerRoleGate: React.FC<{
+  children: ReactNode;
+  fallback?: ReactNode;
+}> = ({ children, fallback = null }) => (
+  <RoleGate roles={["owner"]} fallback={fallback}>
     {children}
   </RoleGate>
 );
@@ -295,11 +325,11 @@ export const OwnerRoleGate: React.FC<{ children: ReactNode; fallback?: ReactNode
 /**
  * Gate for warden role
  */
-export const WardenRoleGate: React.FC<{ children: ReactNode; fallback?: ReactNode }> = ({ 
-  children, 
-  fallback = null 
-}) => (
-  <RoleGate roles={['warden']} fallback={fallback}>
+export const WardenRoleGate: React.FC<{
+  children: ReactNode;
+  fallback?: ReactNode;
+}> = ({ children, fallback = null }) => (
+  <RoleGate roles={["warden"]} fallback={fallback}>
     {children}
   </RoleGate>
 );
@@ -307,11 +337,11 @@ export const WardenRoleGate: React.FC<{ children: ReactNode; fallback?: ReactNod
 /**
  * Gate for student role
  */
-export const StudentRoleGate: React.FC<{ children: ReactNode; fallback?: ReactNode }> = ({ 
-  children, 
-  fallback = null 
-}) => (
-  <RoleGate roles={['student']} fallback={fallback}>
+export const StudentRoleGate: React.FC<{
+  children: ReactNode;
+  fallback?: ReactNode;
+}> = ({ children, fallback = null }) => (
+  <RoleGate roles={["student"]} fallback={fallback}>
     {children}
   </RoleGate>
 );
@@ -319,11 +349,11 @@ export const StudentRoleGate: React.FC<{ children: ReactNode; fallback?: ReactNo
 /**
  * Gate for superadmin role
  */
-export const SuperadminRoleGate: React.FC<{ children: ReactNode; fallback?: ReactNode }> = ({ 
-  children, 
-  fallback = null 
-}) => (
-  <RoleGate roles={['superadmin']} fallback={fallback}>
+export const SuperadminRoleGate: React.FC<{
+  children: ReactNode;
+  fallback?: ReactNode;
+}> = ({ children, fallback = null }) => (
+  <RoleGate roles={["superadmin"]} fallback={fallback}>
     {children}
   </RoleGate>
 );
@@ -334,10 +364,3 @@ export const SuperadminRoleGate: React.FC<{ children: ReactNode; fallback?: Reac
 
 export default PermissionGate;
 export type { PermissionGateProps, RoleGateProps };
-
-
-
-
-
-
-

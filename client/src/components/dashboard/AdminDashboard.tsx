@@ -1,38 +1,48 @@
-'use client'
+"use client";
 
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  Suspense,
+} from "react";
+import { useAuth } from "@/contexts/AuthContext";
 // Removed unused useHostel import
-import { useCurrentHostelId } from '@/lib/context-aware-api';
-import { httpClient as api } from '@/lib/http';
-import StatCard from '@/components/dashboard/StatCard';
-import { Button } from '@/components/ui/Button';
-import toast from '@/lib/toast';
-import { 
-  UsersIcon, 
+import { useCurrentHostelId } from "@/lib/context-aware-api";
+import { httpClient as api } from "@/lib/http";
+import StatCard from "@/components/dashboard/StatCard";
+import { Button } from "@/components/ui/Button";
+import toast from "@/lib/toast";
+import {
+  UsersIcon,
   BuildingIcon,
   AlertCircleIcon,
   BedIcon,
   RefreshCwIcon,
   TrendingUpIcon,
-  ActivityIcon
-} from 'lucide-react';
+  ActivityIcon,
+} from "lucide-react";
 
 // Optimized lazy imports with error boundaries
-const AnalyticsDashboardFallback = React.memo(function AnalyticsDashboardFallback() {
-  return <div>Analytics temporarily unavailable</div>;
-});
+const AnalyticsDashboardFallback = React.memo(
+  function AnalyticsDashboardFallback() {
+    return <div>Analytics temporarily unavailable</div>;
+  }
+);
 const OptimizedAnalyticsDashboard = React.lazy(() =>
-  import('./AnalyticsDashboard').catch(() => ({
-    default: AnalyticsDashboardFallback as unknown as typeof import('./AnalyticsDashboard').default
+  import("./AnalyticsDashboard").catch(() => ({
+    default:
+      AnalyticsDashboardFallback as unknown as typeof import("./AnalyticsDashboard").default,
   }))
 );
 const QuickActionsFallback = React.memo(function QuickActionsFallback() {
   return <div>Quick actions temporarily unavailable</div>;
 });
 const OptimizedQuickActions = React.lazy(() =>
-  import('./QuickActions').catch(() => ({
-    default: QuickActionsFallback as unknown as typeof import('./QuickActions').default
+  import("./QuickActions").catch(() => ({
+    default:
+      QuickActionsFallback as unknown as typeof import("./QuickActions").default,
   }))
 );
 
@@ -49,7 +59,7 @@ interface DashboardStats {
 
 interface RecentActivity {
   id: string;
-  type: 'complaint' | 'visitor' | 'room_allocation' | 'student_registration';
+  type: "complaint" | "visitor" | "room_allocation" | "student_registration";
   title: string;
   description: string;
   timestamp: string;
@@ -78,7 +88,7 @@ type DashboardApiResponse = {
 
 /**
  * 🚀 OPTIMIZED AdminDashboard Component
- * 
+ *
  * Performance Improvements:
  * ✅ React.memo for re-render prevention
  * ✅ useMemo for expensive calculations
@@ -93,7 +103,7 @@ type DashboardApiResponse = {
 export const AdminDashboard = React.memo(() => {
   const { user } = useAuth();
   const contextHostelId = useCurrentHostelId();
-  
+
   // State management
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
@@ -107,29 +117,33 @@ export const AdminDashboard = React.memo(() => {
     if (!stats) return null;
 
     // Calculate occupancy rate (percentage of rooms that are occupied)
-    const occupancyRate = stats.totalRooms > 0 
-      ? Math.round((stats.occupiedRooms / stats.totalRooms) * 100) 
-      : 0;
-    
+    const occupancyRate =
+      stats.totalRooms > 0
+        ? Math.round((stats.occupiedRooms / stats.totalRooms) * 100)
+        : 0;
+
     // Calculate complaint per student ratio (as a percentage)
-    const complaintRate = stats.totalStudents > 0 
-      ? Math.round((stats.totalComplaints / stats.totalStudents) * 100) 
-      : 0;
+    const complaintRate =
+      stats.totalStudents > 0
+        ? Math.round((stats.totalComplaints / stats.totalStudents) * 100)
+        : 0;
 
     // Calculate room availability rate
     const availabilityRate = 100 - occupancyRate;
-    
+
     // Calculate pending complaint ratio (how many complaints are still pending)
-    const pendingComplaintRatio = stats.totalComplaints > 0
-      ? Math.round((stats.pendingComplaints / stats.totalComplaints) * 100)
-      : 0;
-    
+    const pendingComplaintRatio =
+      stats.totalComplaints > 0
+        ? Math.round((stats.pendingComplaints / stats.totalComplaints) * 100)
+        : 0;
+
     // Calculate visitor activity (if we have visitor data)
-    const visitorActivity = stats.activeVisitors !== undefined
-      ? stats.totalStudents > 0 
-        ? Math.round((stats.activeVisitors / stats.totalStudents) * 100)
-        : 0
-      : undefined;
+    const visitorActivity =
+      stats.activeVisitors !== undefined
+        ? stats.totalStudents > 0
+          ? Math.round((stats.activeVisitors / stats.totalStudents) * 100)
+          : 0
+        : undefined;
 
     return {
       occupancyRate,
@@ -138,19 +152,23 @@ export const AdminDashboard = React.memo(() => {
       pendingComplaintRatio,
       visitorActivity,
       // Critical alerts: high number of pending complaints or very high occupancy with pending complaints
-      criticalAlerts: (stats.pendingComplaints > 10 || (occupancyRate > 90 && stats.pendingComplaints > 5)) 
-        ? stats.pendingComplaints 
-        : 0,
+      criticalAlerts:
+        stats.pendingComplaints > 10 ||
+        (occupancyRate > 90 && stats.pendingComplaints > 5)
+          ? stats.pendingComplaints
+          : 0,
       // Health score: 100 minus factors that reduce hostel health
       // - High complaint rate reduces score
       // - Many pending complaints reduce score
       // - Very low or very high occupancy reduces score
-      healthScore: Math.max(0, 100 
-        - (complaintRate * 0.5) 
-        - (pendingComplaintRatio * 0.3)
-        - (occupancyRate < 30 ? 10 : 0) 
-        - (occupancyRate > 95 ? 10 : 0)
-      )
+      healthScore: Math.max(
+        0,
+        100 -
+          complaintRate * 0.5 -
+          pendingComplaintRatio * 0.3 -
+          (occupancyRate < 30 ? 10 : 0) -
+          (occupancyRate > 95 ? 10 : 0)
+      ),
     };
   }, [stats]);
 
@@ -158,9 +176,11 @@ export const AdminDashboard = React.memo(() => {
   const getTimeAgo = useCallback((timestamp: string) => {
     const now = new Date();
     const time = new Date(timestamp);
-    const diffInMinutes = Math.floor((now.getTime() - time.getTime()) / (1000 * 60));
-    
-    if (diffInMinutes < 1) return 'Just now';
+    const diffInMinutes = Math.floor(
+      (now.getTime() - time.getTime()) / (1000 * 60)
+    );
+
+    if (diffInMinutes < 1) return "Just now";
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
     return `${Math.floor(diffInMinutes / 1440)}d ago`;
@@ -168,20 +188,25 @@ export const AdminDashboard = React.memo(() => {
 
   const getActivityIcon = useCallback((type: string) => {
     switch (type) {
-      case 'complaint': return AlertCircleIcon;
-      case 'visitor': return UsersIcon;
-      case 'room_allocation': return BedIcon;
-      case 'student_registration': return UsersIcon;
-      default: return ActivityIcon;
+      case "complaint":
+        return AlertCircleIcon;
+      case "visitor":
+        return UsersIcon;
+      case "room_allocation":
+        return BedIcon;
+      case "student_registration":
+        return UsersIcon;
+      default:
+        return ActivityIcon;
     }
   }, []);
 
   // 🎯 PERFORMANCE: Memoized recent activity processing
   const processedActivity = useMemo(() => {
-    return recentActivity.slice(0, 5).map(activity => ({
+    return recentActivity.slice(0, 5).map((activity) => ({
       ...activity,
       timeAgo: getTimeAgo(activity.timestamp),
-      icon: getActivityIcon(activity.type)
+      icon: getActivityIcon(activity.type),
     }));
   }, [recentActivity, getTimeAgo, getActivityIcon]);
 
@@ -194,7 +219,7 @@ export const AdminDashboard = React.memo(() => {
 
     try {
       setError(null);
-      
+
       // Get dashboard stats using the API - this follows the backend structure
       const dashboardData = await api
         .get<DashboardApiResponse>(`/hostels/${contextHostelId}/stats`)
@@ -202,79 +227,96 @@ export const AdminDashboard = React.memo(() => {
           console.error("Error fetching dashboard stats");
           return null as unknown as DashboardApiResponse | null;
         });
-      
+
       // If we can't get the main dashboard stats, try to fetch individual pieces
       if (!dashboardData) {
-        const [
-          studentData,
-          roomData,
-          complaintData,
-          visitorData
-        ] = await Promise.all([
-          api
-            .get<PageResp<any>>(`/hostels/${contextHostelId}/students?limit=1`)
-            .catch(() => ({ data: [], pagination: { total: 0 } } as PageResp<any>)),
-          api
-            .get<PageResp<any>>(`/hostels/${contextHostelId}/rooms?limit=1`)
-            .catch(() => ({ data: [], pagination: { total: 0 } } as PageResp<any>)),
-          api
-            .get<PageResp<any>>(`/hostels/${contextHostelId}/complaints?limit=1`)
-            .catch(() => ({ data: [], pagination: { total: 0 } } as PageResp<any>)),
-          api
-            .get<PageResp<any>>(`/hostels/${contextHostelId}/visitors?limit=1`)
-            .catch(() => ({ data: [], pagination: { total: 0 } } as PageResp<any>))
-        ]);
+        const [studentData, roomData, complaintData, visitorData] =
+          await Promise.all([
+            api
+              .get<PageResp<any>>(
+                `/hostels/${contextHostelId}/students?limit=1`
+              )
+              .catch(
+                () => ({ data: [], pagination: { total: 0 } } as PageResp<any>)
+              ),
+            api
+              .get<PageResp<any>>(`/hostels/${contextHostelId}/rooms?limit=1`)
+              .catch(
+                () => ({ data: [], pagination: { total: 0 } } as PageResp<any>)
+              ),
+            api
+              .get<PageResp<any>>(
+                `/hostels/${contextHostelId}/complaints?limit=1`
+              )
+              .catch(
+                () => ({ data: [], pagination: { total: 0 } } as PageResp<any>)
+              ),
+            api
+              .get<PageResp<any>>(
+                `/hostels/${contextHostelId}/visitors?limit=1`
+              )
+              .catch(
+                () => ({ data: [], pagination: { total: 0 } } as PageResp<any>)
+              ),
+          ]);
 
         // Create a fallback stats object from individual API calls
         const processedStats: DashboardStats = {
-          totalStudents: studentData.pagination?.total || studentData.data.length || 0,
+          totalStudents:
+            studentData.pagination?.total || studentData.data.length || 0,
           totalRooms: roomData.pagination?.total || roomData.data.length || 0,
-          totalComplaints: complaintData.pagination?.total || complaintData.data.length || 0,
+          totalComplaints:
+            complaintData.pagination?.total || complaintData.data.length || 0,
           pendingComplaints:
             complaintData.data.filter?.(
-              (c: any) => c.status === 'Open' || c.status === 'pending'
+              (c: any) => c.status === "Open" || c.status === "pending"
             ).length || 0,
           occupiedRooms:
             roomData.data.filter?.(
-              (r: any) => r.allocations?.length > 0 || r.status === 'occupied'
+              (r: any) => r.allocations?.length > 0 || r.status === "occupied"
             ).length || 0,
           availableRooms:
             (roomData.pagination?.total || 0) -
             (roomData.data.filter?.(
-              (r: any) => r.allocations?.length > 0 || r.status === 'occupied'
+              (r: any) => r.allocations?.length > 0 || r.status === "occupied"
             ).length || 0),
           activeVisitors:
-            visitorData.data.filter?.((v: any) => v.status === 'checked-in').length || 0,
+            visitorData.data.filter?.((v: any) => v.status === "checked-in")
+              .length || 0,
         };
-        
+
         setStats(processedStats);
-        
+
         // Generate recent activity from individual API data
         const activities: RecentActivity[] = [
           ...(complaintData.data.slice(0, 3).map((complaint: any) => ({
             id: complaint.id,
-            type: 'complaint' as const,
-            title: 'New Complaint',
-            description: complaint.title || 'Complaint submitted',
+            type: "complaint" as const,
+            title: "New Complaint",
+            description: complaint.title || "Complaint submitted",
             timestamp: complaint.createdAt || new Date().toISOString(),
-            user: complaint.reportedBy || complaint.student
+            user: complaint.reportedBy || complaint.student,
           })) || []),
           ...(studentData.data.slice(0, 2).map((student: any) => ({
             id: student.id,
-            type: 'student_registration' as const,
-            title: 'New Student',
+            type: "student_registration" as const,
+            title: "New Student",
             description: `${student.name} registered`,
             timestamp: student.createdAt || new Date().toISOString(),
-            user: { name: student.name, role: 'student' }
-          })) || [])
-        ].sort((a, b) => new Date(b.timestamp || Date.now()).getTime() - new Date(a.timestamp || Date.now()).getTime());
-        
+            user: { name: student.name, role: "student" },
+          })) || []),
+        ].sort(
+          (a, b) =>
+            new Date(b.timestamp || Date.now()).getTime() -
+            new Date(a.timestamp || Date.now()).getTime()
+        );
+
         setRecentActivity(activities);
       } else {
         // Use the structured dashboard stats from the API
         // Extract relevant stats from the backend response
-  const backendStats = (dashboardData as DashboardApiResponse).stats;
-        
+        const backendStats = (dashboardData as DashboardApiResponse).stats;
+
         // Map the backend stats to our component's expected format
         const processedStats: DashboardStats = {
           totalStudents: backendStats.totalStudents || 0,
@@ -283,48 +325,72 @@ export const AdminDashboard = React.memo(() => {
           pendingComplaints: backendStats.pendingComplaints || 0,
           occupiedRooms: backendStats.occupiedRooms || 0,
           availableRooms: backendStats.availableRooms || 0,
-          activeVisitors: backendStats.activeVisitors || 0
+          activeVisitors: backendStats.activeVisitors || 0,
         };
-        
+
         setStats(processedStats);
-        
+
         // Generate activity from the recent data provided by the backend
         const activities: RecentActivity[] = [
-          ...((dashboardData as DashboardApiResponse).recentComplaints?.map((complaint: any) => ({
-            id: complaint.id,
-            type: 'complaint' as const,
-            title: 'New Complaint',
-            description: complaint.title || complaint.description || 'Complaint submitted',
-            timestamp: complaint.createdAt || new Date().toISOString(), // Ensure we always have a timestamp
-            user: complaint.student
-          })) || []),
-          ...((dashboardData as DashboardApiResponse).recentVisitors?.map((visitor: any) => ({
-            id: visitor.id,
-            type: 'visitor' as const,
-            title: 'Visitor Check-in',
-            description: `${visitor.visitorName} visiting ${visitor.student?.name || 'a student'}`,
-            timestamp: visitor.entryTime || visitor.createdAt || new Date().toISOString(),
-            user: visitor.student
-          })) || []),
-          ...((dashboardData as DashboardApiResponse).recentAllocations?.map((allocation: any) => ({
-            id: allocation.id,
-            type: 'room_allocation' as const,
-            title: 'Room Allocation',
-            description: `${allocation.student?.name || 'Student'} allocated to Room ${allocation.room?.roomNumber || allocation.roomId}`,
-            timestamp: allocation.allocatedAt || allocation.createdAt || new Date().toISOString(),
-            user: allocation.student
-          })) || [])
-        ].sort((a, b) => new Date(b.timestamp || Date.now()).getTime() - new Date(a.timestamp || Date.now()).getTime());
-        
+          ...((dashboardData as DashboardApiResponse).recentComplaints?.map(
+            (complaint: any) => ({
+              id: complaint.id,
+              type: "complaint" as const,
+              title: "New Complaint",
+              description:
+                complaint.title ||
+                complaint.description ||
+                "Complaint submitted",
+              timestamp: complaint.createdAt || new Date().toISOString(), // Ensure we always have a timestamp
+              user: complaint.student,
+            })
+          ) || []),
+          ...((dashboardData as DashboardApiResponse).recentVisitors?.map(
+            (visitor: any) => ({
+              id: visitor.id,
+              type: "visitor" as const,
+              title: "Visitor Check-in",
+              description: `${visitor.visitorName} visiting ${
+                visitor.student?.name || "a student"
+              }`,
+              timestamp:
+                visitor.entryTime ||
+                visitor.createdAt ||
+                new Date().toISOString(),
+              user: visitor.student,
+            })
+          ) || []),
+          ...((dashboardData as DashboardApiResponse).recentAllocations?.map(
+            (allocation: any) => ({
+              id: allocation.id,
+              type: "room_allocation" as const,
+              title: "Room Allocation",
+              description: `${
+                allocation.student?.name || "Student"
+              } allocated to Room ${
+                allocation.room?.roomNumber || allocation.roomId
+              }`,
+              timestamp:
+                allocation.allocatedAt ||
+                allocation.createdAt ||
+                new Date().toISOString(),
+              user: allocation.student,
+            })
+          ) || []),
+        ].sort(
+          (a, b) =>
+            new Date(b.timestamp || Date.now()).getTime() -
+            new Date(a.timestamp || Date.now()).getTime()
+        );
+
         setRecentActivity(activities);
       }
-      
+
       setLastUpdated(new Date());
-      
     } catch {
-      const errorMessage = 'Failed to fetch dashboard data';
+      const errorMessage = "Failed to fetch dashboard data";
       setError(errorMessage);
-      console.error('Failed to fetch dashboard data');
+      console.error("Failed to fetch dashboard data");
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -334,13 +400,13 @@ export const AdminDashboard = React.memo(() => {
   // 🎯 PERFORMANCE: Optimized refresh with loading state
   const handleRefresh = useCallback(async () => {
     if (!contextHostelId) return;
-    
+
     setRefreshing(true);
     try {
       await fetchDashboardData();
-      toast.success('Dashboard refreshed successfully!');
+      toast.success("Dashboard refreshed successfully!");
     } catch {
-      toast.error('Failed to refresh dashboard');
+      toast.error("Failed to refresh dashboard");
     } finally {
       setRefreshing(false);
     }
@@ -349,7 +415,7 @@ export const AdminDashboard = React.memo(() => {
   // 🎯 PERFORMANCE: Auto-refresh with cleanup
   useEffect(() => {
     fetchDashboardData();
-    
+
     // Auto-refresh every 5 minutes
     const interval = setInterval(fetchDashboardData, 5 * 60 * 1000);
     return () => clearInterval(interval);
@@ -363,8 +429,12 @@ export const AdminDashboard = React.memo(() => {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <BuildingIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Hostel Selected</h3>
-          <p className="text-gray-600">Please select a hostel to view the admin dashboard.</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            No Hostel Selected
+          </h3>
+          <p className="text-gray-600">
+            Please select a hostel to view the admin dashboard.
+          </p>
         </div>
       </div>
     );
@@ -420,14 +490,17 @@ export const AdminDashboard = React.memo(() => {
           </p>
         </div>
         <div className="mt-4 md:mt-0 flex gap-3">
-          <Button 
-            onClick={handleRefresh} 
-            variant="outline" 
+          <Button
+            onClick={handleRefresh}
+            variant="outline"
             disabled={refreshing}
             className="flex items-center"
           >
-            <RefreshCwIcon size={16} className={`mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Refreshing...' : 'Refresh'}
+            <RefreshCwIcon
+              size={16}
+              className={`mr-2 ${refreshing ? "animate-spin" : ""}`}
+            />
+            {refreshing ? "Refreshing..." : "Refresh"}
           </Button>
         </div>
       </div>
@@ -438,54 +511,83 @@ export const AdminDashboard = React.memo(() => {
           title="Total Students"
           value={stats?.totalStudents || 0}
           icon={<UsersIcon className="h-5 w-5" />}
-          trend={stats?.totalStudents && lastUpdated ? {
-            value: Math.round(stats.totalStudents * 0.03), // Simulate a trend for demo purposes
-            isPositive: true,
-            percentage: true,
-            period: "this month"
-          } : undefined}
+          trend={
+            stats?.totalStudents && lastUpdated
+              ? {
+                  value: Math.round(stats.totalStudents * 0.03), // Simulate a trend for demo purposes
+                  isPositive: true,
+                  percentage: true,
+                  period: "this month",
+                }
+              : undefined
+          }
         />
         <StatCard
           title="Total Rooms"
           value={stats?.totalRooms || 0}
           icon={<BedIcon className="h-5 w-5" />}
-          description={`${stats?.occupiedRooms || 0} occupied, ${stats?.availableRooms || 0} available`}
+          description={`${stats?.occupiedRooms || 0} occupied, ${
+            stats?.availableRooms || 0
+          } available`}
         />
         <StatCard
           title="Active Complaints"
           value={stats?.pendingComplaints || 0}
           icon={<AlertCircleIcon className="h-5 w-5" />}
-          alert={stats?.pendingComplaints && stats.pendingComplaints > 5 ? {
-            type: 'warning',
-            message: `${stats.pendingComplaints} complaints need attention`
-          } : undefined}
-          description={stats?.totalComplaints ? `Out of ${stats.totalComplaints} total` : undefined}
+          alert={
+            stats?.pendingComplaints && stats.pendingComplaints > 5
+              ? {
+                  type: "warning",
+                  message: `${stats.pendingComplaints} complaints need attention`,
+                }
+              : undefined
+          }
+          description={
+            stats?.totalComplaints
+              ? `Out of ${stats.totalComplaints} total`
+              : undefined
+          }
         />
         <StatCard
           title="Occupancy Rate"
           value={`${dashboardMetrics?.occupancyRate || 0}%`}
           icon={<TrendingUpIcon className="h-5 w-5" />}
-          trend={dashboardMetrics?.occupancyRate ? {
-            value: dashboardMetrics.occupancyRate,
-            isPositive: dashboardMetrics.occupancyRate > 50 && dashboardMetrics.occupancyRate < 95,
-            percentage: true,
-            comparison: dashboardMetrics.occupancyRate < 50 ? "Low occupancy" : 
-                       dashboardMetrics.occupancyRate > 95 ? "Near capacity" : 
-                       "Good occupancy"
-          } : undefined}
+          trend={
+            dashboardMetrics?.occupancyRate
+              ? {
+                  value: dashboardMetrics.occupancyRate,
+                  isPositive:
+                    dashboardMetrics.occupancyRate > 50 &&
+                    dashboardMetrics.occupancyRate < 95,
+                  percentage: true,
+                  comparison:
+                    dashboardMetrics.occupancyRate < 50
+                      ? "Low occupancy"
+                      : dashboardMetrics.occupancyRate > 95
+                      ? "Near capacity"
+                      : "Good occupancy",
+                }
+              : undefined
+          }
         />
       </div>
 
       {/* Secondary metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Health Score</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Health Score
+          </h3>
           <div className="flex items-center">
-            <div className={`text-3xl font-bold ${
-              (dashboardMetrics?.healthScore || 0) > 80 ? 'text-green-600' : 
-              (dashboardMetrics?.healthScore || 0) > 60 ? 'text-yellow-600' : 
-              'text-red-600'
-            }`}>
+            <div
+              className={`text-3xl font-bold ${
+                (dashboardMetrics?.healthScore || 0) > 80
+                  ? "text-green-600"
+                  : (dashboardMetrics?.healthScore || 0) > 60
+                  ? "text-yellow-600"
+                  : "text-red-600"
+              }`}
+            >
               {dashboardMetrics?.healthScore || 0}%
             </div>
             <div className="ml-2 text-sm text-gray-600">
@@ -499,42 +601,49 @@ export const AdminDashboard = React.memo(() => {
 
         <div className="bg-white p-6 rounded-lg shadow border">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            {stats?.activeVisitors !== undefined ? 'Active Visitors' : 'Available Rooms'}
+            {stats?.activeVisitors !== undefined
+              ? "Active Visitors"
+              : "Available Rooms"}
           </h3>
           <div className="flex items-center">
             <div className="text-3xl font-bold text-blue-600">
-              {stats?.activeVisitors !== undefined ? stats.activeVisitors : stats?.availableRooms || 0}
+              {stats?.activeVisitors !== undefined
+                ? stats.activeVisitors
+                : stats?.availableRooms || 0}
             </div>
             <div className="ml-2 text-sm text-gray-600">
-              {stats?.activeVisitors !== undefined ? 
-                'Currently in hostel' :
-                'Ready for allocation'
-              }
+              {stats?.activeVisitors !== undefined
+                ? "Currently in hostel"
+                : "Ready for allocation"}
             </div>
           </div>
           {stats?.activeVisitors !== undefined && (
             <div className="mt-2 text-xs text-gray-500">
-              {stats.activeVisitors > 0 ? 
-                `Check visitor logs for details` : 
-                `No visitors currently checked in`
-              }
+              {stats.activeVisitors > 0
+                ? `Check visitor logs for details`
+                : `No visitors currently checked in`}
             </div>
           )}
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Recent Activity</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Recent Activity
+          </h3>
           <div className="flex items-center">
             <div className="text-3xl font-bold text-purple-600">
               {processedActivity.length}
             </div>
             <div className="ml-2 text-sm text-gray-600">
-              {processedActivity.length === 1 ? 'Recent event' : 'Recent events'}
+              {processedActivity.length === 1
+                ? "Recent event"
+                : "Recent events"}
             </div>
           </div>
           {processedActivity.length > 0 && (
             <div className="mt-2 text-xs text-gray-500">
-              Most recent: {processedActivity[0]?.title} - {getTimeAgo(processedActivity[0]?.timestamp)}
+              Most recent: {processedActivity[0]?.title} -{" "}
+              {getTimeAgo(processedActivity[0]?.timestamp)}
             </div>
           )}
         </div>
@@ -543,7 +652,9 @@ export const AdminDashboard = React.memo(() => {
       {/* Recent Activity Section */}
       <div className="bg-white rounded-lg shadow border">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Recent Activity
+          </h3>
         </div>
         <div className="p-6">
           {processedActivity.length === 0 ? (
@@ -580,29 +691,33 @@ export const AdminDashboard = React.memo(() => {
 
       {/* Lazy-loaded components with error boundaries */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Suspense fallback={
-          <div className="bg-white p-6 rounded-lg shadow border">
-            <div className="animate-pulse">
-              <div className="h-4 w-32 bg-gray-200 rounded mb-4"></div>
-              <div className="space-y-2">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="h-3 bg-gray-200 rounded"></div>
-                ))}
+        <Suspense
+          fallback={
+            <div className="bg-white p-6 rounded-lg shadow border">
+              <div className="animate-pulse">
+                <div className="h-4 w-32 bg-gray-200 rounded mb-4"></div>
+                <div className="space-y-2">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="h-3 bg-gray-200 rounded"></div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        }>
+          }
+        >
           <OptimizedQuickActions />
         </Suspense>
 
-        <Suspense fallback={
-          <div className="bg-white p-6 rounded-lg shadow border">
-            <div className="animate-pulse">
-              <div className="h-4 w-32 bg-gray-200 rounded mb-4"></div>
-              <div className="h-32 bg-gray-200 rounded"></div>
+        <Suspense
+          fallback={
+            <div className="bg-white p-6 rounded-lg shadow border">
+              <div className="animate-pulse">
+                <div className="h-4 w-32 bg-gray-200 rounded mb-4"></div>
+                <div className="h-32 bg-gray-200 rounded"></div>
+              </div>
             </div>
-          </div>
-        }>
+          }
+        >
           <OptimizedAnalyticsDashboard />
         </Suspense>
       </div>
@@ -610,4 +725,4 @@ export const AdminDashboard = React.memo(() => {
   );
 });
 
-AdminDashboard.displayName = 'AdminDashboard';
+AdminDashboard.displayName = "AdminDashboard";

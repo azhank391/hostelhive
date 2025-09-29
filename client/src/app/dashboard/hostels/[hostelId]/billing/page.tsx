@@ -165,8 +165,8 @@ function BillingPageClient() {
               : "Subscription cancellation scheduled. End date is being confirmed."}
           </p>
           <p className="mt-1">
-            You have access until the end of the current billing period. You
-            can resume before it ends.
+            You have access until the end of the current billing period. You can
+            resume before it ends.
           </p>
           <div className="mt-2">
             <Button variant="outline" onClick={handleResume}>
@@ -210,13 +210,13 @@ function BillingPageClient() {
             </p>
           )}
           {subscriptionStatus?.stripe_subscription_id &&
-            subscriptionStatus?.subscription_status !== 'canceled' && (
-            <div className="mt-4">
-              <Button variant="outline" onClick={handleCancel}>
-                Cancel at period end
-              </Button>
-            </div>
-          )}
+            subscriptionStatus?.subscription_status !== "canceled" && (
+              <div className="mt-4">
+                <Button variant="outline" onClick={handleCancel}>
+                  Cancel at period end
+                </Button>
+              </div>
+            )}
           {subscriptionStatus?.subscription_status === "active" && (
             <p className="text-sm text-gray-500 mt-2">
               You have an active subscription.

@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import React from 'react';
-import { usePermissions } from '@/contexts/PermissionContext';
-import { ShieldIcon, LoaderIcon } from 'lucide-react';
+import React from "react";
+import { usePermissions } from "@/contexts/PermissionContext";
+import { ShieldIcon, LoaderIcon } from "lucide-react";
 
 interface PermissionRouteProps {
   permission: string;
@@ -19,30 +19,34 @@ export const PermissionRoute: React.FC<PermissionRouteProps> = ({
   fallback,
   loadingFallback,
   requireAll = false,
-  permissions
+  permissions,
 }) => {
   const { hasAllPermissions, hasAnyPermission, loading } = usePermissions();
-  
+
   // Show loading state
   if (loading) {
     if (loadingFallback) {
       return <>{loadingFallback}</>;
     }
-    
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <LoaderIcon className="mx-auto h-12 w-12 text-blue-600 animate-spin" />
-          <p className="mt-4 text-lg font-medium text-gray-900">Loading permissions...</p>
-          <p className="mt-2 text-sm text-gray-500">Please wait while we verify your access.</p>
+          <p className="mt-4 text-lg font-medium text-gray-900">
+            Loading permissions...
+          </p>
+          <p className="mt-2 text-sm text-gray-500">
+            Please wait while we verify your access.
+          </p>
         </div>
       </div>
     );
   }
-  
+
   // Determine which permissions to check
   const permissionsToCheck = permissions || [permission];
-  
+
   // Check permissions based on requirements
   let hasAccess = false;
   if (requireAll) {
@@ -50,24 +54,26 @@ export const PermissionRoute: React.FC<PermissionRouteProps> = ({
   } else {
     hasAccess = hasAnyPermission(permissionsToCheck);
   }
-  
+
   // Show fallback if no access
   if (!hasAccess) {
     if (fallback) {
       return <>{fallback}</>;
     }
-    
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center max-w-md mx-auto px-4">
           <ShieldIcon className="mx-auto h-16 w-16 text-gray-400" />
-          <h1 className="mt-4 text-2xl font-bold text-gray-900">Access Denied</h1>
+          <h1 className="mt-4 text-2xl font-bold text-gray-900">
+            Access Denied
+          </h1>
           <p className="mt-2 text-gray-600">
             You don&apos;t have permission to access this page.
           </p>
           <div className="mt-6">
             <p className="text-sm text-gray-500 mb-4">
-              Required permission{permissionsToCheck.length > 1 ? 's' : ''}:
+              Required permission{permissionsToCheck.length > 1 ? "s" : ""}:
             </p>
             <div className="space-y-2">
               {permissionsToCheck.map((perm, index) => (
@@ -91,38 +97,36 @@ export const PermissionRoute: React.FC<PermissionRouteProps> = ({
       </div>
     );
   }
-  
+
   // Render children if access is granted
   return <>{children}</>;
 };
 
 // Convenience components for common use cases
-export const OwnerRoute: React.FC<Omit<PermissionRouteProps, 'permission'>> = (props) => (
-  <PermissionRoute permission="hostel_update" {...props} />
-);
+export const OwnerRoute: React.FC<Omit<PermissionRouteProps, "permission">> = (
+  props
+) => <PermissionRoute permission="hostel_update" {...props} />;
 
-export const WardenRoute: React.FC<Omit<PermissionRouteProps, 'permission'>> = (props) => (
-  <PermissionRoute permission="complaint_update" {...props} />
-);
+export const WardenRoute: React.FC<Omit<PermissionRouteProps, "permission">> = (
+  props
+) => <PermissionRoute permission="complaint_update" {...props} />;
 
-export const StudentRoute: React.FC<Omit<PermissionRouteProps, 'permission'>> = (props) => (
-  <PermissionRoute permission="view_own_profile" {...props} />
-);
+export const StudentRoute: React.FC<
+  Omit<PermissionRouteProps, "permission">
+> = (props) => <PermissionRoute permission="view_own_profile" {...props} />;
 
-export const SuperadminRoute: React.FC<Omit<PermissionRouteProps, 'permission'>> = (props) => (
-  <PermissionRoute permission="manage_system" {...props} />
-);
+export const SuperadminRoute: React.FC<
+  Omit<PermissionRouteProps, "permission">
+> = (props) => <PermissionRoute permission="manage_system" {...props} />;
 
 // Multiple permission route component
-export const MultiPermissionRoute: React.FC<Omit<PermissionRouteProps, 'permission'>> = ({
-  permissions,
-  requireAll = false,
-  ...props
-}) => {
+export const MultiPermissionRoute: React.FC<
+  Omit<PermissionRouteProps, "permission">
+> = ({ permissions, requireAll = false, ...props }) => {
   if (!permissions || permissions.length === 0) {
-    throw new Error('MultiPermissionRoute requires at least one permission');
+    throw new Error("MultiPermissionRoute requires at least one permission");
   }
-  
+
   return (
     <PermissionRoute
       permission={permissions[0]} // Fallback for single permission
@@ -136,32 +140,28 @@ export const MultiPermissionRoute: React.FC<Omit<PermissionRouteProps, 'permissi
 // Route protection hook for programmatic access
 export const useRoutePermission = (permission: string) => {
   const { hasPermission, loading } = usePermissions();
-  
+
   return {
     hasAccess: hasPermission(permission),
     loading,
-    canAccess: !loading && hasPermission(permission)
+    canAccess: !loading && hasPermission(permission),
   };
 };
 
 // Multiple permission hook
-export const useMultiRoutePermission = (permissions: string[], requireAll = false) => {
+export const useMultiRoutePermission = (
+  permissions: string[],
+  requireAll = false
+) => {
   const { hasAllPermissions, hasAnyPermission, loading } = usePermissions();
-  
-  const hasAccess = requireAll 
+
+  const hasAccess = requireAll
     ? hasAllPermissions(permissions)
     : hasAnyPermission(permissions);
-  
+
   return {
     hasAccess,
     loading,
-    canAccess: !loading && hasAccess
+    canAccess: !loading && hasAccess,
   };
 };
-
-
-
-
-
-
-

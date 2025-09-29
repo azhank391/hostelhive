@@ -1,3 +1,3 @@
 export default function ComplaintDetailPlaceholder() {
-	return null;
+  return null;
 }

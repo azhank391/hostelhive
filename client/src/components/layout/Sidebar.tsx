@@ -172,12 +172,13 @@ export const Sidebar = memo(({ mobile = false, onClose }: SidebarProps) => {
   );
 
   // Get current hostel ID for URL construction
-  const currentHostelId = typeof getHostelIdSafe === "function" ? getHostelIdSafe() : getHostelIdSafe;
+  const currentHostelId =
+    typeof getHostelIdSafe === "function" ? getHostelIdSafe() : getHostelIdSafe;
 
   // Fetch visitor count for owners/wardens using context-aware API with caching
   useEffect(() => {
     // 🚀 NEW: Skip for superadmin users or if admin API is not available
-  if (isSuperadmin || !admin) return;
+    if (isSuperadmin || !admin) return;
 
     if ((isOwner || isWarden) && hasHostel && isReady) {
       let isMounted = true;

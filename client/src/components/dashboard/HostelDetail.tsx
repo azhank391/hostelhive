@@ -282,8 +282,8 @@ export const HostelDetail: React.FC<HostelDetailProps> = ({ id }) => {
             Hostel Not Found
           </h2>
           <p className="mt-2 text-gray-600">
-            The requested hostel could not be found or you don&apo;t have access to
-            it.
+            The requested hostel could not be found or you don&apo;t have access
+            to it.
           </p>
           <div className="mt-6">
             <Link href="/dashboard">

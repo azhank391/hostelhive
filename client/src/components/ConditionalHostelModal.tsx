@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useHostel } from '@/context/HostelContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { HostelSelectionModal } from './HostelSelectionModal';
+import { useHostel } from "@/context/HostelContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { HostelSelectionModal } from "./HostelSelectionModal";
 
 export function ConditionalHostelModal() {
   // 🎯 Updated to use new context architecture
@@ -10,7 +10,7 @@ export function ConditionalHostelModal() {
   const { user } = useAuth();
 
   // Only render if we're in a browser environment
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return null;
   }
 
@@ -20,7 +20,7 @@ export function ConditionalHostelModal() {
   }
 
   // Only show for owners
-  if (user.role !== 'owner') {
+  if (user.role !== "owner") {
     return null;
   }
 
@@ -28,7 +28,7 @@ export function ConditionalHostelModal() {
   // 1. Context finished loading
   // 2. Owner has multiple hostels
   // 3. No current hostel is selected
-  if (loadingState !== 'loaded') {
+  if (loadingState !== "loaded") {
     return null;
   }
 
