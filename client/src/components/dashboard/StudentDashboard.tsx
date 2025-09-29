@@ -17,7 +17,6 @@ import {
   PlusIcon,
   ClockIcon,
   AlertCircleIcon,
-  CheckCircleIcon,
   RefreshCwIcon,
   BedIcon,
   TrendingUpIcon
@@ -95,7 +94,7 @@ interface DashboardStats {
  */
 export const StudentDashboard = React.memo(() => {
   const { user } = useAuth()
-  const { hostelId, hasHostel } = useCurrentHostelId()
+  const { hasHostel } = useCurrentHostelId()
   const studentApi = useStudentApiWithHostel()
   
   // State management
@@ -134,15 +133,7 @@ export const StudentDashboard = React.memo(() => {
   }, [dashboardData?.room])
 
   // 🎯 PERFORMANCE: Memoized complaint priority distribution
-  const complaintPriorityStats = useMemo(() => {
-    if (!dashboardData?.complaints?.recent) return { high: 0, medium: 0, low: 0 }
-    
-    return dashboardData.complaints.recent.reduce((acc, complaint) => {
-      const priority = complaint.priority || 'medium'
-      acc[priority] = (acc[priority] || 0) + 1
-      return acc
-    }, { high: 0, medium: 0, low: 0, urgent: 0 })
-  }, [dashboardData?.complaints?.recent])
+  // Note: priority distribution not used in UI currently
 
   // 🚀 PERFORMANCE: Optimized batch data fetching
   const fetchAllData = useCallback(async () => {
@@ -160,8 +151,9 @@ export const StudentDashboard = React.memo(() => {
         studentApi.getVisitorLogs()
       ])
       
-      setDashboardData(dashboardResponse as StudentDashboardData)
-      setVisitorLogs(Array.isArray(visitorResponse) ? visitorResponse : (visitorResponse as any)?.data || [])
+  setDashboardData(dashboardResponse as StudentDashboardData)
+  const normalizedVisitors: unknown = Array.isArray(visitorResponse) ? visitorResponse : (visitorResponse as Record<string, unknown>)?.data
+  setVisitorLogs(Array.isArray(normalizedVisitors) ? normalizedVisitors as VisitorLog[] : [])
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load dashboard'
@@ -181,7 +173,7 @@ export const StudentDashboard = React.memo(() => {
     try {
       await fetchAllData()
       notification.success('Dashboard refreshed successfully!')
-    } catch (err) {
+    } catch {
       notification.error('Failed to refresh dashboard')
     } finally {
       setRefreshing(false)

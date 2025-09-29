@@ -1,13 +1,13 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { PlusIcon, SearchIcon, EditIcon, TrashIcon, RefreshCwIcon } from 'lucide-react';
+import { PlusIcon, SearchIcon, RefreshCwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { useHostel } from '@/context/HostelContext';
 import { useAdminApiWithHostel, useCurrentHostelId } from '@/lib/context-aware-api';
 import { notification } from '@/lib/toast';
 import { Room } from '@/lib/types';
+import { RoomFormModal } from './RoomFormModal';
 
 /**
  * 🚀 OPTIMIZED RoomManagement Component
@@ -23,7 +23,6 @@ import { Room } from '@/lib/types';
  * ✅ Batch operations where possible
  */
 export const RoomManagement = React.memo(() => {
-  const { hostels } = useHostel();
   const { getHostelId, hasHostel } = useCurrentHostelId();
   const adminApi = useAdminApiWithHostel();
   
@@ -33,6 +32,7 @@ export const RoomManagement = React.memo(() => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  // CRUD modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
@@ -67,6 +67,13 @@ export const RoomManagement = React.memo(() => {
       occupancy: totalOccupied,
       occupancyRate: totalCapacity > 0 ? Math.round((totalOccupied / totalCapacity) * 100) : 0
     };
+  }, [rooms]);
+
+  // Unique hostel blocks derived from existing rooms (for modal select)
+  const hostelBlocks = useMemo(() => {
+    const set = new Set<string>();
+    rooms.forEach(r => { if (r.block) set.add(r.block); });
+    return Array.from(set);
   }, [rooms]);
 
   // 🚀 PERFORMANCE: Optimized fetch function with useCallback
@@ -131,51 +138,26 @@ export const RoomManagement = React.memo(() => {
     try {
       await fetchRooms();
       notification.success('Rooms refreshed successfully!');
-    } catch (err) {
+    } catch {
       notification.error('Failed to refresh rooms');
     } finally {
       setRefreshing(false);
     }
   }, [hasHostel, fetchRooms]);
 
-  // 🚀 PERFORMANCE: Optimized CRUD handlers with useCallback
-  const handleCreateRoom = useCallback(async (roomData: { roomNumber: string; capacity: number; block?: string }) => {
-    if (!hasHostel) return;
-    
-    try {
-      await adminApi.createRoom(roomData);
-      setShowCreateModal(false);
-      await fetchRooms();
-      notification.success('Room created successfully!');
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create room';
-      notification.error('Failed to create room', { description: errorMessage });
-      throw err;
-    }
-  }, [hasHostel, adminApi, fetchRooms]);
+  // Modal open handlers
+  const openCreateModal = useCallback(() => {
+    setSelectedRoom(null);
+    setShowCreateModal(true);
+  }, []);
 
-  const handleUpdateRoom = useCallback(async (roomData: { roomNumber: string; capacity: number; block?: string }) => {
-    console.log('🔍 DEBUG: handleUpdateRoom called with:', { selectedRoom, hasHostel, roomData, hostelId: getHostelId() });
-    
-    if (!selectedRoom || !hasHostel) {
-      console.log('❌ DEBUG: handleUpdateRoom early return - selectedRoom:', !!selectedRoom, 'hasHostel:', hasHostel);
-      return;
-    }
-    
-    try {
-      console.log('✅ DEBUG: handleUpdateRoom calling adminApi.updateRoom with:', { roomId: selectedRoom.id, roomData });
-      await adminApi.updateRoom(selectedRoom.id, roomData);
-      setShowEditModal(false);
-      setSelectedRoom(null);
-      await fetchRooms();
-      notification.success('Room updated successfully!');
-    } catch (err) {
-      console.error('❌ DEBUG: handleUpdateRoom error:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update room';
-      notification.error('Failed to update room', { description: errorMessage });
-      throw err;
-    }
-  }, [selectedRoom, hasHostel, adminApi, fetchRooms, getHostelId]);
+  const openEditModal = useCallback((room: Room) => {
+    setSelectedRoom(room);
+    setShowEditModal(true);
+  }, []);
+
+  const closeCreateModal = useCallback(() => setShowCreateModal(false), []);
+  const closeEditModal = useCallback(() => setShowEditModal(false), []);
 
   const handleDeleteRoom = useCallback(async (roomId: string) => {
     if (!hasHostel || !confirm('Are you sure you want to delete this room? This action cannot be undone.')) {
@@ -194,9 +176,8 @@ export const RoomManagement = React.memo(() => {
 
   // 🎯 PERFORMANCE: Optimized event handlers with useCallback
   const handleEditClick = useCallback((room: Room) => {
-    setSelectedRoom(room);
-    setShowEditModal(true);
-  }, []);
+    openEditModal(room);
+  }, [openEditModal]);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -282,7 +263,7 @@ export const RoomManagement = React.memo(() => {
             {refreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
           <Button 
-            onClick={() => setShowCreateModal(true)} 
+            onClick={openCreateModal} 
             className="flex items-center"
           >
             <PlusIcon size={16} className="mr-2" />
@@ -344,7 +325,7 @@ export const RoomManagement = React.memo(() => {
               {searchTerm ? 'Try adjusting your search terms' : 'Get started by adding your first room'}
             </p>
             {!searchTerm && (
-              <Button onClick={() => setShowCreateModal(true)}>
+              <Button onClick={openCreateModal}>
                 <PlusIcon size={16} className="mr-2" />
                 Add Room
               </Button>
@@ -472,9 +453,36 @@ export const RoomManagement = React.memo(() => {
           </div>
         )}
       </div>
+      {/* Create Room Modal */}
+      <RoomFormModal
+        isOpen={showCreateModal}
+        onClose={closeCreateModal}
+        mode="create"
+        hostelBlocks={hostelBlocks}
+        existingRooms={rooms}
+        adminApi={adminApi as any}
+        hostelId={getHostelId() || ''}
+        onSuccess={(newRoom) => {
+          if (!newRoom) return;
+          setRooms(prev => [newRoom as Room, ...prev]);
+        }}
+      />
 
-      {/* Modals would go here - keeping existing modal structure */}
-      {/* Note: RoomFormModal component would need similar optimization */}
+      {/* Edit Room Modal */}
+      <RoomFormModal
+        isOpen={showEditModal}
+        onClose={closeEditModal}
+        mode="edit"
+        room={selectedRoom || undefined}
+        hostelBlocks={hostelBlocks}
+        existingRooms={rooms}
+        adminApi={adminApi as any}
+        hostelId={getHostelId() || ''}
+        onSuccess={(updatedRoom) => {
+          if (!updatedRoom) return;
+          setRooms(prev => prev.map(r => r.id === (updatedRoom as Room).id ? (updatedRoom as Room) : r));
+        }}
+      />
     </div>
   );
 });

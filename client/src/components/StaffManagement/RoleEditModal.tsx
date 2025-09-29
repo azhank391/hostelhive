@@ -93,6 +93,11 @@ const RoleEditModal: React.FC<RoleEditModalProps> = ({
   handleEditPermissionToggle,
 }) => {
   if (!open) return null;
+  // mark optional callbacks as used if not provided to avoid no-unused-vars when destructured but unused
+  void onDeleteRole;
+  void onToggleEditPermissions;
+  void isEditingPermissions;
+  void onSetEditingRolePermissions;
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -240,7 +245,7 @@ const RoleEditModal: React.FC<RoleEditModalProps> = ({
                           <div className="ml-3">
                             <p className="text-sm text-blue-700">
                               <strong>Note:</strong> You are editing permissions
-                              for the "{editingStaffRole.role.displayName}"
+                              for the &quot;{editingStaffRole.role.displayName}&quot;
                               role. Changes will affect all users with this
                               role.
                             </p>

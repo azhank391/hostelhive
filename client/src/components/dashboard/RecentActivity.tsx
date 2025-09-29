@@ -222,7 +222,7 @@ export const OptimizedRecentActivity = React.memo(({
       setError(null)
       
       // Use context-aware API that automatically includes hostelId
-      const data = await apiWithHostel.getDashboardStats()
+  await apiWithHostel.getDashboardStats()
       
       // Mock recent activities data for demonstration
       const mockActivities: Activity[] = Array.from({ length: 20 }, (_, index) => {
@@ -265,12 +265,10 @@ export const OptimizedRecentActivity = React.memo(({
       
       setActivities(mockActivities)
       
-    } catch (err) {
-      console.error('Error fetching activities:', err)
+    } catch {
+      console.error('Error fetching activities')
       setError('Failed to load recent activities')
-      notification.error('Failed to load activities', {
-        description: err instanceof Error ? err.message : 'Please try again'
-      })
+      notification.error('Failed to load activities')
     } finally {
       setLoading(false)
     }
@@ -282,7 +280,7 @@ export const OptimizedRecentActivity = React.memo(({
     try {
       await fetchActivities()
       notification.success('Activities refreshed!')
-    } catch (err) {
+    } catch {
       notification.error('Failed to refresh activities')
     } finally {
       setRefreshing(false)

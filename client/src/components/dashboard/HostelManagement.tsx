@@ -8,13 +8,11 @@ import {
   BuildingIcon,
   RefreshCwIcon,
   TrendingUpIcon,
-  MapPinIcon,
   UsersIcon,
   BedIcon,
-  TrashIcon,
-  EditIcon,
   EyeIcon,
-  ShareIcon,
+  EditIcon,
+  TrashIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import HostelCard from "@/components/dashboard/HostelCard";
@@ -72,12 +70,8 @@ interface FilterCriteria {
  * ✅ Better for smaller screens and dense layouts
  */
 export const HostelManagement = React.memo(() => {
-  const {
-    hostels: availableHostels,
-    refreshHostels,
-    loadingState,
-  } = useHostel();
-  const { user, isLoading } = useAuth();
+  const { refreshHostels } = useHostel();
+  const { isLoading } = useAuth();
   const { hasPermission } = usePermissions();
 
   // Permission checks
@@ -85,7 +79,7 @@ export const HostelManagement = React.memo(() => {
   const canCreateHostels = hasPermission("hostel_create");
   const canUpdateHostels = hasPermission("hostel_update");
   const canDeleteHostels = hasPermission("hostel_delete");
-  const canManageHostelSettings = hasPermission("hostel_settings_update");
+  // const canManageHostelSettings = hasPermission("hostel_settings_update");
 
   // State management
   const [hostels, setHostels] = useState<Hostel[]>([]);
@@ -324,7 +318,7 @@ export const HostelManagement = React.memo(() => {
       await refreshHostels();
       await fetchHostelStats();
       toast.success("Hostels refreshed successfully!");
-    } catch (err) {
+    } catch {
       toast.error("Failed to refresh hostels");
     } finally {
       setRefreshing(false);
@@ -454,7 +448,7 @@ export const HostelManagement = React.memo(() => {
             Access Denied
           </h3>
           <p className="text-sm text-gray-500">
-            You don't have permission to view hostels.
+            You don&apos;t have permission to view hostels.
           </p>
         </div>
       </div>

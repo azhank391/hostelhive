@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   SearchIcon,
-  RefreshCwIcon,
   EditIcon,
   CheckIcon,
   ClockIcon,
@@ -21,7 +20,6 @@ import {
   useCurrentHostelId,
   useAdminApiWithHostel,
 } from "@/lib/context-aware-api";
-import { useAuth } from "@/contexts/AuthContext";
 import { Complaint } from "@/lib/types";
 import toast from "@/lib/toast";
 
@@ -63,7 +61,7 @@ const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
     try {
       await onSubmit(status, priority);
       onClose();
-    } catch (error) {
+    } catch {
       // Error handled by parent component
     }
   };
@@ -191,7 +189,7 @@ const ResolveComplaintModal: React.FC<ResolveComplaintModalProps> = ({
       await onSubmit(resolutionNotes);
       setResolutionNotes("");
       onClose();
-    } catch (error) {
+    } catch {
       // Error handled by parent component
     }
   };
@@ -295,7 +293,6 @@ const ResolveComplaintModal: React.FC<ResolveComplaintModalProps> = ({
  * 5. Handle error (rollback to original state)
  */
 export const ComplaintManagement = React.memo(() => {
-  const { user } = useAuth();
   const { hasHostel } = useCurrentHostelId();
   const adminApi = useAdminApiWithHostel();
 
@@ -319,9 +316,6 @@ export const ComplaintManagement = React.memo(() => {
 
   // Optimistic update states for better UX
   const [optimisticUpdates, setOptimisticUpdates] = useState<Set<string>>(
-    new Set()
-  );
-  const [optimisticDeletions, setOptimisticDeletions] = useState<Set<string>>(
     new Set()
   );
 
@@ -417,7 +411,7 @@ export const ComplaintManagement = React.memo(() => {
     try {
       await fetchComplaints();
       toast.success("Complaints refreshed successfully!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to refresh complaints");
     } finally {
       setRefreshing(false);

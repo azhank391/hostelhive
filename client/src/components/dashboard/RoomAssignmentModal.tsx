@@ -1,15 +1,12 @@
 'use client'
 
-import React, { memo, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { memo, useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   XIcon, 
   CheckIcon, 
   UserIcon, 
-  HomeIcon, 
-  UsersIcon, 
+  HomeIcon,  
   MapPinIcon,
-  CalendarIcon,
-  ClockIcon,
   AlertCircleIcon,
   InfoIcon,
   SearchIcon,
@@ -17,7 +14,6 @@ import {
   SortAscIcon,
   SortDescIcon,
   RefreshCwIcon,
-  CheckCircleIcon,
   XCircleIcon,
   ArrowRightIcon,
   BedIcon,
@@ -31,7 +27,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { useHostel } from '@/context/HostelContext';
+// import { useHostel } from '@/context/HostelContext';
 import toast from '@/lib/toast';
 
 interface Room {
@@ -113,10 +109,10 @@ interface OptimizedRoomAssignmentModalProps {
 }
 
 // Available amenities
-const ROOM_AMENITIES = [
-  'Wi-Fi', 'Air Conditioning', 'Attached Bathroom', 'TV', 'Refrigerator',
-  'Study Table', 'Wardrobe', 'Balcony', 'Window', 'Fan', 'Heater'
-];
+// const ROOM_AMENITIES = [
+//   'Wi-Fi', 'Air Conditioning', 'Attached Bathroom', 'TV', 'Refrigerator',
+//   'Study Table', 'Wardrobe', 'Balcony', 'Window', 'Fan', 'Heater'
+// ];
 
 const ROOM_TYPES = [
   { value: 'single', label: 'Single Room', capacity: 1 },
@@ -412,11 +408,11 @@ export const OptimizedRoomAssignmentModal = memo<OptimizedRoomAssignmentModalPro
   showAdvancedFilters = false,
   enablePreferences = false,
   showRoomDetails = false,
-  allowBulkAssignment = false,
+  // allowBulkAssignment = false,
   onValidation,
   customValidationRules = []
 }) => {
-  const formRef = useRef<HTMLFormElement>(null);
+  // const formRef = useRef<HTMLFormElement>(null);
   
   // State management
   const [selectedRoomId, setSelectedRoomId] = useState<string>('');
@@ -452,7 +448,7 @@ export const OptimizedRoomAssignmentModal = memo<OptimizedRoomAssignmentModalPro
 
   // Filter and sort rooms
   const filteredAndSortedRooms = useMemo(() => {
-    let filtered = rooms.filter(room => {
+    const filtered = rooms.filter(room => {
       // Basic availability filter
       const hasAvailability = room.capacity > room.occupied;
       if (filters.availableOnly && !hasAvailability) return false;
@@ -611,7 +607,7 @@ export const OptimizedRoomAssignmentModal = memo<OptimizedRoomAssignmentModalPro
         if (!isValid) {
           errors.push('Assignment validation failed');
         }
-      } catch (err) {
+      } catch {
         errors.push('Validation check failed');
       }
     }

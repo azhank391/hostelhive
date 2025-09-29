@@ -267,10 +267,7 @@ const StudentComplaintDetail: React.FC<StudentComplaintDetailProps> = memo(({
   // RENDER HELPERS
   // ==========================================
 
-  const renderComplaintsList = useMemo(() => {
-    // This component is for detail view only, no list needed
-    return null;
-  }, []);
+  // Note: no list view required in detail component
 
   const renderComplaintDetail = useMemo(() => {
     if (!displayComplaint) {

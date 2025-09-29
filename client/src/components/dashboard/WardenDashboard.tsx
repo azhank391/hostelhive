@@ -301,7 +301,7 @@ export const WardenDashboard = React.memo(() => {
     try {
       await fetchDashboardData()
       notification.success('Dashboard refreshed successfully!')
-    } catch (err) {
+    } catch {
       notification.error('Failed to refresh dashboard')
     } finally {
       setTimeout(() => setRefreshing(false), 500) // Add debounce to prevent rapid refreshes
@@ -357,7 +357,7 @@ export const WardenDashboard = React.memo(() => {
 
       try {
         await fetchDashboardData();
-      } catch (error) {
+      } catch {
         // Error handling is done inside fetchDashboardData
       } finally {
         if (isSubscribed) {
@@ -686,7 +686,7 @@ export const WardenDashboard = React.memo(() => {
                   <UserCheckIcon className="h-8 w-8 text-purple-500" />
                 </div>
                 <p className="text-2xl font-bold text-gray-900">{stats?.todayVisitors || 0}</p>
-                <p className="text-sm text-gray-600">Today's Visitors</p>
+                <p className="text-sm text-gray-600">Today&apos;s Visitors</p>
               </div>
             </>
           )}

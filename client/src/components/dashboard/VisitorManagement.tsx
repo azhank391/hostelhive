@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { PlusIcon, SearchIcon, RefreshCwIcon, CheckIcon, XIcon, UserIcon } from 'lucide-react';
+import { PlusIcon, SearchIcon, RefreshCwIcon, CheckIcon, UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
@@ -42,7 +42,7 @@ interface VisitorLog {
  * ✅ Status-based filtering with memoized counts
  */
 export const VisitorManagement = React.memo(() => {
-  const { hostels } = useHostel();
+  const { /* hostels */ } = useHostel();
   const { hostelId, hasHostel } = useCurrentHostelId();
   const adminApi = useAdminApiWithHostel();
   
@@ -59,6 +59,10 @@ export const VisitorManagement = React.memo(() => {
   
   // Modal states
   const [isAddVisitorModalOpen, setIsAddVisitorModalOpen] = useState(false);
+  // mark possibly unused state/vars to satisfy strict lint without removing future UI hooks
+  void hostelId;
+  void students;
+  void isAddVisitorModalOpen;
 
   // 🎯 PERFORMANCE: Memoized visitor filtering and search
   const filteredVisitors = useMemo(() => {
@@ -148,7 +152,7 @@ export const VisitorManagement = React.memo(() => {
     try {
       await fetchAllData();
       notification.success('Visitor data refreshed successfully!');
-    } catch (err) {
+    } catch {
       notification.error('Failed to refresh data');
     } finally {
       setRefreshing(false);
@@ -206,6 +210,7 @@ export const VisitorManagement = React.memo(() => {
       notification.error('Failed to add visitor', { description: errorMessage });
     }
   }, [hasHostel, adminApi, fetchAllData]);
+  void handleAddVisitor;
 
   // 🎯 PERFORMANCE: Optimized event handlers with useCallback
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {

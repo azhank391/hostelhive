@@ -6,9 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import {
   BuildingIcon,
-  UsersIcon,
   AlertCircleIcon,
-  MessageSquareIcon,
   ShareIcon,
   EditIcon,
   CheckIcon,
@@ -282,7 +280,7 @@ export const HostelDetail: React.FC<HostelDetailProps> = ({ id }) => {
             Hostel Not Found
           </h2>
           <p className="mt-2 text-gray-600">
-            The requested hostel could not be found or you don&apo;t have access
+            The requested hostel could not be found or you don&apos;t have access
             to it.
           </p>
           <div className="mt-6">

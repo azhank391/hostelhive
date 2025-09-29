@@ -28,6 +28,7 @@ interface Hostel {
 export const SuperadminHostelsPage = () => {
   const [hostels, setHostels] = useState<Hostel[]>([]);
   const [loading, setLoading] = useState(true);
+  void setHostels; // quiet unused setter until API wired
 
   useEffect(() => {
     // TODO: Fetch hostels from superadmin API

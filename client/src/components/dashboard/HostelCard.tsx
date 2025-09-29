@@ -11,7 +11,7 @@ import {
   TrendingDownIcon,
   AlertTriangleIcon,
   CheckCircleIcon,
-  ClockIcon,
+  // ClockIcon,
   DollarSignIcon,
   StarIcon,
   EyeIcon,
@@ -22,8 +22,7 @@ import {
   UtensilsIcon,
   ShieldIcon,
   MailIcon,
-  CalendarIcon,
-  BarChart3Icon,
+  // CalendarIcon,
   ArrowRightIcon,
   InfoIcon,
   AlertCircleIcon,
@@ -312,7 +311,7 @@ const FeaturesDisplay = memo(({ features }: { features: HostelFeatures }) => {
   );
 
   const availableFeatures = useMemo(
-    () => Object.entries(features).filter(([_, available]) => available),
+    () => Object.entries(features).filter(([, available]) => available),
     [features]
   );
 
@@ -322,7 +321,7 @@ const FeaturesDisplay = memo(({ features }: { features: HostelFeatures }) => {
     <div>
       <p className="text-xs text-gray-500 mb-2">Features</p>
       <div className="flex flex-wrap gap-1">
-        {availableFeatures.slice(0, 4).map(([feature, _]) => (
+  {availableFeatures.slice(0, 4).map(([feature]) => (
           <div
             key={feature}
             className="flex items-center space-x-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs"

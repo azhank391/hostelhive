@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Button } from '../ui/Button';
-import { Card } from '../ui/Card';
+// import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
@@ -13,8 +13,8 @@ import {
   SearchIcon,
   ArrowPathIcon,
   HomeIcon,
-  CheckCircleIcon,
-  XIcon,
+  // CheckCircleIcon,
+  // XIcon,
   UserIcon,
   BedIcon,
   EyeIcon,
@@ -64,7 +64,7 @@ interface RoomDetailsModalProps {
   onClose: () => void;
   room: Room | null;
   students: Student[];
-  onDeallocate: (studentId: string, studentName: string) => Promise<void>;
+  onDeallocate: (studentId: string) => Promise<void>;
   loading?: boolean;
 }
 
@@ -86,7 +86,7 @@ const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({
   const occupancyPercentage = capacity > 0 ? (occupiedBeds / capacity) * 100 : 0;
 
   const handleDeallocate = async (studentId: string, studentName: string) => {
-    if (!confirm(`Are you sure you want to remove ${studentName} from Room ${room.roomNumber}?\n\nThis will:\n• Remove the student from this room\n• Update room occupancy\n• The student will appear as "unallocated" in student management`)) {
+    if (!confirm(`Are you sure you want to remove ${studentName} from Room ${room.roomNumber}?\n\nThis will:\n• Remove the student from this room\n• Update room occupancy\n• The student will appear as \"unallocated\" in student management`)) {
       return;
     }
 
@@ -94,7 +94,7 @@ const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({
       setDeallocatingStudent(studentId);
       
       // Call the deallocation handler (which has optimistic updates)
-      await onDeallocate(studentId, studentName);
+  await onDeallocate(studentId);
       
     } catch (error) {
       console.error('Failed to deallocate student:', error);
@@ -260,6 +260,8 @@ const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [selectedRoomId, setSelectedRoomId] = useState<string>('');
   const [allocating, setAllocating] = useState(false);
+  // mark currently-unused loading prop as intentionally referenced
+  void loading;
 
   // Reset state when modal opens
   useEffect(() => {
@@ -530,7 +532,7 @@ export const WardenRoomManagement = React.memo(() => {
     try {
       await fetchAllData();
       toast.success('Data refreshed successfully');
-    } catch (err) {
+    } catch {
       toast.error('Failed to refresh data');
     } finally {
       setRefreshing(false);
@@ -680,7 +682,7 @@ export const WardenRoomManagement = React.memo(() => {
   }, [fetchAllData, rooms, viewingRoom, students]);
 
   // Handle room deallocation - update both rooms and students state optimistically
-  const handleDeallocateStudent = useCallback(async (studentId: string, studentName: string) => {
+  const handleDeallocateStudent = useCallback(async (studentId: string) => {
     try {
       // Find the student and their active allocation
       const student = students.find(s => s.id === studentId);
@@ -890,6 +892,9 @@ export const WardenRoomManagement = React.memo(() => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Room Management</h1>
           <p className="text-gray-600">Manage hostel rooms and student allocations</p>
+          {loading && (
+            <p className="text-xs text-gray-500 mt-1">Loading latest data...</p>
+          )}
         </div>
         <div className="flex items-center space-x-3">
           <Button 

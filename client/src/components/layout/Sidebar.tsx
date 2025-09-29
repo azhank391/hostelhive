@@ -152,7 +152,9 @@ export const Sidebar = memo(({ mobile = false, onClose }: SidebarProps) => {
   // Access both currentHostel and hostels list so we can suppress invalid links for first-time owners
   const { currentHostel, hostels } = useHostel();
   const { hasPermission, userRole, loading } = usePermissions();
-  const [activeItem, setActiveItem] = useState<string>("dashboard");
+  void currentHostel; // quiet unused until wiring dependent UI
+  void userRole;
+  const [activeItem] = useState<string>("dashboard");
   // Removed expandedSections state since we no longer have sub-sections
 
   // Determine role flags without affecting hook calls
@@ -318,7 +320,8 @@ export const Sidebar = memo(({ mobile = false, onClose }: SidebarProps) => {
 
   const renderSidebarItem = (item: SidebarItem) => {
     const Icon = item.icon;
-    const isActive = activeItem === item.id;
+  const isActive = activeItem === item.id;
+  void isActive;
 
     // Build the correct path based on user role and hostel context
     let itemPath = item.path;

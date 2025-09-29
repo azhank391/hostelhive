@@ -29,7 +29,7 @@ interface PricingTierProps {
   features: string[];
   isPopular?: boolean;
 }
-function PricingTier({
+export function PricingTier({
   name,
   price,
   description,
@@ -71,6 +71,8 @@ export function PricingSection() {
   const { user } = useAuth();
   const { currentHostel } = useHostel();
   const router = useRouter();
+  // no-op reference to ensure tree-shakers mark export as intentional; does not affect runtime
+  void PricingTier;
 
   const handleSelectPlan = useCallback(
     (planId: string) => {

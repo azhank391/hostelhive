@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useCallback, useMemo } from 'react'
-import Link from 'next/link'
+// Link not used here
 import { useRouter } from 'next/navigation'
 import { 
   PlusIcon, 
@@ -19,9 +19,7 @@ import {
   ShieldIcon,
   MapPinIcon
 } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/modals/Modal'
-import { notification } from '@/lib/toast'
 import { useAuth } from '@/contexts/AuthContext'
 import { useHostel } from '@/context/HostelContext'
 

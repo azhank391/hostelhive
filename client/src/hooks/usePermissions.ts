@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { checkPermission, checkAllPermissions, checkAnyPermission, Permission } from '@/lib/permissionUtils';
 

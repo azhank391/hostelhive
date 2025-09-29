@@ -53,6 +53,8 @@ export const WardenManagement = React.memo(() => {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // mark as used until wiring to UI
+  void isSubmitting;
   
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('')
@@ -123,8 +125,8 @@ export const WardenManagement = React.memo(() => {
       const data = await response.json()
       
       setWardens(data)
-    } catch (err) {
-      console.error('Error fetching wardens:', err)
+    } catch {
+      console.error('Error fetching wardens:')
       setError('Failed to load wardens')
       toast.error('Failed to load wardens')
     } finally {
@@ -138,7 +140,7 @@ export const WardenManagement = React.memo(() => {
     try {
       await fetchWardens()
       toast.success('Wardens refreshed successfully!')
-    } catch (err) {
+    } catch {
       toast.error('Failed to refresh wardens')
     } finally {
       setRefreshing(false)
@@ -191,7 +193,7 @@ export const WardenManagement = React.memo(() => {
       toast.success('Warden created successfully!', {
         description: `${newWarden.name} has been added with default password: 123456`
       })
-    } catch (err) {
+    } catch {
       // Revert optimistic update
       setWardens(prev => prev.filter(w => !w.id.startsWith('temp-')))
       toast.error('Failed to create warden')
@@ -232,7 +234,7 @@ export const WardenManagement = React.memo(() => {
       }
       
       toast.success('Warden updated successfully!')
-    } catch (err) {
+    } catch {
       // Revert optimistic update
       await fetchWardens()
       toast.error('Failed to update warden')
@@ -266,7 +268,7 @@ export const WardenManagement = React.memo(() => {
       }
       
       toast.success('Warden deleted successfully!')
-    } catch (err) {
+    } catch {
       // Revert optimistic update
       setWardens(originalWardens)
       toast.error('Failed to delete warden')

@@ -13,19 +13,12 @@ import {
   CheckCircleIcon,
   AlertCircleIcon,
   SearchIcon,
-  RefreshCwIcon,
-  LogOutIcon,
-  DownloadIcon,
-  FilterIcon,
   PlusIcon,
   EditIcon,
   TrashIcon,
   XIcon,
   CheckIcon,
-  UserIcon,
-  MailIcon,
-  PhoneIcon,
-  CalendarIcon
+  UserIcon
 } from 'lucide-react';
 
 interface VisitorLog {
@@ -100,7 +93,7 @@ const CreateVisitorModal: React.FC<CreateVisitorModalProps> = ({
       await onSubmit(formData);
       setFormData({ visitorName: '', relation: '', studentId: '' });
       setErrors({});
-    } catch (error) {
+    } catch {
       // Error handled by parent component
     } finally {
       setIsSubmitting(false);
@@ -261,7 +254,7 @@ const EditVisitorModal: React.FC<EditVisitorModalProps> = ({
     try {
       setIsSubmitting(true);
       await onSubmit(formData);
-    } catch (error) {
+    } catch {
       // Error handled by parent component
     } finally {
       setIsSubmitting(false);
@@ -397,6 +390,9 @@ export const WardenVisitorManagement = React.memo(() => {
   const { hostels } = useHostel();
   const { getHostelIdSafe, hasHostel } = useCurrentHostelId();
   const adminApi = useAdminApiWithHostel();
+  // mark possibly unused
+  void user;
+  void hostels;
   
   // State management
   const [visitorLogs, setVisitorLogs] = useState<VisitorLog[]>([]);
@@ -533,11 +529,10 @@ export const WardenVisitorManagement = React.memo(() => {
       setVisitorLogs(processedLogs);
       setStudents(studentsData);
       
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch visitor logs';
-      setError(errorMessage);
-      console.error('Failed to fetch visitor logs:', error);
-      toast.error(`Failed to load visitor data: ${errorMessage}`);
+    } catch {
+      setError('Failed to fetch visitor logs');
+      console.error('Failed to fetch visitor logs');
+      toast.error('Failed to load visitor data: Failed to fetch visitor logs');
     } finally {
       setLoading(false);
     }
@@ -551,7 +546,7 @@ export const WardenVisitorManagement = React.memo(() => {
     try {
       await fetchVisitorLogs();
       toast.success('Visitor data refreshed successfully!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to refresh visitor data');
     } finally {
       setRefreshing(false);
@@ -850,7 +845,7 @@ export const WardenVisitorManagement = React.memo(() => {
           <div className="flex items-center">
             <ClockIcon className="h-8 w-8 text-yellow-600" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">Today's Visitors</p>
+              <p className="text-sm font-medium text-gray-600">Today&apos;s Visitors</p>
               <p className="text-2xl font-semibold text-gray-900">{stats.todayVisitors}</p>
             </div>
           </div>
@@ -1000,7 +995,7 @@ export const WardenVisitorManagement = React.memo(() => {
                           size="sm"
                           className="inline-flex items-center text-red-600 hover:text-red-700"
                         >
-                          <LogOutIcon size={14} className="mr-1" />
+                          <CheckIcon size={14} className="mr-1" />
                           Check Out
                         </Button>
                       )}

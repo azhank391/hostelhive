@@ -10,12 +10,7 @@ import { authApi, hostelApi, adminApi, studentApi, superadminApi } from '../lib/
 import type { 
   UseApiResult, 
   UsePaginatedApiResult,
-  Hostel,
-  User,
-  Room,
-  Complaint,
   VisitorLog,
-  DashboardStats
 } from '../lib/types';
 import type { PaginatedResponse } from '../lib/api-client';
 

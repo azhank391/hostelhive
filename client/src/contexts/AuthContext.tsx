@@ -9,7 +9,7 @@ import React, {
   ReactNode,
 } from "react";
 import { authApi } from "@/lib/api";
-import { notification, apiNotification } from "@/lib/toast";
+import { notification } from "@/lib/toast";
 import { useRouter } from "next/navigation";
 import { STORAGE_KEYS } from "@/lib/config";
 // Removed hostel-storage import - using direct localStorage access

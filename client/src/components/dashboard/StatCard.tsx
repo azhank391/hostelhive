@@ -2,8 +2,6 @@
 
 import React, { memo, useMemo, useCallback, useState, useEffect } from 'react';
 import { 
-  TrendingUpIcon, 
-  TrendingDownIcon, 
   InfoIcon, 
   RefreshCwIcon,
   AlertCircleIcon,

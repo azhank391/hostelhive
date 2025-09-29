@@ -7,7 +7,6 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { notification } from '@/lib/toast'
 import { 
-  BuildingIcon, 
   UsersIcon, 
   BedIcon, 
   AlertCircleIcon, 
@@ -15,7 +14,6 @@ import {
   TrendingUpIcon,
   ClockIcon,
   RefreshCwIcon,
-  PlusIcon,
   BarChart3Icon,
   ShieldCheckIcon,
   DollarSignIcon,
@@ -83,6 +81,37 @@ export const OwnerDashboard = React.memo(() => {
   const { isReady, error, loadingState } = useHostel()
   const hostelId = useCurrentHostelId()
   const adminApi = useAdminApiWithHostel()
+  
+  // Type guards and safe field accessors to avoid `any` usage
+  const isRoomOccupied = (r: unknown): boolean => {
+    if (!r || typeof r !== 'object') return false
+    const occ = (r as { occupied?: unknown }).occupied
+    return typeof occ === 'number' && occ > 0
+  }
+
+  const isPendingComplaint = (c: unknown): boolean => {
+    if (!c || typeof c !== 'object') return false
+    const status = (c as { status?: unknown }).status
+    return status === 'pending' || status === 'in_progress'
+  }
+
+  const isCurrentVisitor = (v: unknown): boolean => {
+    if (!v || typeof v !== 'object') return false
+    const checkOut = (v as { checkOut?: unknown }).checkOut
+    return checkOut == null
+  }
+
+  const getString = (obj: unknown, key: string, fallback = ''): string => {
+    if (!obj || typeof obj !== 'object') return fallback
+    const val = (obj as Record<string, unknown>)[key]
+    return typeof val === 'string' ? val : fallback
+  }
+
+  const getPriority = (obj: unknown): RecentActivity['priority'] => {
+    if (!obj || typeof obj !== 'object') return undefined
+    const p = (obj as Record<string, unknown>)['priority']
+    return p === 'low' || p === 'medium' || p === 'high' || p === 'urgent' ? p : undefined
+  }
   
   // 🚀 CRITICAL: Check if we're on the correct URL route
   const [isCorrectRoute, setIsCorrectRoute] = useState(false)
@@ -222,13 +251,11 @@ export const OwnerDashboard = React.memo(() => {
       // For now, using admin API as a placeholder
       
       const [
-        dashboardStatsRaw,
         complaintsRaw,
         studentsRaw,
         roomsRaw,
         visitorsRaw
       ] = await Promise.all([
-        adminApi.getDashboardStats(),
         adminApi.getComplaints({ limit: 20 }),
         adminApi.getStudents({ limit: 50 }),
         adminApi.getRooms({ limit: 100 }),
@@ -236,9 +263,6 @@ export const OwnerDashboard = React.memo(() => {
       ])
 
       // Ensure .data is always an array for each response
-      const dashboardStats = (dashboardStatsRaw && typeof dashboardStatsRaw === 'object' && 'data' in dashboardStatsRaw)
-        ? dashboardStatsRaw
-        : { data: [] }
       const complaints = (complaintsRaw && typeof complaintsRaw === 'object' && 'data' in complaintsRaw)
         ? complaintsRaw
         : { data: [] }
@@ -256,17 +280,17 @@ export const OwnerDashboard = React.memo(() => {
       const totalStudents = Array.isArray(students?.data) ? students.data.length : 0
       const totalRooms = Array.isArray(rooms?.data) ? rooms.data.length : 0
       const occupiedRooms = Array.isArray(rooms?.data) 
-        ? rooms.data.filter((r: any) => r.occupied > 0).length 
+        ? rooms.data.filter((r) => isRoomOccupied(r)).length 
         : 0
       
       const totalComplaints = Array.isArray(complaints?.data) ? complaints.data.length : 0
       const pendingComplaints = Array.isArray(complaints?.data)
-        ? complaints.data.filter((c: any) => c.status === 'pending' || c.status === 'in_progress').length
+        ? complaints.data.filter((c) => isPendingComplaint(c)).length
         : 0
       const resolvedComplaints = totalComplaints - pendingComplaints
       
       const currentVisitors = Array.isArray(visitors?.data)
-        ? visitors.data.filter((v: any) => !v.checkOut).length
+        ? visitors.data.filter((v) => isCurrentVisitor(v)).length
         : 0
       
       const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0
@@ -295,41 +319,50 @@ export const OwnerDashboard = React.memo(() => {
       
       // Generate recent activity from data
       const activities: RecentActivity[] = []
-      
+
       // Add recent complaints
       if (Array.isArray(complaints?.data)) {
-        complaints.data.slice(0, 3).forEach((complaint: any) => {
+        complaints.data.slice(0, 3).forEach((complaint) => {
+          const id = getString(complaint, 'id', `${Date.now()}`)
+          const title = getString(complaint, 'title', 'New complaint')
+          const description = getString(complaint, 'description', 'No description provided')
+          const createdAt = getString(complaint, 'createdAt', new Date().toISOString())
+          const priority = getPriority(complaint) ?? 'medium'
           activities.push({
-            id: `complaint-${complaint.id}`,
+            id: `complaint-${id}`,
             type: 'complaint',
-            title: `New complaint: ${complaint.title}`,
-            description: complaint.description || 'No description provided',
-            timestamp: complaint.createdAt || new Date().toISOString(),
-            priority: complaint.priority || 'medium'
+            title: `New complaint: ${title}`,
+            description,
+            timestamp: createdAt,
+            priority
           })
         })
       }
-      
+
       // Add recent visitors
       if (Array.isArray(visitors?.data)) {
-        visitors.data.slice(0, 2).forEach((visitor: any) => {
+        visitors.data.slice(0, 2).forEach((visitor) => {
+          const id = getString(visitor, 'id', `${Date.now()}`)
+          const visitorName = getString(visitor, 'visitorName', 'Visitor')
+          const relation = getString(visitor, 'relation', 'Relation')
+          const studentName = getString(visitor, 'studentName', 'student')
+          const checkIn = getString(visitor, 'checkIn', new Date().toISOString())
           activities.push({
-            id: `visitor-${visitor.id}`,
+            id: `visitor-${id}`,
             type: 'visitor',
-            title: `Visitor checked in: ${visitor.visitorName}`,
-            description: `${visitor.relation} visiting ${visitor.studentName || 'student'}`,
-            timestamp: visitor.checkIn || new Date().toISOString()
+            title: `Visitor checked in: ${visitorName}`,
+            description: `${relation} visiting ${studentName}`,
+            timestamp: checkIn
           })
         })
       }
-      
+
       setRecentActivity(activities)
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load owner dashboard'
       setDashboardError(errorMessage)
       console.error('Failed to fetch owner dashboard:', error)
-      notification.error('Failed to load dashboard', { description: errorMessage })
     } finally {
       setLoading(false)
     }
@@ -341,7 +374,7 @@ export const OwnerDashboard = React.memo(() => {
     try {
       await loadDashboardData()
       notification.success('Dashboard refreshed successfully!')
-    } catch (err) {
+    } catch {
       notification.error('Failed to refresh dashboard')
     } finally {
       setRefreshing(false)
@@ -380,6 +413,15 @@ export const OwnerDashboard = React.memo(() => {
     }
     return 'text-blue-600 bg-blue-50'
   }, [])
+
+  // Initial data fetch (must be declared before any early returns to satisfy hooks rules)
+  useEffect(() => {
+    if (hostelId) {
+      loadDashboardData()
+    } else {
+      setLoading(false)
+    }
+  }, [hostelId, loadDashboardData])
 
   // 🚀 CRITICAL FIX: Wait for HostelContext to finish loading before proceeding
   if (loadingState === 'loading') {
@@ -433,14 +475,7 @@ export const OwnerDashboard = React.memo(() => {
     );
   }
 
-  // Initial data fetch
-  useEffect(() => {
-    if (hostelId) {
-      loadDashboardData()
-    } else {
-      setLoading(false)
-    }
-  }, [hostelId, loadDashboardData])
+  
 
   // Loading state
   if (loading) {
@@ -454,24 +489,7 @@ export const OwnerDashboard = React.memo(() => {
     )
   }
 
-  // No hostel state
-  if (!hostelId) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center max-w-md mx-auto p-6">
-          <BuildingIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Hostels Found</h3>
-          <p className="text-gray-600 mb-4">You don't have any hostels assigned. Create your first hostel to get started.</p>
-          <Link href="/dashboard/owner/hostels/new">
-            <Button className="w-full">
-              <PlusIcon className="w-4 h-4 mr-2" />
-              Create First Hostel
-            </Button>
-          </Link>
-        </div>
-      </div>
-    )
-  }
+  // Note: No second "no hostel" state; handled by early return above
 
   // Error state
   if (dashboardError && !stats) {
@@ -556,7 +574,8 @@ export const OwnerDashboard = React.memo(() => {
           return (
             <Card key={metric.id} className="p-6 hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between mb-2">
-                <IconComponent className={`h-8 w-8 text-${metric.color}`} />
+                {/* metric.color already contains a complete text-* class */}
+                <IconComponent className={`h-8 w-8 ${metric.color}`} />
                 {metric.trend && (
                   <div className={`flex items-center text-sm ${
                     metric.trend === 'up' ? 'text-green-600' : 

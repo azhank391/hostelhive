@@ -19,8 +19,7 @@ import { Modal } from '@/components/modals/Modal'
 import { ComplaintForm } from '@/components/forms/ComplaintForm'
 import toast from '@/lib/toast'
 import { useAuth } from '@/contexts/AuthContext'
-import { useStudentApiWithHostel, useCurrentHostelId } from '@/lib/context-aware-api'
-import { Complaint } from '@/lib/types'
+import { useStudentApiWithHostel } from '@/lib/context-aware-api'
 
 // Interface for the transformed complaint data from backend
 interface TransformedComplaint {
@@ -86,7 +85,7 @@ export const StudentComplaintsView = React.memo(() => {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  // const [isSubmitting, setIsSubmitting] = useState(false)
   
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('')
@@ -224,8 +223,8 @@ export const StudentComplaintsView = React.memo(() => {
       console.log('Processed complaints array:', complaintsArray)
       setComplaints(complaintsArray)
       
-    } catch (err) {
-      console.error('Error fetching complaints:', err)
+    } catch {
+      console.error('Error fetching complaints')
       setError('Failed to load complaints')
       toast.error('Failed to load complaints')
     } finally {
@@ -239,7 +238,7 @@ export const StudentComplaintsView = React.memo(() => {
     try {
       await fetchComplaints()
       toast.success('Complaints refreshed successfully!')
-    } catch (err) {
+    } catch {
       toast.error('Failed to refresh complaints')
     } finally {
       setRefreshing(false)
@@ -247,10 +246,11 @@ export const StudentComplaintsView = React.memo(() => {
   }, [fetchComplaints])
 
   // 🎯 PERFORMANCE: Optimized complaint submission
-  const handleSubmitComplaint = useCallback(async (complaintData: any) => {
+  type NewComplaintInput = { title: string; description: string; priority?: 'low' | 'medium' | 'high' | 'urgent' }
+  const handleSubmitComplaint = useCallback(async (complaintData: NewComplaintInput) => {
     if (!user) return
 
-    setIsSubmitting(true)
+    // setIsSubmitting(true)
     try {
       // Optimistic update
       const tempComplaint: TransformedComplaint = {
@@ -312,12 +312,12 @@ export const StudentComplaintsView = React.memo(() => {
       ))
       
       toast.success('Complaint submitted successfully!')
-    } catch (err) {
+    } catch {
       // Revert optimistic update
       setComplaints(prev => prev.filter(c => !c.id.startsWith('temp-')))
       toast.error('Failed to submit complaint')
     } finally {
-      setIsSubmitting(false)
+      // setIsSubmitting(false)
     }
   }, [user, studentApi])
 

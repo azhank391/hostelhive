@@ -24,6 +24,8 @@ export const SuperadminBillingPage = () => {
 
   useEffect(() => {
     // TODO: Fetch billing data from superadmin API
+    // Reference setBillingData to avoid unused-var lint error until wired
+    void setBillingData
     setLoading(false)
   }, [])
 

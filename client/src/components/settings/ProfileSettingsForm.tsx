@@ -19,6 +19,8 @@ export const ProfileSettingsForm: React.FC<ProfileSettingsFormProps> = ({
   showPassword = true,
 }) => {
   const { user, updateUser } = useAuth();
+  // mark roleContext as intentionally unused in current UI variant
+  void roleContext;
   const [form, setForm] = useState({
     name: user?.name || "",
     email: user?.email || "",
@@ -215,7 +217,7 @@ export const ProfileSettingsForm: React.FC<ProfileSettingsFormProps> = ({
       }
 
       return result;
-    } catch (e) {
+    } catch {
       return {};
     }
   }
@@ -310,7 +312,7 @@ export const ProfileSettingsForm: React.FC<ProfileSettingsFormProps> = ({
                 </p>
               )}
               <p className="text-xs text-muted-foreground mt-1">
-                Password rules: at least 6 characters, cannot be "123456", and
+                Password rules: at least 6 characters, cannot be &quot;123456&quot;, and
                 must differ from your current password.
               </p>
             </div>

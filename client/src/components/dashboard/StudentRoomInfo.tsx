@@ -9,13 +9,11 @@ import { notification } from '@/lib/toast'
 import { useStudentApiWithHostel } from '@/lib/context-aware-api'
 import { 
   BedIcon, 
-  MapPinIcon, 
   UsersIcon, 
   RefreshCwIcon,
   HomeIcon,
   PhoneIcon,
   MailIcon,
-  AlertCircleIcon,
   MessageSquareIcon
 } from 'lucide-react'
 
@@ -163,7 +161,7 @@ export const StudentRoomInfo = React.memo(() => {
     try {
       await fetchRoomInfo()
       notification.success('Room information refreshed!')
-    } catch (err) {
+    } catch {
       notification.error('Failed to refresh room information')
     } finally {
       setRefreshing(false)

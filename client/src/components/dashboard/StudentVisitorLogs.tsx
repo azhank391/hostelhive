@@ -17,16 +17,13 @@ import {
   LogOutIcon,
   ArrowLeftIcon,
   ClockIcon,
-  CheckCircleIcon,
   SearchIcon,
   FilterIcon,
   RefreshCwIcon,
   CalendarIcon,
   PhoneIcon,
   MailIcon,
-  UserCheckIcon,
-  UserXIcon,
-  TrendingUpIcon
+  UserCheckIcon
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -81,7 +78,7 @@ interface FilterCriteria {
  * ✅ Optimistic updates for better user experience
  */
 export const StudentVisitorLogs = React.memo(() => {
-  const { user } = useAuth()
+  const { /* user */ } = useAuth()
   const studentApi = useStudentApiWithHostel()
   
   // State management
@@ -246,8 +243,8 @@ export const StudentVisitorLogs = React.memo(() => {
       setVisitorLogs(transformedLogs)
       setDashboardData(dashboardResponse)
       
-    } catch (err) {
-      console.error('Failed to fetch data:', err)
+    } catch {
+      console.error('Failed to fetch data')
       setError('Failed to load data')
       toast.error('Failed to load data')
     } finally {
@@ -264,7 +261,7 @@ export const StudentVisitorLogs = React.memo(() => {
     try {
       await fetchAllData()
       toast.success('Data refreshed!')
-    } catch (err) {
+    } catch {
       toast.error('Failed to refresh data')
     } finally {
       setRefreshing(false)
@@ -297,14 +294,14 @@ export const StudentVisitorLogs = React.memo(() => {
          await studentApi.checkoutVisitor(logId)
          toast.success('Visitor checked out successfully!')
          fetchVisitorLogs()  //- let optimistic updates persist!
-       } catch (apiError) {
+       } catch {
          // Revert optimistic update on API error
          setVisitorLogs(prev => prev.map(log => 
            log.id === logId ? originalLog : log
          ))
          toast.error('Failed to check out visitor')
        }
-    } catch (err) {
+    } catch {
       // Revert optimistic update
       setVisitorLogs(prev => prev.map(log => 
         log.id === logId ? originalLog : log
@@ -333,12 +330,12 @@ export const StudentVisitorLogs = React.memo(() => {
          await studentApi.deleteVisitorLog(logId)
          toast.success('Visitor log deleted successfully!')
          fetchVisitorLogs() // let optimistic updates persist!
-       } catch (apiError) {
+       } catch {
          // Revert optimistic update on API error
          setVisitorLogs(originalLogs)
          toast.error('Failed to delete visitor log')
        }
-    } catch (err) {
+    } catch {
       // Revert optimistic update on error
       setVisitorLogs(originalLogs)
       toast.error('Failed to delete visitor log')
@@ -448,7 +445,7 @@ export const StudentVisitorLogs = React.memo(() => {
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-1">No Room Allocation</h3>
           <p className="text-sm text-gray-500 mb-4">
-            You can't add visitors because you don't have room allocation yet
+            You can&apos;t add visitors because you don&apos;t have room allocation yet
           </p>
           <Button 
             size="sm"
@@ -826,13 +823,13 @@ export const StudentVisitorLogs = React.memo(() => {
                    await studentApi.createVisitorLog(data)
                    toast.success('Visitor registered successfully!')
                    // NO fetchVisitorLogs() - let optimistic updates persist!
-                 } catch (apiError) {
+                } catch {
                    // Revert optimistic update on API error
                    setVisitorLogs(prev => prev.filter(visitor => visitor.id !== newVisitor.id))
                    toast.error('Failed to register visitor')
                  }
                  
-               } catch (error) {
+               } catch {
                  toast.error('Failed to register visitor')
                }
              }}
@@ -883,7 +880,7 @@ export const StudentVisitorLogs = React.memo(() => {
                    await studentApi.updateVisitorLog(editingLog.id, data)
                    toast.success('Visitor information updated successfully!')
                    // NO fetchVisitorLogs() - let optimistic updates persist!
-                 } catch (apiError) {
+                } catch {
                    // Revert optimistic update on API error
                    setVisitorLogs(prev => prev.map(log => 
                      log.id === editingLog.id ? originalLog : log
@@ -891,7 +888,7 @@ export const StudentVisitorLogs = React.memo(() => {
                    toast.error('Failed to update visitor information')
                  }
                  
-               } catch (error) {
+               } catch {
                  toast.error('Failed to update visitor information')
                }
              }}

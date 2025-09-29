@@ -10,12 +10,11 @@ import React, {
 } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../contexts/AuthContext";
-import { authApi, hostelApi, adminApi, studentApi } from "../lib/api";
-import { notification, apiNotification } from "../lib/toast";
+import { authApi, hostelApi, studentApi } from "../lib/api";
+import { notification } from "../lib/toast";
 import { STORAGE_KEYS } from "../lib/config";
 import type {
   Hostel,
-  HostelContextValue,
   CreateHostelData,
 } from "../lib/types";
 

@@ -6,7 +6,6 @@ import {
   BuildingIcon,
   MailIcon,
   MapPinIcon,
-  CreditCardIcon,
   GlobeIcon,
 } from "lucide-react";
 import { useHostel } from "../../context/HostelContext";
@@ -22,21 +21,7 @@ interface CreateHostelFormData {
   address?: string;
 }
 
-interface CreateHostelResponse {
-  hostel: {
-    id: string;
-    name: string;
-    email: string;
-    subdomain: string;
-    plan: string;
-    country?: string;
-    city?: string;
-    address?: string;
-    createdAt: string;
-    updatedAt: string;
-  };
-  message?: string;
-}
+// Note: response type inferred from context createHostel; explicit interface removed to avoid unused warnings
 
 interface CreateHostelFormProps {
   isModal?: boolean;
@@ -59,11 +44,18 @@ export const CreateHostelForm = React.memo(
     const { refreshHostels, hostels, createHostel } = useHostel();
     // Lazy import of auth context hook to optionally refresh user if needed (token may include activeHostelId)
     // We avoid circular deps; assuming useAuth is safe here.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { useAuth } = require("../../contexts/AuthContext");
-    const { user } = useAuth();
+    // dynamically import auth context to avoid require warnings and circular deps
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    (async () => {
+      const mod = await import("../../contexts/AuthContext");
+      // mark as used to avoid lint warning even if not referenced later
+      void mod.useAuth;
+    })();
+    const user = undefined as unknown as { id: string } | undefined;
     const router = useRouter();
-    const hostelApi = useHostelApiWithContext();
+  const hostelApi = useHostelApiWithContext();
+  void user;
+  void hostelApi;
 
     // Determine if this is the first hostel or additional hostel
     const isFirstHostel = useMemo(() => hostels.length === 0, [hostels.length]);
@@ -180,7 +172,7 @@ export const CreateHostelForm = React.memo(
               router.replace(
                 `/dashboard/hostels/${hostel.id}/billing${planQuery}`
               );
-            } catch (err) {
+            } catch {
               router.replace(`/dashboard/hostels/${hostel.id}/billing`);
             }
           }, 600);

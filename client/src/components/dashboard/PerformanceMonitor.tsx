@@ -119,7 +119,7 @@ const useOptimizedPerformanceMonitor = () => {
     connectionSpeed: 'fast'
   });
 
-  const [isSupported, setIsSupported] = useState(true);
+  const [isSupported] = useState(true);
   const [isMonitoring, setIsMonitoring] = useState(false);
 
   // 🚀 PERFORMANCE: Memoized metric generation to avoid redundant calculations
@@ -748,7 +748,7 @@ export const OptimizedPerformanceMonitor = memo<OptimizedPerformanceMonitorProps
             <AlertTriangleIcon className="w-5 h-5" />
             <h3 className="font-medium">Performance Monitoring Unavailable</h3>
           </div>
-          <p className="text-sm mt-1">Your browser doesn't support the Performance Observer API.</p>
+          <p className="text-sm mt-1">Your browser doesn&apos;t support the Performance Observer API.</p>
         </div>
       </Card>
     );

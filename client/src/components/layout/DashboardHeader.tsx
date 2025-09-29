@@ -1,7 +1,7 @@
 'use client'
 
 import React, { memo } from 'react';
-import { MenuIcon, BellIcon, BuildingIcon } from 'lucide-react';
+import { MenuIcon, BellIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHostel } from '@/context/HostelContext';

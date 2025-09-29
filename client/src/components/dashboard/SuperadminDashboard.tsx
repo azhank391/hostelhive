@@ -17,12 +17,11 @@ import {
   RefreshCwIcon,
   BarChart3Icon,
   CreditCardIcon,
-  ServerIcon,
-  ShieldCheckIcon,
   AlertCircleIcon,
   CheckCircleIcon,
   ClockIcon
 } from 'lucide-react'
+import { } from 'lucide-react'
 import Link from 'next/link'
 
 interface SuperadminMetrics {
@@ -239,7 +238,7 @@ export const SuperadminDashboard = React.memo(() => {
     try {
       await fetchMetrics()
       notification.success('Dashboard refreshed successfully!')
-    } catch (err) {
+    } catch {
       notification.error('Failed to refresh dashboard')
     } finally {
       setRefreshing(false)

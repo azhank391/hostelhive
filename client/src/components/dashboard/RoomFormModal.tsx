@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { useAdminApiWithHostel } from '@/lib/context-aware-api';
+// import { useAdminApiWithHostel } from '@/lib/context-aware-api';
 import toast from '@/lib/toast';
 
 interface Room {

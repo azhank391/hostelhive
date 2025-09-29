@@ -15,7 +15,7 @@ import {
   CalendarIcon,
   MapPinIcon,
   CameraIcon,
-  CheckCircleIcon,
+  // CheckCircleIcon,
   AlertCircleIcon,
   InfoIcon,
   RefreshCwIcon,
@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { useHostel } from '@/context/HostelContext';
+// import { useHostel } from '@/context/HostelContext';
 import  toast  from '@/lib/toast';
 
 interface Student {
@@ -485,8 +485,9 @@ export const OptimizedStudentFormModal = memo<OptimizedStudentFormModalProps>(({
       // Clear field error when user starts typing
       if (errors[field]) {
         setErrors(prev => {
-          const { [field]: _, ...rest } = prev;
-          return rest;
+          const newErrors = { ...prev };
+          delete newErrors[field as string];
+          return newErrors;
         });
       }
 

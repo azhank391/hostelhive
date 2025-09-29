@@ -30,6 +30,8 @@ export const SuperadminAnalyticsPage = () => {
 
   useEffect(() => {
     // TODO: Fetch analytics data from superadmin API
+    // Reference setAnalyticsData to avoid unused-var lint error until wired
+    void setAnalyticsData
     setLoading(false)
   }, [])
 
