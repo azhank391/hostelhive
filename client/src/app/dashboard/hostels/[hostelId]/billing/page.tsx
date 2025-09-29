@@ -235,7 +235,7 @@ function BillingPageClient() {
           </CardHeader>
           <CardContent>
             <p className="text-amber-900 mb-3 text-sm">
-              We'll ask for your card now, but you won't be charged until your
+              We’ll ask for your card now, but you won’t be charged until your
               trial ends. Cancel anytime.
             </p>
             <Button

@@ -2,22 +2,18 @@
 
 import React, { useEffect, useState } from "react";
 import { useHostel } from "@/context/HostelContext";
-import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import {
   BuildingIcon,
   UsersIcon,
-  BedIcon,
   AlertCircleIcon,
   MessageSquareIcon,
   ShareIcon,
   EditIcon,
-  CopyIcon,
   CheckIcon,
   MapPinIcon,
   MailIcon,
-  CreditCardIcon,
   TrashIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -39,7 +35,6 @@ interface UpdateHostelData {
 
 export const HostelDetail: React.FC<HostelDetailProps> = ({ id }) => {
   const { currentHostel, hostels, loadingState, refreshHostels } = useHostel();
-  const { user } = useAuth();
   const [hostel, setHostel] = useState<any>(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -95,7 +90,7 @@ export const HostelDetail: React.FC<HostelDetailProps> = ({ id }) => {
     try {
       const response = await hostelApi.getHostelDetails(hostelId);
       setHostel(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to fetch hostel details:", error);
     }
   };
@@ -167,7 +162,7 @@ export const HostelDetail: React.FC<HostelDetailProps> = ({ id }) => {
       toast.success(
         `Hostel updated successfully! New subdomain: ${newSubdomain}`
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to update hostel:", error);
       toast.error("Failed to update hostel. Please try again.");
     } finally {
@@ -287,7 +282,7 @@ export const HostelDetail: React.FC<HostelDetailProps> = ({ id }) => {
             Hostel Not Found
           </h2>
           <p className="mt-2 text-gray-600">
-            The requested hostel could not be found or you don't have access to
+            The requested hostel could not be found or you don&apo;t have access to
             it.
           </p>
           <div className="mt-6">

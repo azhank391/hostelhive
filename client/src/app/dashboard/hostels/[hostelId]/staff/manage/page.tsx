@@ -5,12 +5,12 @@ import { useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useCurrentHostelId } from '@/lib/context-aware-api';
-import { StaffManagement } from '@/components/StaffManagement/StaffManagement';
+import StaffManagement from '@/components/StaffManagement/StaffManagement';
 
 export default function ManageStaffPage() {
   const params = useParams<{ hostelId: string }>();
   const hostelId = params?.hostelId || '';
-  const { user, isLoading } = useAuth();
+  const { isLoading } = useAuth();
   const { hasPermission } = usePermissions();
   const { hasHostel } = useCurrentHostelId();
 
@@ -45,7 +45,7 @@ export default function ManageStaffPage() {
             </svg>
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">Access Denied</h3>
-          <p className="text-sm text-gray-500">You don't have permission to manage staff members.</p>
+          <p className="text-sm text-gray-500">You don’t have permission to manage staff members.</p>
         </div>
       </div>
     );

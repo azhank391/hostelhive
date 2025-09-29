@@ -36,7 +36,7 @@ export const PermissionChecker = ({
           <div className="ml-3">
             <h3 className="text-sm font-medium text-red-800">Access Denied</h3>
             <div className="mt-2 text-sm text-red-700">
-              <p>You don't have the required permission: <strong>{requiredPermission}</strong></p>
+              <p>You don&apos;t have the required permission: <strong>{requiredPermission}</strong></p>
               <p className="mt-1">Please contact your administrator if you believe this is an error.</p>
             </div>
           </div>

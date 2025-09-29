@@ -98,6 +98,8 @@ export class IntelligentLandingResolver {
    * @returns Landing page information
    */
   static determineLandingPage(permissions: UserPermissions, role?: string): LandingPageResult {
+    // role is currently not used in resolution logic
+    void role;
     console.log('🎯 Determining landing page for permissions:', Object.keys(permissions).filter(p => permissions[p]));
     
     // 1. Check each section in priority order

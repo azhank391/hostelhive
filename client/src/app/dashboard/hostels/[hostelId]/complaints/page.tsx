@@ -9,7 +9,7 @@ import { PermissionGate } from '@/components/PermissionGate';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import type { Complaint, PaginatedResponse } from '@/lib/types';
+import type { Complaint } from '@/lib/types';
 import { notification } from '@/lib/toast';
 import { 
   AlertCircleIcon, 
@@ -36,7 +36,7 @@ export default function HostelComplaintsPage() {
   const hostelId = params?.hostelId || '';
   
   // Context-aware API hooks
-  const { hasHostel, getHostelId, isReady } = useCurrentHostelId();
+  const { hasHostel } = useCurrentHostelId();
   
   // Get user role from auth context
   const { user, isLoading } = useAuth();
@@ -48,7 +48,7 @@ export default function HostelComplaintsPage() {
   // Canonical permission checks
   const canUpdateComplaints = hasPermission('complaint_update');
   const canDeleteComplaints = hasPermission('complaint_delete');
-  const canViewComplaintStats = hasPermission('view_complaint_stats');
+  // const canViewComplaintStats = hasPermission('view_complaint_stats');
   const canExportComplaints = hasPermission('export_complaint_data');
   
   
@@ -72,7 +72,7 @@ export default function HostelComplaintsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   
   // Debug initial values
-  console.log('🔍 Initial values:', { hasHostel, hostelId, isReady, loading });
+  console.log('🔍 Initial values:', { hasHostel, hostelId, loading });
 
   // Load all complaints function - FIXED: Simplified and direct
   const loadAllComplaints = useCallback(async () => {
@@ -156,7 +156,7 @@ export default function HostelComplaintsPage() {
   // Single useEffect to handle data loading - FIXED: Simplified and direct
   useEffect(() => {
     effectRunCount.current += 1;
-    console.log(`🔄 useEffect triggered (run #${effectRunCount.current}):`, { hasHostel, hostelId, isReady, allComplaintsLength: allComplaints.length, loading });
+  console.log(`🔄 useEffect triggered (run #${effectRunCount.current}):`, { hasHostel, hostelId, allComplaintsLength: allComplaints.length, loading });
     
     // Load complaints when we have a hostelId (either from context or URL)
     if (hostelId) {
@@ -286,7 +286,7 @@ export default function HostelComplaintsPage() {
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
           <p className="text-gray-600 mb-4">
-            You don't have permission to view complaints.
+            You don’t have permission to view complaints.
           </p>
           <p className="text-sm text-gray-500">
             Contact your administrator to get access to complaint management features.

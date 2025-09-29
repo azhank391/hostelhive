@@ -24,10 +24,6 @@ import {
   UserCheckIcon,
   CreditCardIcon,
   BarChart3Icon,
-  EyeIcon,
-  UserPlusIcon,
-  MessageCircleIcon,
-  FileTextIcon,
   ShieldIcon,
 } from "lucide-react";
 
@@ -159,14 +155,11 @@ export const Sidebar = memo(({ mobile = false, onClose }: SidebarProps) => {
   const [activeItem, setActiveItem] = useState<string>("dashboard");
   // Removed expandedSections state since we no longer have sub-sections
 
-  // 🚀 NEW: Skip hostel-related hooks for superadmin users
+  // Determine role flags without affecting hook calls
   const isSuperadmin = user?.role === "superadmin";
-
-  // Only call hostel-related hooks for non-superadmin users
-  const { hasHostel, getHostelIdSafe, isReady } = isSuperadmin
-    ? { hasHostel: false, getHostelIdSafe: () => null, isReady: true }
-    : useCurrentHostelId();
-  const admin = isSuperadmin ? null : useAdminApiWithHostel();
+  // Always call hooks at top-level to satisfy Rules of Hooks
+  const { hasHostel, getHostelIdSafe, isReady } = useCurrentHostelId();
+  const admin = useAdminApiWithHostel();
   const [visitorCount, setVisitorCount] = useState(0);
 
   const { isOwner, isWarden, isStudent } = useMemo(
@@ -179,16 +172,12 @@ export const Sidebar = memo(({ mobile = false, onClose }: SidebarProps) => {
   );
 
   // Get current hostel ID for URL construction
-  const currentHostelId = isSuperadmin
-    ? null
-    : typeof getHostelIdSafe === "function"
-    ? getHostelIdSafe()
-    : getHostelIdSafe;
+  const currentHostelId = typeof getHostelIdSafe === "function" ? getHostelIdSafe() : getHostelIdSafe;
 
   // Fetch visitor count for owners/wardens using context-aware API with caching
   useEffect(() => {
     // 🚀 NEW: Skip for superadmin users or if admin API is not available
-    if (isSuperadmin || !admin) return;
+  if (isSuperadmin || !admin) return;
 
     if ((isOwner || isWarden) && hasHostel && isReady) {
       let isMounted = true;

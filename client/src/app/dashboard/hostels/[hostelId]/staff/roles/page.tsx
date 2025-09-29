@@ -5,24 +5,19 @@ import { useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useCurrentHostelId } from '@/lib/context-aware-api';
-import { StaffManagement } from '@/components/StaffManagement/StaffManagement';
+import StaffManagement from '@/components/StaffManagement/StaffManagement';
 
 export default function CustomRolesPage() {
   const params = useParams<{ hostelId: string }>();
   const hostelId = params?.hostelId || '';
-  const { user, isLoading } = useAuth();
+  const { isLoading } = useAuth();
   const { hasPermission } = usePermissions();
   const { hasHostel } = useCurrentHostelId();
 
   // Permission checks for role management
-  const canViewRoles = hasPermission('staff_read');
   const canCreateRoles = hasPermission('staff_create');
   const canUpdateRoles = hasPermission('staff_update');
   const canDeleteRoles = hasPermission('staff_delete');
-  // Updated legacy permission 'staff_assign' -> canonical 'role_assign'
-  const canAssignRoles = hasPermission('role_assign');
-  
-  // Can manage roles if they have the core role management permissions
   const canManageRoles = canCreateRoles && canUpdateRoles && canDeleteRoles;
 
   // Show loading state while auth is loading
@@ -48,7 +43,7 @@ export default function CustomRolesPage() {
             </svg>
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">Access Denied</h3>
-          <p className="text-sm text-gray-500">You don't have permission to manage custom roles.</p>
+          <p className="text-sm text-gray-500">You don’t have permission to manage custom roles.</p>
         </div>
       </div>
     );

@@ -16,17 +16,15 @@ import {
   Flag,
   Eye,
   MessageSquare,
-  Phone,
   Mail,
   Settings,
   Archive,
   Share2,
   Bell,
-  Star,
   TrendingUp,
   Activity
 } from 'lucide-react';
-import { Badge } from '../ui/Badge';
+// Removed unused Badge import
 import { Button } from '../ui/Button';
 import toast from '@/lib/toast';
 
@@ -69,19 +67,22 @@ interface ComplaintCardProps {
   comments?: number;
   createdAt: string;
   onResolve?: (complaintId: string, resolution: string) => void;
+  // onAssign is currently unused
   onAssign?: (complaintId: string, assigneeId: string) => void;
   onStatusChange?: (complaintId: string, newStatus: string) => void;
+  // onPriorityChange is currently unused
   onPriorityChange?: (complaintId: string, newPriority: string) => void;
   onArchive?: (complaintId: string) => void;
   onShare?: (complaintId: string) => void;
   onNotify?: (complaintId: string) => void;
   currentUserRole?: string;
+  // showAdvancedActions is currently unused
   showAdvancedActions?: boolean;
   showMetrics?: boolean;
   compact?: boolean;
   enableQuickActions?: boolean;
-  enableDragDrop?: boolean;
-  showTimeline?: boolean;
+  enableDragDrop?: boolean; // currently unused
+  showTimeline?: boolean;   // currently unused
   customActions?: Array<{
     label: string;
     icon: React.ReactNode;
@@ -263,6 +264,8 @@ export const ComplaintCard = memo<ComplaintCardProps>(({
   showTimeline = false,
   customActions = []
 }) => {
+  // Reference currently-unused props to avoid unused-vars lint errors while keeping API stable
+  void onAssign; void onPriorityChange; void enableDragDrop; void showTimeline; void showAdvancedActions;
   // State management
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -318,7 +321,7 @@ export const ComplaintCard = memo<ComplaintCardProps>(({
       try {
         await onResolve(id, resolution.trim());
         toast.success('Complaint resolved successfully');
-      } catch (error) {
+      } catch {
         toast.error('Failed to resolve complaint');
       } finally {
         setIsProcessing(false);
@@ -333,7 +336,7 @@ export const ComplaintCard = memo<ComplaintCardProps>(({
     try {
       await onStatusChange(id, newStatus);
       toast.success(`Status updated to ${newStatus}`);
-    } catch (error) {
+    } catch {
       toast.error('Failed to update status');
     } finally {
       setIsProcessing(false);
@@ -352,7 +355,7 @@ export const ComplaintCard = memo<ComplaintCardProps>(({
             text: description,
             url: window.location.origin + detailsUrl
           });
-        } catch (error) {
+        } catch {
           // Fallback to clipboard
           await navigator.clipboard.writeText(window.location.origin + detailsUrl);
           toast.success('Link copied to clipboard');

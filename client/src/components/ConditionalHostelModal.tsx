@@ -6,7 +6,7 @@ import { HostelSelectionModal } from './HostelSelectionModal';
 
 export function ConditionalHostelModal() {
   // 🎯 Updated to use new context architecture
-  const { hostels, loadingState, currentHostel, isMultiHostelOwner } = useHostel();
+  const { hostels, loadingState, currentHostel } = useHostel();
   const { user } = useAuth();
 
   // Only render if we're in a browser environment

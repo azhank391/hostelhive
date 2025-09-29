@@ -21,7 +21,7 @@ const nextConfig = {
     ignoreBuildErrors: false, // Re-enable TypeScript checking during build
   },
   eslint: {
-    ignoreDuringBuilds: false, // Re-enable ESLint checking
+    ignoreDuringBuilds: false,
   },
   serverExternalPackages: [],
   skipTrailingSlashRedirect: true,

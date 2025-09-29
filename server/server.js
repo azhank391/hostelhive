@@ -12,7 +12,7 @@ const app = express();
 
 // Mount Stripe webhook BEFORE json parser; the route itself uses express.raw
 const webhookRoutes = require("./routes/webhook");
-app.use('/api/webhooks', webhookRoutes);
+app.use("/api/webhooks", webhookRoutes);
 
 //middleware
 app.use(cors()); //enable CORS
@@ -49,7 +49,7 @@ sequelize
   .authenticate()
   .then(() => {
     console.log("Database connected successfully");
-    app.listen(Port, () => {
+    app.listen(Port, "0.0.0.0", () => {
       console.log(`Server is running on port ${Port}`);
     });
   })

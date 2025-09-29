@@ -3,7 +3,7 @@
 import React, { ReactNode } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
-import { Permission, AVAILABLE_PERMISSIONS } from '@/lib/permissionUtils';
+import { Permission } from '@/lib/permissionUtils';
 
 /**
  * 🔐 Permission Gate Component
@@ -50,7 +50,13 @@ export const PermissionGate: React.FC<PermissionGateProps> = ({
   showLoading = true,
   loadingComponent = <div className="text-gray-500">Loading permissions...</div>,
 }) => {
+  // Call hooks unconditionally at the top-level to satisfy Rules of Hooks
   const { user, isLoading } = useAuth();
+  const {
+    hasPermission: checkPermission,
+    hasAnyPermission: checkAnyPermission,
+    hasAllPermissions: checkAllPermissions,
+  } = usePermissions();
 
   // Show loading state while auth is being verified
   if (showLoading && isLoading) {
@@ -61,9 +67,6 @@ export const PermissionGate: React.FC<PermissionGateProps> = ({
   if (!user) {
     return <>{fallback}</>;
   }
-
-  // Use the permissions hook for consistent permission checking
-  const { hasPermission: checkPermission, hasAnyPermission: checkAnyPermission, hasAllPermissions: checkAllPermissions } = usePermissions();
 
   // Permission checking helper functions (for backward compatibility)
   const hasPermission = (permissionName: Permission): boolean => {

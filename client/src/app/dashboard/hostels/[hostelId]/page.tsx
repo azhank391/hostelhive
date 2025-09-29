@@ -1,13 +1,13 @@
 'use client'
 
-import React, { useMemo, useEffect, useState, useCallback } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ComplaintCard } from '@/components/dashboard/ComplaintCard';
 import { Button } from '@/components/ui/Button';
 import { useRouter } from 'next/navigation';
-import { useCurrentHostelId } from '@/lib/context-aware-api';
+// import { useCurrentHostelId } from '@/lib/context-aware-api';
 import { adminApi } from '@/lib/api';
 import { useHostel } from '@/context/HostelContext';
 import { STORAGE_KEYS } from '@/lib/config';
@@ -30,7 +30,7 @@ export default function HostelDashboardPage() {
   const router = useRouter();
   
   // Context-aware API hooks for automatic hostelId injection
-  const { hasHostel, isReady, getHostelIdSafe } = useCurrentHostelId();
+  // const { hasHostel, isReady, getHostelIdSafe } = useCurrentHostelId();
   const { setActiveHostel } = useHostel();
   
   // Dashboard state management
@@ -41,10 +41,9 @@ export default function HostelDashboardPage() {
 
   // Sync URL hostelId with HostelContext
   useEffect(() => {
-    if (urlHostelId && !hasHostel) {
-      setActiveHostel(urlHostelId, false);
-    }
-  }, [urlHostelId, hasHostel, setActiveHostel]);
+    // Sync the URL hostel id into context if not set
+    setActiveHostel(urlHostelId, false);
+  }, [urlHostelId, setActiveHostel]);
 
   // Load dashboard data when URL hostel ID is available
   useEffect(() => {
@@ -145,7 +144,7 @@ export default function HostelDashboardPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Hostel Dashboard</h1>
           <p className="mt-2 text-gray-600">
-            Overview of your hostel's performance and key metrics
+            Overview of your hostel&apos;s performance and key metrics
           </p>
         </div>
         

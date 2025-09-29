@@ -10,7 +10,7 @@ import StaffManagement from "@/components/StaffManagement/StaffManagement";
 export default function StaffPage() {
   const params = useParams<{ hostelId: string }>();
   const hostelId = params?.hostelId || "";
-  const { user, isLoading } = useAuth();
+  const { isLoading } = useAuth();
   const { hasPermission } = usePermissions();
   const { hasHostel } = useCurrentHostelId();
 
@@ -56,7 +56,7 @@ export default function StaffPage() {
             Access Denied
           </h3>
           <p className="text-sm text-gray-500">
-            You don't have permission to view staff members.
+            You don&apos;t have permission to view staff members.
           </p>
         </div>
       </div>

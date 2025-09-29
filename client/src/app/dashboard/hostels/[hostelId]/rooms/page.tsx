@@ -28,16 +28,16 @@ import {
 export default function HostelRoomsPage() {
   const params = useParams<{ hostelId: string }>();
   const hostelId = params?.hostelId || '';
-  const { user, isLoading } = useAuth();
+  const { isLoading } = useAuth();
   const { hasPermission } = usePermissions();
   
   // Permission checks
   const canViewRooms = hasPermission('room_read');
-  const canCreateRooms = hasPermission('room_create');
-  const canUpdateRooms = hasPermission('room_update');
-  const canDeleteRooms = hasPermission('room_delete');
-  const canAllocateRooms = hasPermission('room_allocation_create');
-  const canDeallocateRooms = hasPermission('room_allocation_delete');
+  // const canCreateRooms = hasPermission('room_create');
+  // const canUpdateRooms = hasPermission('room_update');
+  // const canDeleteRooms = hasPermission('room_delete');
+  // const canAllocateRooms = hasPermission('room_allocation_create');
+  // const canDeallocateRooms = hasPermission('room_allocation_delete');
   const canExportRooms = hasPermission('export_room_data');
   
   // State management
@@ -105,16 +105,16 @@ export default function HostelRoomsPage() {
       console.log('🔍 DEBUG: Rooms data before normalization:', roomsData);
       
       // Normalize the room data to match our frontend expectations
-      const normalizedRooms = roomsData.map((room: any) => {
+      const normalizedRooms = roomsData.map((room: Partial<Room>) => {
         console.log('🔍 DEBUG: Normalizing room:', room);
-        const normalized = {
-          id: room.id || room.roomId || room._id, // Handle multiple possible ID field names
-          roomNumber: room.roomNumber || room.number || room.room_number, // Handle multiple field names
-          capacity: room.capacity || 1,
+        const normalized: Room = {
+          id: (room as any).id || (room as any).roomId || (room as any)._id as string,
+          roomNumber: (room as any).roomNumber || (room as any).number || (room as any).room_number,
+          capacity: (room.capacity as number) ?? 1,
           block: room.block,
-          occupied: room.occupied || 0,
-          status: room.status || 'available',
-          hostelId: room.hostelId || room.hostel_id
+          occupied: (room.occupied as number) ?? 0,
+          status: (room.status as Room['status']) ?? 'available',
+          hostelId: (room as any).hostelId || (room as any).hostel_id
         };
         console.log('🔍 DEBUG: Normalized room:', normalized);
         return normalized;
@@ -489,10 +489,7 @@ export default function HostelRoomsPage() {
     rooms.filter(r => (r.occupied || 0) < (r.capacity || 1)).length, 
     [rooms]
   );
-  const occupiedCount = useMemo(() => 
-    rooms.filter(r => (r.occupied || 0) >= (r.capacity || 1)).length, 
-    [rooms]
-  );
+  // Removed unused occupiedCount computation
   const totalCapacity = useMemo(() => 
     rooms.reduce((sum, r) => sum + (r.capacity || 0), 0), 
     [rooms]
@@ -564,7 +561,7 @@ export default function HostelRoomsPage() {
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
           <p className="text-gray-600 mb-4">
-            You don't have permission to view room management.
+            You don&apos;t have permission to view room management.
           </p>
           <p className="text-sm text-gray-500">
             Contact your administrator to get access to room management features.
@@ -684,7 +681,7 @@ export default function HostelRoomsPage() {
           </div>
           <div className="text-sm text-gray-500">
             {searchQuery ? (
-              `${filteredRooms.length} room${filteredRooms.length !== 1 ? 's' : ''} found for "${searchQuery}"`
+              `${filteredRooms.length} room${filteredRooms.length !== 1 ? 's' : ''} found for \u201C${searchQuery}\u201D`
             ) : (
               `${rooms.length} room${rooms.length !== 1 ? 's' : ''} found`
             )}
@@ -702,7 +699,7 @@ export default function HostelRoomsPage() {
             {searchQuery ? 'No rooms match your search' : 'No rooms found'}
           </h3>
           <p className="text-gray-600 mb-6">
-            {searchQuery ? `No rooms found for "${searchQuery}"` : 'Get started by adding your first room'}
+            {searchQuery ? `No rooms found for \u201C${searchQuery}\u201D` : 'Get started by adding your first room'}
           </p>
           {!searchQuery && (
             <PermissionGate permission="room_create">
@@ -982,8 +979,8 @@ export default function HostelRoomsPage() {
                             <p className="text-sm text-blue-800">
                               {occupiedBeds} student{occupiedBeds !== 1 ? 's' : ''} currently assigned
                             </p>
-                            <p className="text-xs text-blue-600 mt-1">
-                              Tap "View Details" to see student list
+                              <p className="text-xs text-blue-600 mt-1">
+                              Tap &quot;View Details&quot; to see student list
                             </p>
                           </div>
                         )}

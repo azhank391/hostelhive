@@ -15,7 +15,6 @@ import {
   PencilIcon, 
   AlertCircleIcon,
   FileTextIcon,
-  CalendarIcon,
   TrendingUpIcon,
   AlertTriangleIcon,
   PhoneIcon,
@@ -25,24 +24,15 @@ import {
   DownloadIcon,
   ShareIcon,
   PrinterIcon,
-  BellIcon,
   RefreshCwIcon,
   PaperclipIcon,
   EyeIcon,
   ThumbsUpIcon,
-  ThumbsDownIcon,
-  FlagIcon,
-  ArchiveIcon,
   SendIcon,
-  FilterIcon,
   SearchIcon,
   MoreHorizontalIcon,
   CameraIcon,
   MicIcon,
-  SaveIcon,
-  UndoIcon,
-  RedoIcon,
-  CopyIcon,
   ExternalLinkIcon
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
@@ -50,8 +40,6 @@ import { Badge } from '../../components/ui/Badge';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/modals/Modal';
 import { AdminComplaintForm } from '../../components/forms/AdminComplaintForm';
-import { useAdminApiWithHostel } from '@/lib/context-aware-api';
-import { useHostel } from '@/context/HostelContext';
 import toast from '@/lib/toast';
 
 interface TimelineEvent {
@@ -175,13 +163,11 @@ const TimelineEventCard = memo(({
   event, 
   onReaction, 
   onReply, 
-  currentUserId,
   enableReactions = true 
 }: {
   event: TimelineEvent;
   onReaction?: (eventId: string, reactionType: string) => void;
   onReply?: (eventId: string, content: string) => void;
-  currentUserId?: string;
   enableReactions?: boolean;
 }) => {
   const [showReplyForm, setShowReplyForm] = useState(false);
@@ -401,7 +387,7 @@ const StatusBadge = memo(({ status, slaViolation }: { status: string; slaViolati
 
 StatusBadge.displayName = 'StatusBadge';
 
-export const ComplaintDetail = memo<ComplaintDetailProps>(({
+export const ComplaintDetail = memo<ComplaintDetailProps>(({ 
   id,
   currentUserRole = 'admin',
   enableAdvancedFeatures = true,
@@ -414,8 +400,10 @@ export const ComplaintDetail = memo<ComplaintDetailProps>(({
   enableCollaboration = false,
   customActions = []
 }) => {
-  const { currentHostel } = useHostel();
-  const apiWithHostel = useAdminApiWithHostel();
+  // Mark intentionally unused props to satisfy lint rules without altering API
+  void currentUserRole;
+  void allowAssignment;
+  void enableNotifications;
   
   // State management
   const [complaint, setComplaint] = useState<Complaint | null>(null);
@@ -596,7 +584,7 @@ export const ComplaintDetail = memo<ComplaintDetailProps>(({
     };
 
     loadComplaint();
-  }, [id, apiWithHostel, mockComplaint]);
+  }, [id, mockComplaint]);
 
   // Memoized filtered timeline
   const filteredTimeline = useMemo(() => {
@@ -620,7 +608,7 @@ export const ComplaintDetail = memo<ComplaintDetailProps>(({
   }, [complaint, timelineFilter, searchQuery]);
 
   // Event handlers
-  const handleEditComplaint = useCallback(async (formData: any) => {
+  const handleEditComplaint = useCallback(async () => {
     setIsProcessing(true);
     try {
       // In real app: await apiWithHostel.updateComplaint(id, formData);
@@ -628,12 +616,12 @@ export const ComplaintDetail = memo<ComplaintDetailProps>(({
       setIsEditModalOpen(false);
       toast.success('Complaint updated successfully');
       // Reload complaint data
-    } catch (error) {
+    } catch {
       toast.error('Failed to update complaint');
     } finally {
       setIsProcessing(false);
     }
-  }, [id]);
+  }, []);
 
   const handleAddComment = useCallback(async () => {
     if (!commentText.trim()) return;
@@ -646,12 +634,12 @@ export const ComplaintDetail = memo<ComplaintDetailProps>(({
       setCommentText('');
       toast.success('Comment added successfully');
       // Add to timeline
-    } catch (error) {
+    } catch {
       toast.error('Failed to add comment');
     } finally {
       setIsProcessing(false);
     }
-  }, [commentText, id]);
+  }, [commentText]);
 
   const handleStatusChange = useCallback(async (newStatus: string) => {
     setIsProcessing(true);
@@ -660,18 +648,18 @@ export const ComplaintDetail = memo<ComplaintDetailProps>(({
       await new Promise(resolve => setTimeout(resolve, 500));
       toast.success(`Status updated to ${newStatus}`);
       // Update complaint state
-    } catch (error) {
+    } catch {
       toast.error('Failed to update status');
     } finally {
       setIsProcessing(false);
     }
-  }, [id]);
+  }, []);
 
-  const handleReaction = useCallback(async (eventId: string, reactionType: string) => {
+  const handleReaction = useCallback(async (...args: unknown[]) => {
+    void args;
     try {
-      // In real app: await apiWithHostel.addReaction(eventId, reactionType);
       toast.success('Reaction added');
-    } catch (error) {
+    } catch {
       toast.error('Failed to add reaction');
     }
   }, []);
@@ -689,7 +677,7 @@ export const ComplaintDetail = memo<ComplaintDetailProps>(({
         await navigator.clipboard.writeText(url);
         toast.success('Link copied to clipboard');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to share complaint');
     }
   }, [id, complaint]);
@@ -702,23 +690,12 @@ export const ComplaintDetail = memo<ComplaintDetailProps>(({
     try {
       // Generate and download PDF
       toast.success('Complaint exported successfully');
-    } catch (error) {
+    } catch {
       toast.error('Failed to export complaint');
     }
   }, []);
 
   // Memoized helper functions
-  const getStatusColor = useCallback((status: string) => {
-    switch (status) {
-      case 'Open': return 'error';
-      case 'In Progress': return 'warning';
-      case 'Resolved': return 'success';
-      case 'Closed': return 'neutral';
-      case 'Escalated': return 'error';
-      default: return 'neutral';
-    }
-  }, []);
-
   const getPriorityColor = useCallback((priority: string) => {
     switch (priority) {
       case 'Critical': return 'error';
@@ -1049,7 +1026,6 @@ export const ComplaintDetail = memo<ComplaintDetailProps>(({
                       <TimelineEventCard
                         event={event}
                         onReaction={enableCollaboration ? handleReaction : undefined}
-                        currentUserId="current-user"
                         enableReactions={enableCollaboration}
                       />
                     </div>

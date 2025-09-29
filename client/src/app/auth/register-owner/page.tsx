@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-export default function RegisterOwnerPage() {
+function RegisterOwnerContent() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -247,5 +247,13 @@ export default function RegisterOwnerPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function RegisterOwnerPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterOwnerContent />
+    </Suspense>
   );
 }

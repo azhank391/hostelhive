@@ -24,15 +24,7 @@ import {
 } from 'lucide-react';
 
 // Custom type for students response to match backend structure
-interface StudentsResponse {
-  students?: User[];  // Optional for backward compatibility
-  pagination?: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
-  };
-}
+// Removed unused StudentsResponse interface
 
 interface StudentWithRoom extends User {
   room?: Room;
@@ -49,7 +41,7 @@ type StudentData = User & {
 export default function HostelStudentsPage() {
   const params = useParams<{ hostelId: string }>();
   const hostelId = params?.hostelId || '';
-  const { user, isLoading } = useAuth();
+  const { isLoading } = useAuth();
   const { hasPermission} = usePermissions();
 
   // Permission checks
@@ -59,7 +51,7 @@ export default function HostelStudentsPage() {
   const canDeleteStudents = hasPermission('student_delete');
   const canAllocateRooms = hasPermission('room_allocation_create'); // ONLY allow if user has room_allocation_create permission
   const canDeallocateRooms = hasPermission('room_allocation_delete'); // ONLY allow if user has room_allocation_delete permission
-  const canViewRooms = hasPermission('room_read'); // Required to view room information
+  // const canViewRooms = hasPermission('room_read'); // not used directly here
   const canViewStudentRooms = hasPermission('room_allocation_read');
   const canExportStudents = hasPermission('export_student_data');
   
@@ -141,7 +133,7 @@ export default function HostelStudentsPage() {
       // Call loadStudents directly without dependency
       loadStudents();
     }
-  }, [hostelId]); // Removed loadStudents from dependencies
+  }, [hostelId, loadStudents]);
 
   // Enhanced CRUD operations with auto-refresh
   const handleCreateStudent = async () => {
@@ -403,13 +395,12 @@ export default function HostelStudentsPage() {
         throw new Error(errorData.message || 'Failed to load available rooms');
       }
       const roomsResult = await response.json();
-      const availableRoomsList = roomsResult.data?.filter((room: any) => 
-        room.capacity > (room.occupied || 0)
-      ) || [];
+      const rooms = (roomsResult.data ?? []) as Room[];
+      const availableRoomsList = rooms.filter((room) => room.capacity > (room.occupied ?? 0));
       setAvailableRooms(availableRoomsList);
       setSelectedRoomId('');
       setShowRoomAllocationModal(true);
-    } catch (error) {
+    } catch {
       notification.error('Failed to load available rooms');
     }
   }, [hostelId]); // No dependencies to prevent infinite loops
@@ -503,17 +494,21 @@ export default function HostelStudentsPage() {
     if (!searchQuery.trim()) return students;
     
     const query = searchQuery.toLowerCase().trim();
-    return students.filter(student => 
-      student.name?.toLowerCase().includes(query) ||
-      student.email?.toLowerCase().includes(query) ||
-      (student as any).phone?.toLowerCase().includes(query) ||
-      student.roomNumber?.toLowerCase().includes(query)
-    );
+    return students.filter(student => {
+      const phone = student.phone?.toLowerCase() ?? '';
+      const roomNum = student.roomNumber?.toLowerCase() ?? '';
+      return (
+        student.name?.toLowerCase().includes(query) ||
+        student.email?.toLowerCase().includes(query) ||
+        phone.includes(query) ||
+        roomNum.includes(query)
+      );
+    });
   }, [students, searchQuery]);
 
   // Computed values
   const totalStudents = useMemo(() => students.length, [students]);
-  const activeStudents = useMemo(() => students.filter(s => (s as any).isActive !== false).length, [students]);
+  const activeStudents = useMemo(() => students.filter(s => s.isActive !== false).length, [students]);
   const studentsWithRooms = useMemo(() => students.filter(s => s.roomNumber).length, [students]);
 
   // Early returns
@@ -572,7 +567,7 @@ export default function HostelStudentsPage() {
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
           <p className="text-gray-600 mb-4">
-            You don't have permission to view student management.
+            You don&apos;t have permission to view student management.
           </p>
           <p className="text-sm text-gray-500">
             Contact your administrator to get access to student management features.
@@ -706,7 +701,7 @@ export default function HostelStudentsPage() {
           </div>
           <div className="text-sm text-gray-500">
             {searchQuery ? (
-              `${filteredStudents.length} student${filteredStudents.length !== 1 ? 's' : ''} found for "${searchQuery}"`
+              `${filteredStudents.length} student${filteredStudents.length !== 1 ? 's' : ''} found for \u201C${searchQuery}\u201D`
             ) : (
               `${students.length} student${students.length !== 1 ? 's' : ''} found`
             )}
@@ -724,7 +719,7 @@ export default function HostelStudentsPage() {
             {searchQuery ? 'No students match your search' : 'No students found'}
           </h3>
           <p className="text-gray-600 mb-6">
-            {searchQuery ? `No students found for "${searchQuery}"` : 'Get started by adding your first student'}
+            {searchQuery ? `No students found for \u201C${searchQuery}\u201D` : 'Get started by adding your first student'}
           </p>
           {!searchQuery && canCreateStudents && (
             <Button 

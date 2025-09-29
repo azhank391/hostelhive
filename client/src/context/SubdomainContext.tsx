@@ -1,8 +1,6 @@
 "use client";
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { getCurrentSubdomain, isValidSubdomain, getSubdomain } from '../lib/subdomain';
-import { hostelApi } from '../lib/api';
-import { notification } from '../lib/toast';
+import { getCurrentSubdomain, isValidSubdomain } from '../lib/subdomain';
 import type { Hostel } from '../lib/types';
 
 interface SubdomainContextType {

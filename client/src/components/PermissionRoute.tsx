@@ -21,7 +21,7 @@ export const PermissionRoute: React.FC<PermissionRouteProps> = ({
   requireAll = false,
   permissions
 }) => {
-  const { hasPermission, hasAllPermissions, hasAnyPermission, loading } = usePermissions();
+  const { hasAllPermissions, hasAnyPermission, loading } = usePermissions();
   
   // Show loading state
   if (loading) {
@@ -63,7 +63,7 @@ export const PermissionRoute: React.FC<PermissionRouteProps> = ({
           <ShieldIcon className="mx-auto h-16 w-16 text-gray-400" />
           <h1 className="mt-4 text-2xl font-bold text-gray-900">Access Denied</h1>
           <p className="mt-2 text-gray-600">
-            You don't have permission to access this page.
+            You don&apos;t have permission to access this page.
           </p>
           <div className="mt-6">
             <p className="text-sm text-gray-500 mb-4">

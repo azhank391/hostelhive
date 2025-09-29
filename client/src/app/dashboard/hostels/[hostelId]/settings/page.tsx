@@ -5,9 +5,8 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHostel } from "@/context/HostelContext";
 import { usePermissions } from "@/hooks/usePermissions";
-import api from "@/lib/http";
 import { notification } from "@/lib/toast";
-import { STORAGE_KEYS } from "@/lib/config";
+// import { STORAGE_KEYS } from "@/lib/config";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -25,12 +24,6 @@ import {
 } from "lucide-react";
 import { ProfileSettingsForm } from "@/components/settings/ProfileSettingsForm";
 
-interface ProfileFormData {
-  name: string;
-  email: string;
-  phone?: string;
-}
-
 interface HostelFormData {
   name: string;
   country: string;
@@ -41,7 +34,7 @@ interface HostelFormData {
 
 export default function HostelSettingsPage() {
   const params = useParams();
-  const { user, updateUser, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const { currentHostel, updateHostel, refreshHostels } = useHostel();
   const { hasPermission } = usePermissions();
   const hostelId = params?.hostelId as string;
@@ -57,11 +50,7 @@ export default function HostelSettingsPage() {
   const [isDarkTheme, setIsDarkTheme] = useState(false);
 
   // Form states
-  const [profileForm, setProfileForm] = useState<ProfileFormData>({
-    name: "",
-    email: "",
-    phone: "",
-  });
+  // Profile form state moved into ProfileSettingsForm component; keep local minimal state
 
   const [hostelForm, setHostelForm] = useState<HostelFormData>({
     name: "",
@@ -76,13 +65,7 @@ export default function HostelSettingsPage() {
 
   // Initialize forms and theme
   useEffect(() => {
-    if (user) {
-      setProfileForm({
-        name: user.name || "",
-        email: user.email || "",
-        phone: user.phone || "",
-      });
-    }
+    // Profile form handled by child component
 
     if (currentHostel) {
       // Extract location data from the hostel object
@@ -102,8 +85,7 @@ export default function HostelSettingsPage() {
     console.log("🔍 DEBUG: Saved theme:", savedTheme);
     setIsDarkTheme(savedTheme === "dark");
 
-    // Debug: Check authentication state
-    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    // Debug: (removed unused token retrieval)
   }, [user, currentHostel]);
 
   // Apply theme
@@ -172,25 +154,28 @@ export default function HostelSettingsPage() {
   };
 
   // Helper to map common API errors to friendly messages
-  function formatError(err: any, mapping: Record<number, string>) {
+  function formatError(err: unknown, mapping: Record<number, string>) {
+    type ApiError = {
+      response?: { status?: number; data?: any };
+      message?: string;
+    };
+    const apiErr = err as ApiError | null;
     try {
-      const status = err?.response?.status;
-      const data = err?.response?.data;
+      const status = apiErr?.response?.status;
+      const data = apiErr?.response?.data;
 
-      // Prefer backend message if present and looks user-friendly
       if (data && typeof data === "object") {
-        const msg = data?.message || data?.error || data?.errors;
+        const msg = (data as any)?.message || (data as any)?.error || (data as any)?.errors;
         if (typeof msg === "string" && msg.length < 200) return msg;
       }
 
       if (status && mapping[status]) return mapping[status];
 
-      // Network error fallback
-      if (err?.message && /network|timeout|failed to fetch/i.test(err.message))
+      if (apiErr?.message && /network|timeout|failed to fetch/i.test(apiErr.message)) {
         return "Network error. Please check your connection and try again.";
-
+      }
       return null;
-    } catch (e) {
+    } catch {
       return null;
     }
   }

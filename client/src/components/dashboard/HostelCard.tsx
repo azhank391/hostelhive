@@ -15,14 +15,12 @@ import {
   DollarSignIcon,
   StarIcon,
   EyeIcon,
-  SettingsIcon,
   EditIcon,
   MoreVerticalIcon,
   WifiIcon,
   CarIcon,
   UtensilsIcon,
   ShieldIcon,
-  PhoneIcon,
   MailIcon,
   CalendarIcon,
   BarChart3Icon,
@@ -425,7 +423,7 @@ export const HostelCard = memo<OptimizedHostelCardProps>(({
     try {
       await onWatchlist(id, !isWatchlisted);
       toast.success(isWatchlisted ? 'Removed from watchlist' : 'Added to watchlist');
-    } catch (error) {
+    } catch {
       toast.error('Failed to update watchlist');
     } finally {
       setIsProcessing(false);
@@ -448,7 +446,7 @@ export const HostelCard = memo<OptimizedHostelCardProps>(({
           await navigator.clipboard.writeText(url);
           toast.success('Link copied to clipboard');
         }
-      } catch (error) {
+      } catch {
         toast.error('Failed to share hostel');
       }
     }
@@ -730,7 +728,7 @@ export const HostelCard = memo<OptimizedHostelCardProps>(({
             <div className="flex items-center space-x-3">
               {contact.phone && (
                 <a href={`tel:${contact.phone}`} className="flex items-center text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded-md transition-colors">
-                  <PhoneIcon className="w-3 h-3 mr-1" />
+                  <MailIcon className="w-3 h-3 mr-1" />
                   <span className="text-xs">{contact.phone}</span>
                 </a>
               )}

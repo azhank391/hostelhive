@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useHostel } from '@/context/HostelContext';
+// Removed unused useHostel import
 import { useCurrentHostelId } from '@/lib/context-aware-api';
 import { httpClient as api } from '@/lib/http';
 import StatCard from '@/components/dashboard/StatCard';
@@ -19,14 +19,20 @@ import {
 } from 'lucide-react';
 
 // Optimized lazy imports with error boundaries
-const OptimizedAnalyticsDashboard = React.lazy(() => 
-  import('./AnalyticsDashboard').catch(() => ({ 
-    default: React.memo(() => <div>Analytics temporarily unavailable</div>)
+const AnalyticsDashboardFallback = React.memo(function AnalyticsDashboardFallback() {
+  return <div>Analytics temporarily unavailable</div>;
+});
+const OptimizedAnalyticsDashboard = React.lazy(() =>
+  import('./AnalyticsDashboard').catch(() => ({
+    default: AnalyticsDashboardFallback as unknown as typeof import('./AnalyticsDashboard').default
   }))
 );
-const OptimizedQuickActions = React.lazy(() => 
-  import('./QuickActions').catch(() => ({ 
-    default: React.memo(() => <div>Quick actions temporarily unavailable</div>)
+const QuickActionsFallback = React.memo(function QuickActionsFallback() {
+  return <div>Quick actions temporarily unavailable</div>;
+});
+const OptimizedQuickActions = React.lazy(() =>
+  import('./QuickActions').catch(() => ({
+    default: QuickActionsFallback as unknown as typeof import('./QuickActions').default
   }))
 );
 
@@ -86,7 +92,6 @@ type DashboardApiResponse = {
  */
 export const AdminDashboard = React.memo(() => {
   const { user } = useAuth();
-  const { hostels } = useHostel();
   const contextHostelId = useCurrentHostelId();
   
   // State management
@@ -149,6 +154,28 @@ export const AdminDashboard = React.memo(() => {
     };
   }, [stats]);
 
+  // Utility functions declared before usage to satisfy dependency order
+  const getTimeAgo = useCallback((timestamp: string) => {
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diffInMinutes = Math.floor((now.getTime() - time.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
+  }, []);
+
+  const getActivityIcon = useCallback((type: string) => {
+    switch (type) {
+      case 'complaint': return AlertCircleIcon;
+      case 'visitor': return UsersIcon;
+      case 'room_allocation': return BedIcon;
+      case 'student_registration': return UsersIcon;
+      default: return ActivityIcon;
+    }
+  }, []);
+
   // 🎯 PERFORMANCE: Memoized recent activity processing
   const processedActivity = useMemo(() => {
     return recentActivity.slice(0, 5).map(activity => ({
@@ -156,7 +183,7 @@ export const AdminDashboard = React.memo(() => {
       timeAgo: getTimeAgo(activity.timestamp),
       icon: getActivityIcon(activity.type)
     }));
-  }, [recentActivity]);
+  }, [recentActivity, getTimeAgo, getActivityIcon]);
 
   // 🚀 PERFORMANCE: Batch data fetching with Promise.all
   const fetchDashboardData = useCallback(async () => {
@@ -171,8 +198,8 @@ export const AdminDashboard = React.memo(() => {
       // Get dashboard stats using the API - this follows the backend structure
       const dashboardData = await api
         .get<DashboardApiResponse>(`/hostels/${contextHostelId}/stats`)
-        .catch((err: any) => {
-        console.error("Error fetching dashboard stats:", err);
+        .catch(() => {
+          console.error("Error fetching dashboard stats");
           return null as unknown as DashboardApiResponse | null;
         });
       
@@ -294,10 +321,10 @@ export const AdminDashboard = React.memo(() => {
       
       setLastUpdated(new Date());
       
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch dashboard data';
+    } catch {
+      const errorMessage = 'Failed to fetch dashboard data';
       setError(errorMessage);
-      console.error('Failed to fetch dashboard data:', error);
+      console.error('Failed to fetch dashboard data');
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -312,7 +339,7 @@ export const AdminDashboard = React.memo(() => {
     try {
       await fetchDashboardData();
       toast.success('Dashboard refreshed successfully!');
-    } catch (err) {
+    } catch {
       toast.error('Failed to refresh dashboard');
     } finally {
       setRefreshing(false);
@@ -328,27 +355,7 @@ export const AdminDashboard = React.memo(() => {
     return () => clearInterval(interval);
   }, [fetchDashboardData]);
 
-  // Utility functions
-  const getTimeAgo = useCallback((timestamp: string) => {
-    const now = new Date();
-    const time = new Date(timestamp);
-    const diffInMinutes = Math.floor((now.getTime() - time.getTime()) / (1000 * 60));
-    
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-    return `${Math.floor(diffInMinutes / 1440)}d ago`;
-  }, []);
-
-  const getActivityIcon = useCallback((type: string) => {
-    switch (type) {
-      case 'complaint': return AlertCircleIcon;
-      case 'visitor': return UsersIcon;
-      case 'room_allocation': return BedIcon;
-      case 'student_registration': return UsersIcon;
-      default: return ActivityIcon;
-    }
-  }, []);
+  // Utility functions moved above
 
   // Loading and error states
   if (!contextHostelId) {

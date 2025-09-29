@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   SearchIcon, 
-  FilterIcon, 
   RefreshCwIcon,
   EditIcon,
   CheckIcon,
@@ -13,8 +12,7 @@ import {
   XIcon,
   MessageSquareIcon,
   UserIcon,
-  CalendarIcon,
-  FlagIcon
+  CalendarIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -261,7 +259,7 @@ const ResolveComplaintModal: React.FC<ResolveComplaintModalProps> = ({
  */
 export const ComplaintManagement = React.memo(() => {
   const { user } = useAuth();
-  const { hasHostel, getHostelIdSafe } = useCurrentHostelId();
+  const { hasHostel } = useCurrentHostelId();
   const adminApi = useAdminApiWithHostel();
   
   // State management
@@ -406,7 +404,7 @@ export const ComplaintManagement = React.memo(() => {
         newSet.delete(selectedComplaint.id);
         return newSet;
       });
-    } catch (err) {
+    } catch (error) {
       // 5. Rollback on error
       setComplaints(prev => 
         prev.map(c => c.id === selectedComplaint.id ? originalComplaint : c)
@@ -419,9 +417,9 @@ export const ComplaintManagement = React.memo(() => {
         return newSet;
       });
       
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update complaint status';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update complaint status';
       toast.error(errorMessage);
-      console.error('Update failed:', err);
+      console.error('Update failed:', error);
     }
   }, [selectedComplaint, hasHostel, adminApi, complaints]);
 
@@ -639,7 +637,7 @@ export const ComplaintManagement = React.memo(() => {
         
         <div className="bg-white p-4 rounded-lg shadow border">
           <div className="flex items-center">
-            <FlagIcon className="h-8 w-8 text-red-600" />
+            <AlertTriangleIcon className="h-8 w-8 text-red-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600">Urgent Priority</p>
               <p className="text-2xl font-semibold text-gray-900">{priorityCounts.urgent || 0}</p>

@@ -98,7 +98,7 @@ export function PasswordChangeModal({
           </div>
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Change Your Password</h3>
-            <p className="text-sm text-gray-600">You're using a default password. We recommend changing it for security.</p>
+            <p className="text-sm text-gray-600">You&apos;re using a default password. We recommend changing it for security.</p>
           </div>
         </div>
 

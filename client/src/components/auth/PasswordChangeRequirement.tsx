@@ -3,12 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PasswordChangeModal } from './PasswordChangeModal';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import httpClient from '@/lib/http';
-import { notification } from '@/lib/toast';
 
 export function PasswordChangeRequirement() {
   const { user, updateUser } = useAuth();
@@ -56,7 +51,8 @@ export function PasswordChangeRequirement() {
         newPassword: newPassword
       });
 
-      if ((response as any)?.data?.success) {
+      const success = (response as unknown as { data?: { success?: boolean } })?.data?.success;
+      if (success) {
         // Update user state to remove password change requirement
         updateUser({ requiresPasswordChange: false });
         setIsModalOpen(false);

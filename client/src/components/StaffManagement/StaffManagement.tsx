@@ -2793,4 +2793,6 @@ function StaffManagement() {
   );
 }
 
+// Provide both named and default exports to support different import styles
+export { StaffManagement };
 export default StaffManagement;

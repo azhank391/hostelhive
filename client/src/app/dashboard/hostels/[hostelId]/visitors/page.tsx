@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation';
 import { useCurrentHostelId } from '@/lib/context-aware-api';
 import { usePermissions, PermissionGate } from '@/contexts/PermissionContext';
@@ -76,20 +76,17 @@ interface Student {
 export default function VisitorsPage() {
   const params = useParams<{ hostelId: string }>();
   const hostelId = params?.hostelId || '';
-  const { hasHostel, getHostelId } = useCurrentHostelId();
+  const { hasHostel } = useCurrentHostelId();
   
   // Get user role from auth context
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
   
   // Permission checks
   const { hasPermission, permissions } = usePermissions();
   const canViewVisitors = hasPermission('visitor_read');
   const canCreateVisitors = hasPermission('visitor_create');
   const canManageVisitors = hasPermission('visitor_update');
-  const canCheckoutVisitors = hasPermission('visitor_update');
-  const canDeleteVisitors = hasPermission('visitor_delete');
-  const canViewVisitorStats = hasPermission('view_visitor_stats');
-  const canExportVisitorData = hasPermission('export_visitor_data');
+  // Derived permissions used inline via PermissionGate; remove unused locals
   
   // Debug logging
   console.log('🔍 Visitors Page Debug:', {
@@ -102,14 +99,7 @@ export default function VisitorsPage() {
     canManageVisitors
   });
   
-  // Utility function for debouncing
-  const debounce = (func: Function, delay: number) => {
-    let timeoutId: NodeJS.Timeout;
-    return (...args: any[]) => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => func(...args), delay);
-    };
-  };
+  // Removed unused generic debounce helper (using ref-based debounce below)
   
   // State management
   const [page, setPage] = useState(1);
@@ -136,6 +126,38 @@ export default function VisitorsPage() {
     relation: '',
     checkIn: new Date().toISOString().slice(0, 16)
   });
+
+  // Local filtering and search function
+  const applyLocalFilters = useCallback((visitorsData: VisitorLog[], search: string, status: string) => {
+    let filteredVisitors = [...visitorsData];
+    
+    // Apply status filter
+    if (status) {
+      filteredVisitors = filteredVisitors.filter(visitor => {
+        const visitorStatus = getVisitorStatus(visitor);
+        return visitorStatus === status;
+      });
+    }
+    
+    // Apply search filter
+    if (search.trim()) {
+      const searchLower = search.toLowerCase();
+      filteredVisitors = filteredVisitors.filter(visitor => 
+        visitor.visitorName?.toLowerCase().includes(searchLower) ||
+        visitor.relation?.toLowerCase().includes(searchLower) ||
+        visitor.student?.name?.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Update visitors state with filtered results
+    setVisitors(filteredVisitors);
+    
+    // Update pagination
+    const total = filteredVisitors.length;
+    const pages = Math.ceil(total / 10);
+    setPagination({ page: 1, limit: 10, total, pages });
+    setPage(1);
+  }, []);
 
   // Fetch visitor data
   useEffect(() => {
@@ -185,39 +207,7 @@ export default function VisitorsPage() {
     }
     
     fetchVisitors();
-  }, [hasHostel, hostelId]);
-
-  // Local filtering and search function
-  const applyLocalFilters = useCallback((visitorsData: VisitorLog[], search: string, status: string) => {
-    let filteredVisitors = [...visitorsData];
-    
-    // Apply status filter
-    if (status) {
-      filteredVisitors = filteredVisitors.filter(visitor => {
-        const visitorStatus = getVisitorStatus(visitor);
-        return visitorStatus === status;
-      });
-    }
-    
-    // Apply search filter
-    if (search.trim()) {
-      const searchLower = search.toLowerCase();
-      filteredVisitors = filteredVisitors.filter(visitor => 
-        visitor.visitorName?.toLowerCase().includes(searchLower) ||
-        visitor.relation?.toLowerCase().includes(searchLower) ||
-        visitor.student?.name?.toLowerCase().includes(searchLower)
-      );
-    }
-    
-    // Update visitors state with filtered results
-    setVisitors(filteredVisitors);
-    
-    // Update pagination
-    const total = filteredVisitors.length;
-    const pages = Math.ceil(total / 10);
-    setPagination({ page: 1, limit: 10, total, pages });
-    setPage(1);
-  }, []);
+  }, [hasHostel, hostelId, applyLocalFilters]);
 
   // Get paginated visitors for display
   const getPaginatedVisitors = useCallback(() => {
@@ -298,7 +288,7 @@ export default function VisitorsPage() {
         const studentsData = data.students || data;
         
         // Filter students to only include those with active room allocations
-        const studentsWithRooms = studentsData.filter((student: any) => {
+  const studentsWithRooms = (studentsData as Student[]).filter((student) => {
           // Check if student has roomNumber (from the transformed backend response)
           if (student.roomNumber) {
             return true;
@@ -306,9 +296,7 @@ export default function VisitorsPage() {
           
           // Check if student has active allocations with room information
           if (student.allocations && Array.isArray(student.allocations)) {
-            return student.allocations.some((allocation: any) => 
-              allocation.status === 'active' && allocation.room
-            );
+            return student.allocations.some((allocation) => !!allocation.room);
           }
           
           return false;
@@ -324,13 +312,16 @@ export default function VisitorsPage() {
   }, [hasHostel, hostelId, hasPermission]);
 
   // Debounced search handler
-  const debouncedSearch = useCallback(
-    debounce((query: string) => {
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedSearch = useCallback((query: string) => {
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    searchDebounceRef.current = setTimeout(() => {
       setSearchQuery(query);
       applyLocalFilters(allVisitors, query, statusFilter);
-    }, 300),
-    [allVisitors, statusFilter, applyLocalFilters]
-  );
+    }, 300);
+  }, [allVisitors, statusFilter, applyLocalFilters]);
 
   const handleStatusFilterChange = useCallback((status: string) => {
     const newStatus = status === statusFilter ? '' : status;
@@ -586,7 +577,7 @@ export default function VisitorsPage() {
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
           <p className="text-gray-600 mb-4">
-            You don't have permission to view visitor management.
+            You don&apos;t have permission to view visitor management.
           </p>
           <p className="text-sm text-gray-500">
             Contact your administrator to get access to visitor management features.
@@ -695,7 +686,7 @@ export default function VisitorsPage() {
               <UsersIcon size={24} />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Today's Visitors</p>
+              <p className="text-sm font-medium text-gray-600">Today&apos;s Visitors</p>
               <p className="text-2xl font-semibold text-gray-900">
                 {allVisitors.filter((v: VisitorLog) => {
                   const today = new Date().toDateString();
