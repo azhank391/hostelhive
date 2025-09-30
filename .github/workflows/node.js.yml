@@ -7,31 +7,14 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      EC2_APP_DIR: /var/www/hostelhive
+      SERVER_DIR: server
+      CLIENT_DIR: client
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Detect project directories
-        id: detect
-        run: |
-          set -e
-          echo "Workspace contents:" && ls -la
-          # Detect server directory
-          if [ -d server ]; then
-            echo "SERVER_DIR=server" >> $GITHUB_ENV
-          elif [ -d Server ]; then
-            echo "SERVER_DIR=Server" >> $GITHUB_ENV
-          else
-            echo "No server directory found" && exit 1
-          fi
-          # Detect client directory
-          if [ -d client ]; then
-            echo "CLIENT_DIR=client" >> $GITHUB_ENV
-          elif [ -d Client ]; then
-            echo "CLIENT_DIR=Client" >> $GITHUB_ENV
-          else
-            echo "No client directory found" && exit 1
-          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -39,25 +22,25 @@ jobs:
           node-version: "20"
 
       - name: Build frontend (production)
-        working-directory: ${{ env.CLIENT_DIR }}
-        env:
-          NEXT_PUBLIC_BASE_URL: http://13.49.228.84:5000
         run: |
+          set -e
+          cd "$CLIENT_DIR"
           npm ci --ignore-scripts
           npm run build
 
       - name: Prepare deploy artifacts
         run: |
           set -e
-          mkdir -p deploy/${{ env.CLIENT_DIR }} deploy/${{ env.SERVER_DIR }}
+          rm -rf deploy
+          mkdir -p "deploy/$CLIENT_DIR" "deploy/$SERVER_DIR"
           # Copy frontend build
-          cp -r ${{ env.CLIENT_DIR }}/.next deploy/${{ env.CLIENT_DIR }}/.next
-          cp ${{ env.CLIENT_DIR }}/package.json deploy/${{ env.CLIENT_DIR }}/package.json
-          cp ${{ env.CLIENT_DIR }}/package-lock.json deploy/${{ env.CLIENT_DIR }}/package-lock.json || true
-          [ -f ${{ env.CLIENT_DIR }}/next.config.ts ] && cp ${{ env.CLIENT_DIR }}/next.config.ts deploy/${{ env.CLIENT_DIR }}/ || true
-          [ -f ${{ env.CLIENT_DIR }}/next.config.js ] && cp ${{ env.CLIENT_DIR }}/next.config.js deploy/${{ env.CLIENT_DIR }}/ || true
+          cp -r "$CLIENT_DIR/.next" "deploy/$CLIENT_DIR/.next"
+          cp "$CLIENT_DIR/package.json" "deploy/$CLIENT_DIR/package.json"
+          cp "$CLIENT_DIR/package-lock.json" "deploy/$CLIENT_DIR/package-lock.json" || true
+          [ -f "$CLIENT_DIR/next.config.ts" ] && cp "$CLIENT_DIR/next.config.ts" "deploy/$CLIENT_DIR/" || true
+          [ -f "$CLIENT_DIR/next.config.js" ] && cp "$CLIENT_DIR/next.config.js" "deploy/$CLIENT_DIR/" || true
           # Copy server excluding node_modules
-          rsync -az --delete --exclude=node_modules ${{ env.SERVER_DIR }}/ deploy/${{ env.SERVER_DIR }}/
+          rsync -az --delete --exclude=node_modules "$SERVER_DIR/" "deploy/$SERVER_DIR/"
           # Create tarball
           tar -czf deploy_artifacts.tar.gz -C deploy .
 
@@ -66,7 +49,6 @@ jobs:
           set -e
           [ -n "${{ secrets.EC2_USER }}" ] || (echo "Missing required secret: EC2_USER" && exit 1)
           [ -n "${{ secrets.EC2_HOST }}" ] || (echo "Missing required secret: EC2_HOST" && exit 1)
-          [ -n "${{ secrets.EC2_APP_DIR }}" ] || (echo "Missing required secret: EC2_APP_DIR" && exit 1)
           [ -n "${{ secrets.EC2_SSH_KEY }}" ] || (echo "Missing required secret: EC2_SSH_KEY (private key)" && exit 1)
 
       - name: Add SSH key
@@ -76,27 +58,25 @@ jobs:
 
       - name: Ensure remote directory exists
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "mkdir -p '${{ secrets.EC2_APP_DIR }}'"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "sudo mkdir -p /var/www/hostelhive && sudo chown ${{ secrets.EC2_USER }}:${{ secrets.EC2_USER }} /var/www/hostelhive"
 
-      - name: Copy files to EC2
+      - name: Upload artifacts to EC2
         run: |
           rsync -e "ssh -o StrictHostKeyChecking=no" -az --delete \
             deploy_artifacts.tar.gz \
-            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:'${{ secrets.EC2_APP_DIR }}'/
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:"$EC2_APP_DIR/"
 
-      - name: Deploy server on EC2
+      - name: Deploy on EC2
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
-            "EC2_APP_DIR='${{ secrets.EC2_APP_DIR }}' SERVER_DIR='${{ env.SERVER_DIR }}' CLIENT_DIR='${{ env.CLIENT_DIR }}' bash -s" << 'EOF'
+            "EC2_APP_DIR='$EC2_APP_DIR' SERVER_DIR='$SERVER_DIR' CLIENT_DIR='$CLIENT_DIR' bash -s" << 'EOF'
           set -e
 
-          echo "Listing remote target directory: ${EC2_APP_DIR}"
+          echo "Target dir: ${EC2_APP_DIR}"
           ls -la "${EC2_APP_DIR}" || true
-          echo "Checking tarball at: ${EC2_APP_DIR}/deploy_artifacts.tar.gz"
-          ls -la "${EC2_APP_DIR}/deploy_artifacts.tar.gz" || true
 
           cd "${EC2_APP_DIR}"
-          echo "Extracting deploy_artifacts.tar.gz in $(pwd)"
+          echo "Extracting deploy_artifacts.tar.gz"
           tar -xzf deploy_artifacts.tar.gz
 
           # Ensure Node.js is installed (Amazon Linux / Ubuntu)
