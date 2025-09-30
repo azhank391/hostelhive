@@ -103,10 +103,20 @@ jobs:
             sudo npm i -g pm2
           fi
 
-          # Install server deps and start/reload app with PM2
+          # Install server deps and run migrations
           cd "${EC2_APP_DIR}/${SERVER_DIR}"
           npm ci --omit=dev --ignore-scripts
 
+          # Ensure sequelize-cli is available (global)
+          if ! command -v sequelize-cli >/dev/null 2>&1; then
+            echo "Installing sequelize-cli globally..."
+            sudo npm i -g sequelize-cli
+          fi
+
+          echo "Running migrations..."
+          NODE_ENV=production sequelize-cli db:migrate --env production
+
+          # Start/reload app with PM2
           APP_NAME=hostelhive-server
           if pm2 describe "${APP_NAME}" >/dev/null 2>&1; then
             echo "Reloading ${APP_NAME}"
