@@ -12,7 +12,8 @@
     "seed:superadmin": "node seed-superadmin.js",
     "test:auth": "node test-integrated-auth.js",
     "check-db": "node check-database.js",
-    "audit:permissions": "node scripts/permission-audit.js"
+    "audit:permissions": "node scripts/permission-audit.js",
+    "test:rds": "node scripts/test-rds-connection.js"
   },
   "keywords": [],
   "author": "Muhammad Azhan",

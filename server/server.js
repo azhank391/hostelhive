@@ -45,6 +45,18 @@ app.use("/api/billing", billingRoutes);
 
 //connect db and start servera
 const Port = process.env.PORT;
+try {
+  const dbCfg = sequelize?.config || {};
+  // Safe startup diagnostics (no secrets)
+  console.log("DB connection settings:", {
+    host: dbCfg.host,
+    port: dbCfg.port,
+    database: dbCfg.database,
+    dialect: dbCfg.dialect,
+    ssl: !!(dbCfg.dialectOptions && (dbCfg.dialectOptions.ssl || dbCfg.dialectOptions?.ssl?.require)),
+    connectTimeout: dbCfg.dialectOptions?.connectTimeout,
+  });
+} catch {}
 sequelize
   .authenticate()
   .then(() => {
