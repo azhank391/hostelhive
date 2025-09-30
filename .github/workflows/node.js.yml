@@ -11,6 +11,7 @@ jobs:
       EC2_APP_DIR: /var/www/hostelhive
       SERVER_DIR: server
       CLIENT_DIR: client
+      RUN_MIGRATIONS: "false"
 
     steps:
       - name: Checkout
@@ -73,7 +74,7 @@ jobs:
       - name: Deploy on EC2
         run: |
           ssh -i hostelhive-ec2-key.pem -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
-            "EC2_APP_DIR='$EC2_APP_DIR' SERVER_DIR='$SERVER_DIR' CLIENT_DIR='$CLIENT_DIR' bash -s" << 'EOF'
+            "EC2_APP_DIR='$EC2_APP_DIR' SERVER_DIR='$SERVER_DIR' CLIENT_DIR='$CLIENT_DIR' RUN_MIGRATIONS='$RUN_MIGRATIONS' bash -s" << 'EOF'
           set -e
 
           echo "Target dir: ${EC2_APP_DIR}"
@@ -103,18 +104,21 @@ jobs:
             sudo npm i -g pm2
           fi
 
-          # Install server deps and run migrations
+          # Install server deps
           cd "${EC2_APP_DIR}/${SERVER_DIR}"
           npm ci --omit=dev --ignore-scripts
 
-          # Ensure sequelize-cli is available (global)
-          if ! command -v sequelize-cli >/dev/null 2>&1; then
-            echo "Installing sequelize-cli globally..."
-            sudo npm i -g sequelize-cli
+          # Conditionally run migrations
+          if [ "${RUN_MIGRATIONS}" = "true" ]; then
+            echo "RUN_MIGRATIONS=true → running migrations..."
+            if ! command -v sequelize-cli >/dev/null 2>&1; then
+              echo "Installing sequelize-cli globally..."
+              sudo npm i -g sequelize-cli
+            fi
+            NODE_ENV=production sequelize-cli db:migrate --env production
+          else
+            echo "Skipping migrations (RUN_MIGRATIONS is not 'true')."
           fi
-
-          echo "Running migrations..."
-          NODE_ENV=production sequelize-cli db:migrate --env production
 
           # Start/reload app with PM2
           APP_NAME=hostelhive-server
