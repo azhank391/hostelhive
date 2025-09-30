@@ -1,70 +1,129 @@
-name: CI
+name: Deploy to EC2
 
 on:
   push:
-    branches: ["main"]
-  pull_request:
-    branches: ["main"]
+    branches: [ main ]
 
 jobs:
-  client:
-    name: Client (Next.js) on Node ${{ matrix.node-version }}
+  deploy:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x, 22.x]
-      fail-fast: false
-    defaults:
-      run:
-        working-directory: client
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Detect project directories
+        id: detect
+        run: |
+          set -e
+          echo "Workspace contents:" && ls -la
+          # Detect server directory
+          if [ -d server ]; then
+            echo "SERVER_DIR=server" >> $GITHUB_ENV
+          elif [ -d Server ]; then
+            echo "SERVER_DIR=Server" >> $GITHUB_ENV
+          else
+            echo "No server directory found" && exit 1
+          fi
+          # Detect client directory
+          if [ -d client ]; then
+            echo "CLIENT_DIR=client" >> $GITHUB_ENV
+          elif [ -d Client ]; then
+            echo "CLIENT_DIR=Client" >> $GITHUB_ENV
+          else
+            echo "No client directory found" && exit 1
+          fi
+
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: "npm"
-          cache-dependency-path: client/package-lock.json
+          node-version: '20'
 
-      - name: Install dependencies (client)
-        run: npm ci
+      - name: Build frontend (production)
+        working-directory: ${{ env.CLIENT_DIR }}
+        env:
+          NEXT_PUBLIC_BASE_URL: http://13.49.228.84:5000
+        run: |
+          npm ci --ignore-scripts
+          npm run build
 
-      - name: Type check (client)
-        run: npm run type-check
+      - name: Prepare deploy artifacts
+        run: |
+          set -e
+          mkdir -p deploy/${{ env.CLIENT_DIR }} deploy/${{ env.SERVER_DIR }}
+          # Copy frontend build
+          cp -r ${{ env.CLIENT_DIR }}/.next deploy/${{ env.CLIENT_DIR }}/.next
+          cp ${{ env.CLIENT_DIR }}/package.json deploy/${{ env.CLIENT_DIR }}/package.json
+          cp ${{ env.CLIENT_DIR }}/package-lock.json deploy/${{ env.CLIENT_DIR }}/package-lock.json || true
+          [ -f ${{ env.CLIENT_DIR }}/next.config.ts ] && cp ${{ env.CLIENT_DIR }}/next.config.ts deploy/${{ env.CLIENT_DIR }}/ || true
+          [ -f ${{ env.CLIENT_DIR }}/next.config.js ] && cp ${{ env.CLIENT_DIR }}/next.config.js deploy/${{ env.CLIENT_DIR }}/ || true
+          # Copy server excluding node_modules
+          rsync -az --delete --exclude=node_modules ${{ env.SERVER_DIR }}/ deploy/${{ env.SERVER_DIR }}/
+          # Create tarball
+          tar -czf deploy_artifacts.tar.gz -C deploy .
 
-      - name: Lint (client)
-        run: npm run lint
-        continue-on-error: true # don't fail CI on warnings
-
-      - name: Build (client)
-        run: npm run build
-
-  server:
-    name: Server (Node/Express) on Node ${{ matrix.node-version }}
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x, 22.x]
-      fail-fast: false
-    defaults:
-      run:
-        working-directory: server
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - name: Add SSH key
+        uses: webfactory/ssh-agent@v0.9.0
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: "npm"
-          cache-dependency-path: server/package-lock.json
+          ssh-private-key: ${{ secrets.EC2_KEY }}
 
-      - name: Install dependencies (server)
-        run: npm ci
+      - name: Ensure remote directory exists
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "mkdir -p '${{ secrets.EC2_APP_DIR }}'"
 
-      # Intentionally not starting the server or hitting the DB in CI to avoid external dependencies.
-      - name: Verify Node can load project files (smoke)
-        run: node -e "console.log('Server dependencies installed; skipping DB-dependent startup in CI')"
+      - name: Copy files to EC2
+        run: |
+          rsync -e "ssh -o StrictHostKeyChecking=no" -az --delete \
+            deploy_artifacts.tar.gz \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:'${{ secrets.EC2_APP_DIR }}'/
+
+      - name: Deploy server on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            "EC2_APP_DIR='${{ secrets.EC2_APP_DIR }}' SERVER_DIR='${{ env.SERVER_DIR }}' CLIENT_DIR='${{ env.CLIENT_DIR }}' bash -s" << 'EOF'
+          set -e
+
+          echo "Listing remote target directory: ${EC2_APP_DIR}"
+          ls -la "${EC2_APP_DIR}" || true
+          echo "Checking tarball at: ${EC2_APP_DIR}/deploy_artifacts.tar.gz"
+          ls -la "${EC2_APP_DIR}/deploy_artifacts.tar.gz" || true
+
+          cd "${EC2_APP_DIR}"
+          echo "Extracting deploy_artifacts.tar.gz in $(pwd)"
+          tar -xzf deploy_artifacts.tar.gz
+
+          # Ensure Node.js is installed (Amazon Linux / Ubuntu)
+          if ! command -v node >/dev/null 2>&1; then
+            echo "Installing Node.js 20..."
+            if command -v dnf >/dev/null 2>&1; then
+              curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo -E bash -
+              sudo dnf install -y nodejs
+            elif command -v yum >/dev/null 2>&1; then
+              curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo -E bash -
+              sudo yum install -y nodejs
+            else
+              curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+              sudo apt-get install -y nodejs
+            fi
+          fi
+
+          # Ensure PM2 is installed
+          if ! command -v pm2 >/dev/null 2>&1; then
+            sudo npm i -g pm2
+          fi
+
+          # Install server deps and start/reload app with PM2
+          cd "${EC2_APP_DIR}/${SERVER_DIR}"
+          npm ci --omit=dev --ignore-scripts
+
+          APP_NAME=hostelhive-server
+          if pm2 describe "${APP_NAME}" >/dev/null 2>&1; then
+            echo "Reloading ${APP_NAME}"
+            NODE_ENV=production PORT=5000 pm2 reload "${APP_NAME}" --update-env
+          else
+            echo "Starting ${APP_NAME}"
+            NODE_ENV=production PORT=5000 pm2 start server.js --name "${APP_NAME}" --cwd "${EC2_APP_DIR}/${SERVER_DIR}"
+          fi
+
+          pm2 save
+          pm2 status | sed -n '1,200p'
+          EOF
