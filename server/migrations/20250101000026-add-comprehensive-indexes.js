@@ -68,7 +68,9 @@ module.exports = {
         await addIndexSafe(table, fields, options);
       } else {
         console.log(
-          `ℹ️ Skipping index ${options?.name || JSON.stringify(fields)} on ${table}: missing columns ${missing.join(", ")}`
+          `ℹ️ Skipping index ${
+            options?.name || JSON.stringify(fields)
+          } on ${table}: missing columns ${missing.join(", ")}`
         );
       }
     };
@@ -214,10 +216,14 @@ module.exports = {
       comment: "Fast lookup of room active allocations",
     });
 
-    await addIndexIfColumnsExist("RoomAllocations", ["hostelId", "allocationDate"], {
-      name: "idx_room_allocations_hostel_date",
-      comment: "Fast lookup of allocations by hostel and date",
-    });
+    await addIndexIfColumnsExist(
+      "RoomAllocations",
+      ["hostelId", "allocationDate"],
+      {
+        name: "idx_room_allocations_hostel_date",
+        comment: "Fast lookup of allocations by hostel and date",
+      }
+    );
 
     // ==========================================
     // 4. VISITOR LOGS TABLE INDEXES
@@ -320,20 +326,32 @@ module.exports = {
     console.log("🔗 Adding additional composite indexes...");
 
     // Cross-table query optimization indexes
-    await addIndexIfColumnsExist("Complaints", ["hostelId", "userId", "status"], {
-      name: "idx_complaints_hostel_user_status",
-      comment: "Fast lookup of user complaints in hostel by status",
-    });
+    await addIndexIfColumnsExist(
+      "Complaints",
+      ["hostelId", "userId", "status"],
+      {
+        name: "idx_complaints_hostel_user_status",
+        comment: "Fast lookup of user complaints in hostel by status",
+      }
+    );
 
-    await addIndexIfColumnsExist("RoomAllocations", ["hostelId", "userId", "status"], {
-      name: "idx_room_allocations_hostel_user_status",
-      comment: "Fast lookup of user allocations in hostel by status",
-    });
+    await addIndexIfColumnsExist(
+      "RoomAllocations",
+      ["hostelId", "userId", "status"],
+      {
+        name: "idx_room_allocations_hostel_user_status",
+        comment: "Fast lookup of user allocations in hostel by status",
+      }
+    );
 
-    await addIndexIfColumnsExist("VisitorLogs", ["hostelId", "studentId", "checkIn"], {
-      name: "idx_visitor_logs_hostel_student_checkin",
-      comment: "Fast lookup of student visitor logs in hostel by date",
-    });
+    await addIndexIfColumnsExist(
+      "VisitorLogs",
+      ["hostelId", "studentId", "checkIn"],
+      {
+        name: "idx_visitor_logs_hostel_student_checkin",
+        comment: "Fast lookup of student visitor logs in hostel by date",
+      }
+    );
 
     console.log("✅ Comprehensive index migration completed successfully!");
     console.log("📊 Performance improvements:");
@@ -350,7 +368,10 @@ module.exports = {
       try {
         const rows = await queryInterface.sequelize.query(
           `SHOW INDEX FROM \`${table}\` WHERE Key_name = :idx`,
-          { replacements: { idx: indexName }, type: Sequelize.QueryTypes.SELECT }
+          {
+            replacements: { idx: indexName },
+            type: Sequelize.QueryTypes.SELECT,
+          }
         );
         if (rows && rows.length > 0) {
           await queryInterface.removeIndex(table, indexName);
@@ -372,10 +393,7 @@ module.exports = {
       "RoomAllocations",
       "idx_room_allocations_hostel_user_status"
     );
-    await removeIndexSafe(
-      "Complaints",
-      "idx_complaints_hostel_user_status"
-    );
+    await removeIndexSafe("Complaints", "idx_complaints_hostel_user_status");
 
     // ==========================================
     // 6. Remove Tenant Location indexes
@@ -384,64 +402,28 @@ module.exports = {
       "TenantLocations",
       "idx_tenant_locations_country_city"
     );
-    await removeIndexSafe(
-      "TenantLocations",
-      "idx_tenant_locations_city"
-    );
-    await removeIndexSafe(
-      "TenantLocations",
-      "idx_tenant_locations_country"
-    );
-    await removeIndexSafe(
-      "TenantLocations",
-      "idx_tenant_locations_hostel_id"
-    );
+    await removeIndexSafe("TenantLocations", "idx_tenant_locations_city");
+    await removeIndexSafe("TenantLocations", "idx_tenant_locations_country");
+    await removeIndexSafe("TenantLocations", "idx_tenant_locations_hostel_id");
 
     // ==========================================
     // 5. Remove Superadmin indexes
     // ==========================================
-  await removeIndexSafe("Superadmins", "idx_superadmins_role");
-  await removeIndexSafe("Superadmins", "idx_superadmins_email");
+    await removeIndexSafe("Superadmins", "idx_superadmins_role");
+    await removeIndexSafe("Superadmins", "idx_superadmins_email");
 
     // ==========================================
     // 4. Remove Visitor Logs indexes
     // ==========================================
-    await removeIndexSafe(
-      "VisitorLogs",
-      "idx_visitor_logs_checkin_checkout"
-    );
-    await removeIndexSafe(
-      "VisitorLogs",
-      "idx_visitor_logs_hostel_checkin"
-    );
-    await removeIndexSafe(
-      "VisitorLogs",
-      "idx_visitor_logs_student_checkin"
-    );
-    await removeIndexSafe(
-      "VisitorLogs",
-      "idx_visitor_logs_relation"
-    );
-    await removeIndexSafe(
-      "VisitorLogs",
-      "idx_visitor_logs_visitor_name"
-    );
-    await removeIndexSafe(
-      "VisitorLogs",
-      "idx_visitor_logs_check_out"
-    );
-    await removeIndexSafe(
-      "VisitorLogs",
-      "idx_visitor_logs_check_in"
-    );
-    await removeIndexSafe(
-      "VisitorLogs",
-      "idx_visitor_logs_student_id"
-    );
-    await removeIndexSafe(
-      "VisitorLogs",
-      "idx_visitor_logs_hostel_id"
-    );
+    await removeIndexSafe("VisitorLogs", "idx_visitor_logs_checkin_checkout");
+    await removeIndexSafe("VisitorLogs", "idx_visitor_logs_hostel_checkin");
+    await removeIndexSafe("VisitorLogs", "idx_visitor_logs_student_checkin");
+    await removeIndexSafe("VisitorLogs", "idx_visitor_logs_relation");
+    await removeIndexSafe("VisitorLogs", "idx_visitor_logs_visitor_name");
+    await removeIndexSafe("VisitorLogs", "idx_visitor_logs_check_out");
+    await removeIndexSafe("VisitorLogs", "idx_visitor_logs_check_in");
+    await removeIndexSafe("VisitorLogs", "idx_visitor_logs_student_id");
+    await removeIndexSafe("VisitorLogs", "idx_visitor_logs_hostel_id");
 
     // ==========================================
     // 3. Remove Room Allocations indexes
@@ -462,55 +444,31 @@ module.exports = {
       "RoomAllocations",
       "idx_room_allocations_allocation_date"
     );
-    await removeIndexSafe(
-      "RoomAllocations",
-      "idx_room_allocations_status"
-    );
-    await removeIndexSafe(
-      "RoomAllocations",
-      "idx_room_allocations_room_id"
-    );
-    await removeIndexSafe(
-      "RoomAllocations",
-      "idx_room_allocations_user_id"
-    );
-    await removeIndexSafe(
-      "RoomAllocations",
-      "idx_room_allocations_hostel_id"
-    );
+    await removeIndexSafe("RoomAllocations", "idx_room_allocations_status");
+    await removeIndexSafe("RoomAllocations", "idx_room_allocations_room_id");
+    await removeIndexSafe("RoomAllocations", "idx_room_allocations_user_id");
+    await removeIndexSafe("RoomAllocations", "idx_room_allocations_hostel_id");
 
     // ==========================================
     // 2. Remove Rooms indexes
     // ==========================================
-  await removeIndexSafe("Rooms", "idx_rooms_block_capacity");
-  await removeIndexSafe("Rooms", "idx_rooms_hostel_capacity");
-  await removeIndexSafe("Rooms", "idx_rooms_hostel_room_number");
-  await removeIndexSafe("Rooms", "idx_rooms_hostel_block");
-  await removeIndexSafe("Rooms", "idx_rooms_occupied");
-  await removeIndexSafe("Rooms", "idx_rooms_capacity");
-  await removeIndexSafe("Rooms", "idx_rooms_block");
-  await removeIndexSafe("Rooms", "idx_rooms_room_number");
-  await removeIndexSafe("Rooms", "idx_rooms_hostel_id");
+    await removeIndexSafe("Rooms", "idx_rooms_block_capacity");
+    await removeIndexSafe("Rooms", "idx_rooms_hostel_capacity");
+    await removeIndexSafe("Rooms", "idx_rooms_hostel_room_number");
+    await removeIndexSafe("Rooms", "idx_rooms_hostel_block");
+    await removeIndexSafe("Rooms", "idx_rooms_occupied");
+    await removeIndexSafe("Rooms", "idx_rooms_capacity");
+    await removeIndexSafe("Rooms", "idx_rooms_block");
+    await removeIndexSafe("Rooms", "idx_rooms_room_number");
+    await removeIndexSafe("Rooms", "idx_rooms_hostel_id");
 
     // ==========================================
     // 1. Remove Complaints indexes
     // ==========================================
-    await removeIndexSafe(
-      "Complaints",
-      "idx_complaints_status_priority"
-    );
-    await removeIndexSafe(
-      "Complaints",
-      "idx_complaints_hostel_priority"
-    );
-    await removeIndexSafe(
-      "Complaints",
-      "idx_complaints_user_status"
-    );
-    await removeIndexSafe(
-      "Complaints",
-      "idx_complaints_resolved_at"
-    );
+    await removeIndexSafe("Complaints", "idx_complaints_status_priority");
+    await removeIndexSafe("Complaints", "idx_complaints_hostel_priority");
+    await removeIndexSafe("Complaints", "idx_complaints_user_status");
+    await removeIndexSafe("Complaints", "idx_complaints_resolved_at");
     await removeIndexSafe("Complaints", "idx_complaints_priority");
     await removeIndexSafe("Complaints", "idx_complaints_status");
     await removeIndexSafe("Complaints", "idx_complaints_user_id");
