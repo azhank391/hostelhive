@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { adminApi } from "@/lib/api";
 import { useHostel } from "@/context/HostelContext";
 import { STORAGE_KEYS } from "@/lib/config";
+import { getApiUrl } from "@/lib/api-url";
 // import { CompactHostelSelector } from '@/components/HostelSelector';
 import type { DashboardStats, Complaint } from "@/lib/types";
 import {
@@ -62,7 +63,7 @@ export default function HostelDashboardPage() {
         const [statsData, complaintsData] = await Promise.all([
           adminApi.getDashboardStats(urlHostelId),
           fetch(
-            `/api/hostels/${urlHostelId}/complaints?page=1&limit=6&status=pending`,
+            getApiUrl(`/api/hostels/${urlHostelId}/complaints?page=1&limit=6&status=pending`),
             {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem(
@@ -340,7 +341,7 @@ export default function HostelDashboardPage() {
                     );
                     // Refresh complaints after resolution
                     const updatedComplaintsResponse = await fetch(
-                      `/api/hostels/${urlHostelId}/complaints?page=1&limit=6&status=pending`,
+                      getApiUrl(`/api/hostels/${urlHostelId}/complaints?page=1&limit=6&status=pending`),
                       {
                         headers: {
                           Authorization: `Bearer ${localStorage.getItem(
