@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import type { Complaint } from "@/lib/types";
 import { notification } from "@/lib/toast";
+import { getApiUrl } from "@/lib/api-url";
 import {
   AlertCircleIcon,
   PlusIcon,
@@ -81,7 +82,7 @@ export default function HostelComplaintsPage() {
       setError(null);
       // Fetch all complaints without pagination for local filtering
       const response = await fetch(
-        `/api/hostels/${hostelId}/complaints?limit=1000`,
+        getApiUrl(`/api/hostels/${hostelId}/complaints?limit=1000`),
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("authToken")}`,
@@ -212,7 +213,7 @@ export default function HostelComplaintsPage() {
   ) => {
     try {
       const response = await fetch(
-        `/api/hostels/${hostelId}/complaints/${complaintId}/status`,
+        getApiUrl(`/api/hostels/${hostelId}/complaints/${complaintId}/status`),
         {
           method: "PUT",
           headers: {

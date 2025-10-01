@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/modals/Modal";
 import { Input } from "@/components/ui/Input";
 import { notification } from "@/lib/toast";
+import { getApiUrl } from "@/lib/api-url";
 import {
   Users as UsersIcon,
   UserPlus as PlusIcon,
@@ -295,7 +296,7 @@ export default function VisitorsPage() {
       }
 
       try {
-        const response = await fetch(`/api/hostels/${hostelId}/students`, {
+        const response = await fetch(getApiUrl(`/api/hostels/${hostelId}/students`), {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("authToken")}`,
           },
