@@ -59,6 +59,14 @@ jobs:
           [ -n "${{ secrets.DB_USER }}" ] || (echo "Missing required secret: DB_USER" && exit 1)
           [ -n "${{ secrets.DB_PASSWORD }}" ] || (echo "Missing required secret: DB_PASSWORD" && exit 1)
           [ -n "${{ secrets.DB_NAME }}" ] || (echo "Missing required secret: DB_NAME" && exit 1)
+          echo "✅ All required DB secrets are present"
+
+      - name: Validate optional app secrets
+        run: |
+          echo "Checking optional secrets (non-blocking)..."
+          [ -n "${{ secrets.JWT_SECRET }}" ] && echo "✅ JWT_SECRET present" || echo "⚠️ JWT_SECRET missing (will use default)"
+          [ -n "${{ secrets.STRIPE_SECRET_KEY }}" ] && echo "✅ STRIPE_SECRET_KEY present" || echo "⚠️ STRIPE_SECRET_KEY missing"
+          [ -n "${{ secrets.FRONTEND_URL }}" ] && echo "✅ FRONTEND_URL present" || echo "⚠️ FRONTEND_URL missing (will use default)"
 
       - name: Setup SSH key
         run: |
@@ -83,6 +91,11 @@ jobs:
             DB_HOST='${{ secrets.DB_HOST }}' DB_PORT='${{ secrets.DB_PORT }}' \
             DB_USER='${{ secrets.DB_USER }}' DB_PASSWORD='${{ secrets.DB_PASSWORD }}' \
             DB_NAME='${{ secrets.DB_NAME }}' DB_DIALECT='${{ secrets.DB_DIALECT }}' \
+            JWT_SECRET='${{ secrets.JWT_SECRET }}' JWT_EXPIRY='${{ secrets.JWT_EXPIRY }}' \
+            STRIPE_SECRET_KEY='${{ secrets.STRIPE_SECRET_KEY }}' \
+            STRIPE_PUBLISHABLE_KEY='${{ secrets.STRIPE_PUBLISHABLE_KEY }}' \
+            STRIPE_WEBHOOK_SECRET='${{ secrets.STRIPE_WEBHOOK_SECRET }}' \
+            FRONTEND_URL='${{ secrets.FRONTEND_URL }}' \
             NODE_ENV='production' bash -s" << 'EOF'
           set -e
 
@@ -123,7 +136,28 @@ jobs:
           cd "${EC2_APP_DIR}/${SERVER_DIR}"
           npm ci --ignore-scripts
 
-          # Defaults/fallbacks
+          # Create .env file with secrets from GitHub Actions
+          echo "Creating .env file with correct configuration..."
+          cat > .env << ENVEOF
+PORT=5000
+DB_NAME=${DB_NAME}
+DB_USER=${DB_USER}
+DB_PASSWORD=${DB_PASSWORD}
+DB_HOST=${DB_HOST}
+DB_DIALECT=${DB_DIALECT:-mysql}
+DB_PORT=${DB_PORT:-3306}
+JWT_SECRET=${JWT_SECRET:-your_jwt_secret}
+JWT_EXPIRY=${JWT_EXPIRY:-1d}
+NODE_ENV=production
+STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY:-}
+STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+ENVEOF
+          chmod 600 .env
+          echo "✅ .env file created successfully"
+
+          # Defaults/fallbacks for migration commands
           export DB_DIALECT="${DB_DIALECT:-mysql}"
           export DB_PORT="${DB_PORT:-3306}"
           export NODE_ENV="${NODE_ENV:-production}"
