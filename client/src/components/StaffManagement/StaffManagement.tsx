@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PermissionGate } from "@/components/ui/PermissionGate";
 import { apiClient } from "@/lib/api-client";
+import { getApiUrl } from "@/lib/api-url";
 import {
   PlusIcon,
   PencilIcon,
@@ -1321,7 +1322,7 @@ function StaffManagement() {
                         return notification.error("No hostel selected");
                       try {
                         const resp = await fetch(
-                          `/api/hostels/${hostelId}/staff/export?format=csv`,
+                          getApiUrl(`/api/hostels/${hostelId}/staff/export?format=csv`),
                           {
                             headers: {
                               Authorization: `Bearer ${localStorage.getItem(
@@ -1359,7 +1360,7 @@ function StaffManagement() {
                         return notification.error("No hostel selected");
                       try {
                         const resp = await fetch(
-                          `/api/hostels/${hostelId}/staff/export?format=json`,
+                          getApiUrl(`/api/hostels/${hostelId}/staff/export?format=json`),
                           {
                             headers: {
                               Authorization: `Bearer ${localStorage.getItem(

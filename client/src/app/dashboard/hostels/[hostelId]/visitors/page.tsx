@@ -188,7 +188,7 @@ export default function VisitorsPage() {
 
         // Fetch all visitors without pagination for local filtering
         const response = await fetch(
-          `/api/hostels/${hostelId}/visitors?limit=1000`,
+          getApiUrl(`/api/hostels/${hostelId}/visitors?limit=1000`),
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("authToken")}`,
@@ -243,7 +243,7 @@ export default function VisitorsPage() {
       setError(null);
 
       const response = await fetch(
-        `/api/hostels/${hostelId}/visitors?limit=1000`,
+        getApiUrl(`/api/hostels/${hostelId}/visitors?limit=1000`),
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("authToken")}`,
@@ -447,7 +447,7 @@ export default function VisitorsPage() {
     setIsSubmitting(true);
     try {
       const response = await fetch(
-        `/api/hostels/${hostelId}/visitors/${selectedVisitor.id}`,
+        getApiUrl(`/api/hostels/${hostelId}/visitors/${selectedVisitor.id}`),
         {
           method: "PUT",
           headers: {
@@ -580,7 +580,7 @@ export default function VisitorsPage() {
       setIsSubmitting(true);
       try {
         const response = await fetch(
-          `/api/hostels/${hostelId}/visitors/${target.id}`,
+          getApiUrl(`/api/hostels/${hostelId}/visitors/${target.id}`),
           {
             method: "DELETE",
             headers: {

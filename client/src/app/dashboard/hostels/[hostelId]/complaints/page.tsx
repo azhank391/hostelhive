@@ -370,7 +370,7 @@ export default function HostelComplaintsPage() {
                 onClick={async () => {
                   try {
                     const resp = await fetch(
-                      `/api/hostels/${hostelId}/complaints/export?format=csv`,
+                      getApiUrl(`/api/hostels/${hostelId}/complaints/export?format=csv`),
                       {
                         headers: {
                           Authorization: `Bearer ${localStorage.getItem(
@@ -747,7 +747,7 @@ export default function HostelComplaintsPage() {
                                       }
 
                                       const response = await fetch(
-                                        `/api/hostels/${hostelId}/complaints/${complaint.id}`,
+                                        getApiUrl(`/api/hostels/${hostelId}/complaints/${complaint.id}`),
                                         {
                                           method: "DELETE",
                                           headers: {

@@ -488,7 +488,7 @@ export default function HostelRoomsPage() {
 
       // Call the deallocation API endpoint
       const response = await fetch(
-        `/api/hostels/${hostelId}/room-allocations/${studentId}`,
+        getApiUrl(`/api/hostels/${hostelId}/room-allocations/${studentId}`),
         {
           method: "DELETE",
           headers: {

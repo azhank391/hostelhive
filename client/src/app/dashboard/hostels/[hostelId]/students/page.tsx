@@ -484,7 +484,7 @@ export default function HostelStudentsPage() {
 
       try {
         const response = await fetch(
-          `/api/hostels/${hostelId}/students/export?format=${format}`,
+          getApiUrl(`/api/hostels/${hostelId}/students/export?format=${format}`),
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("authToken")}`,
