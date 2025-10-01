@@ -26,49 +26,68 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     console.log('🚀 Starting comprehensive index migration...');
 
+    // Helper: add index only if it doesn't already exist (idempotent)
+    const addIndexSafe = async (table, fields, options) => {
+      const indexName = options && options.name ? options.name : undefined;
+      if (!indexName) {
+        // Fallback: let Sequelize generate a name; but we prefer named indexes
+        return queryInterface.addIndex(table, fields, options);
+      }
+      const rows = await queryInterface.sequelize.query(
+        `SHOW INDEX FROM \`${table}\` WHERE Key_name = :idx`,
+        { replacements: { idx: indexName }, type: Sequelize.QueryTypes.SELECT }
+      );
+      if (!rows || rows.length === 0) {
+        await queryInterface.addIndex(table, fields, options);
+      } else {
+        // Already exists
+        // console.log(`ℹ️ Index ${indexName} on ${table} already exists, skipping`);
+      }
+    };
+
     // ==========================================
     // 1. COMPLAINTS TABLE INDEXES
     // ==========================================
     console.log('📝 Adding indexes to Complaints table...');
     
     // Individual column indexes for Complaints
-    await queryInterface.addIndex("Complaints", ["hostelId"], {
+    await addIndexSafe("Complaints", ["hostelId"], {
       name: "idx_complaints_hostel_id",
       comment: "Fast lookup of complaints by hostel"
     });
 
-    await queryInterface.addIndex("Complaints", ["userId"], {
+    await addIndexSafe("Complaints", ["userId"], {
       name: "idx_complaints_user_id", 
       comment: "Fast lookup of complaints by user"
     });
 
-    await queryInterface.addIndex("Complaints", ["status"], {
+    await addIndexSafe("Complaints", ["status"], {
       name: "idx_complaints_status",
       comment: "Fast filtering by complaint status"
     });
 
-    await queryInterface.addIndex("Complaints", ["priority"], {
+    await addIndexSafe("Complaints", ["priority"], {
       name: "idx_complaints_priority",
       comment: "Fast filtering by complaint priority"
     });
 
-    await queryInterface.addIndex("Complaints", ["resolvedAt"], {
+    await addIndexSafe("Complaints", ["resolvedAt"], {
       name: "idx_complaints_resolved_at",
       comment: "Fast sorting by resolution date"
     });
 
     // Composite indexes for common query patterns
-    await queryInterface.addIndex("Complaints", ["userId", "status"], {
+    await addIndexSafe("Complaints", ["userId", "status"], {
       name: "idx_complaints_user_status",
       comment: "Fast lookup of user complaints by status"
     });
 
-    await queryInterface.addIndex("Complaints", ["hostelId", "priority"], {
+    await addIndexSafe("Complaints", ["hostelId", "priority"], {
       name: "idx_complaints_hostel_priority",
       comment: "Fast lookup of hostel complaints by priority"
     });
 
-    await queryInterface.addIndex("Complaints", ["status", "priority"], {
+    await addIndexSafe("Complaints", ["status", "priority"], {
       name: "idx_complaints_status_priority",
       comment: "Fast filtering by status and priority"
     });
@@ -79,48 +98,48 @@ module.exports = {
     console.log('🏠 Adding indexes to Rooms table...');
     
     // Individual column indexes for Rooms
-    await queryInterface.addIndex("Rooms", ["hostelId"], {
+    await addIndexSafe("Rooms", ["hostelId"], {
       name: "idx_rooms_hostel_id",
       comment: "Fast lookup of rooms by hostel"
     });
 
-    await queryInterface.addIndex("Rooms", ["roomNumber"], {
+    await addIndexSafe("Rooms", ["roomNumber"], {
       name: "idx_rooms_room_number",
       comment: "Fast lookup by room number"
     });
 
-    await queryInterface.addIndex("Rooms", ["block"], {
+    await addIndexSafe("Rooms", ["block"], {
       name: "idx_rooms_block",
       comment: "Fast filtering by block"
     });
 
-    await queryInterface.addIndex("Rooms", ["capacity"], {
+    await addIndexSafe("Rooms", ["capacity"], {
       name: "idx_rooms_capacity",
       comment: "Fast filtering by room capacity"
     });
 
-    await queryInterface.addIndex("Rooms", ["occupied"], {
+    await addIndexSafe("Rooms", ["occupied"], {
       name: "idx_rooms_occupied",
       comment: "Fast filtering by occupancy"
     });
 
     // Composite indexes for common query patterns
-    await queryInterface.addIndex("Rooms", ["hostelId", "block"], {
+    await addIndexSafe("Rooms", ["hostelId", "block"], {
       name: "idx_rooms_hostel_block",
       comment: "Fast lookup of rooms by hostel and block"
     });
 
-    await queryInterface.addIndex("Rooms", ["hostelId", "roomNumber"], {
+    await addIndexSafe("Rooms", ["hostelId", "roomNumber"], {
       name: "idx_rooms_hostel_room_number",
       comment: "Fast lookup of specific room in hostel"
     });
 
-    await queryInterface.addIndex("Rooms", ["hostelId", "capacity"], {
+    await addIndexSafe("Rooms", ["hostelId", "capacity"], {
       name: "idx_rooms_hostel_capacity",
       comment: "Fast filtering by hostel and capacity"
     });
 
-    await queryInterface.addIndex("Rooms", ["block", "capacity"], {
+    await addIndexSafe("Rooms", ["block", "capacity"], {
       name: "idx_rooms_block_capacity",
       comment: "Fast filtering by block and capacity"
     });
@@ -131,43 +150,43 @@ module.exports = {
     console.log('🛏️ Adding indexes to Room Allocations table...');
     
     // Individual column indexes for Room Allocations
-    await queryInterface.addIndex("RoomAllocations", ["hostelId"], {
+    await addIndexSafe("RoomAllocations", ["hostelId"], {
       name: "idx_room_allocations_hostel_id",
       comment: "Fast lookup of allocations by hostel"
     });
 
-    await queryInterface.addIndex("RoomAllocations", ["userId"], {
+    await addIndexSafe("RoomAllocations", ["userId"], {
       name: "idx_room_allocations_user_id",
       comment: "Fast lookup of user allocations"
     });
 
-    await queryInterface.addIndex("RoomAllocations", ["roomId"], {
+    await addIndexSafe("RoomAllocations", ["roomId"], {
       name: "idx_room_allocations_room_id",
       comment: "Fast lookup of room allocations"
     });
 
-    await queryInterface.addIndex("RoomAllocations", ["status"], {
+    await addIndexSafe("RoomAllocations", ["status"], {
       name: "idx_room_allocations_status",
       comment: "Fast filtering by allocation status"
     });
 
-    await queryInterface.addIndex("RoomAllocations", ["allocationDate"], {
+    await addIndexSafe("RoomAllocations", ["allocationDate"], {
       name: "idx_room_allocations_allocation_date",
       comment: "Fast sorting by allocation date"
     });
 
     // Composite indexes for common query patterns
-    await queryInterface.addIndex("RoomAllocations", ["userId", "status"], {
+    await addIndexSafe("RoomAllocations", ["userId", "status"], {
       name: "idx_room_allocations_user_status",
       comment: "Fast lookup of user active allocations"
     });
 
-    await queryInterface.addIndex("RoomAllocations", ["roomId", "status"], {
+    await addIndexSafe("RoomAllocations", ["roomId", "status"], {
       name: "idx_room_allocations_room_status",
       comment: "Fast lookup of room active allocations"
     });
 
-    await queryInterface.addIndex("RoomAllocations", ["hostelId", "allocationDate"], {
+    await addIndexSafe("RoomAllocations", ["hostelId", "allocationDate"], {
       name: "idx_room_allocations_hostel_date",
       comment: "Fast lookup of allocations by hostel and date"
     });
@@ -178,48 +197,48 @@ module.exports = {
     console.log('👥 Adding indexes to Visitor Logs table...');
     
     // Individual column indexes for Visitor Logs
-    await queryInterface.addIndex("VisitorLogs", ["hostelId"], {
+    await addIndexSafe("VisitorLogs", ["hostelId"], {
       name: "idx_visitor_logs_hostel_id",
       comment: "Fast lookup of visitor logs by hostel"
     });
 
-    await queryInterface.addIndex("VisitorLogs", ["studentId"], {
+    await addIndexSafe("VisitorLogs", ["studentId"], {
       name: "idx_visitor_logs_student_id",
       comment: "Fast lookup of visitor logs by student"
     });
 
-    await queryInterface.addIndex("VisitorLogs", ["checkIn"], {
+    await addIndexSafe("VisitorLogs", ["checkIn"], {
       name: "idx_visitor_logs_check_in",
       comment: "Fast sorting by check-in date"
     });
 
-    await queryInterface.addIndex("VisitorLogs", ["checkOut"], {
+    await addIndexSafe("VisitorLogs", ["checkOut"], {
       name: "idx_visitor_logs_check_out",
       comment: "Fast sorting by check-out date"
     });
 
-    await queryInterface.addIndex("VisitorLogs", ["visitorName"], {
+    await addIndexSafe("VisitorLogs", ["visitorName"], {
       name: "idx_visitor_logs_visitor_name",
       comment: "Fast search by visitor name"
     });
 
-    await queryInterface.addIndex("VisitorLogs", ["relation"], {
+    await addIndexSafe("VisitorLogs", ["relation"], {
       name: "idx_visitor_logs_relation",
       comment: "Fast filtering by visitor relation"
     });
 
     // Composite indexes for common query patterns
-    await queryInterface.addIndex("VisitorLogs", ["studentId", "checkIn"], {
+    await addIndexSafe("VisitorLogs", ["studentId", "checkIn"], {
       name: "idx_visitor_logs_student_checkin",
       comment: "Fast lookup of student visitor logs by date"
     });
 
-    await queryInterface.addIndex("VisitorLogs", ["hostelId", "checkIn"], {
+    await addIndexSafe("VisitorLogs", ["hostelId", "checkIn"], {
       name: "idx_visitor_logs_hostel_checkin",
       comment: "Fast lookup of hostel visitor logs by date"
     });
 
-    await queryInterface.addIndex("VisitorLogs", ["checkIn", "checkOut"], {
+    await addIndexSafe("VisitorLogs", ["checkIn", "checkOut"], {
       name: "idx_visitor_logs_checkin_checkout",
       comment: "Fast filtering by date range"
     });
@@ -230,12 +249,12 @@ module.exports = {
     console.log('👑 Adding indexes to Superadmin table...');
     
     // Individual column indexes for Superadmin
-    await queryInterface.addIndex("Superadmins", ["email"], {
+    await addIndexSafe("Superadmins", ["email"], {
       name: "idx_superadmins_email",
       comment: "Fast lookup by email (login)"
     });
 
-    await queryInterface.addIndex("Superadmins", ["role"], {
+    await addIndexSafe("Superadmins", ["role"], {
       name: "idx_superadmins_role",
       comment: "Fast filtering by role"
     });
@@ -246,23 +265,23 @@ module.exports = {
     console.log('📍 Adding indexes to Tenant Location table...');
     
     // Individual column indexes for Tenant Location
-    await queryInterface.addIndex("TenantLocations", ["hostelId"], {
+    await addIndexSafe("TenantLocations", ["hostelId"], {
       name: "idx_tenant_locations_hostel_id",
       comment: "Fast lookup of location by hostel"
     });
 
-    await queryInterface.addIndex("TenantLocations", ["country"], {
+    await addIndexSafe("TenantLocations", ["country"], {
       name: "idx_tenant_locations_country",
       comment: "Fast filtering by country"
     });
 
-    await queryInterface.addIndex("TenantLocations", ["city"], {
+    await addIndexSafe("TenantLocations", ["city"], {
       name: "idx_tenant_locations_city",
       comment: "Fast filtering by city"
     });
 
     // Composite indexes for common query patterns
-    await queryInterface.addIndex("TenantLocations", ["country", "city"], {
+    await addIndexSafe("TenantLocations", ["country", "city"], {
       name: "idx_tenant_locations_country_city",
       comment: "Fast filtering by country and city"
     });
@@ -273,17 +292,17 @@ module.exports = {
     console.log('🔗 Adding additional composite indexes...');
     
     // Cross-table query optimization indexes
-    await queryInterface.addIndex("Complaints", ["hostelId", "userId", "status"], {
+    await addIndexSafe("Complaints", ["hostelId", "userId", "status"], {
       name: "idx_complaints_hostel_user_status",
       comment: "Fast lookup of user complaints in hostel by status"
     });
 
-    await queryInterface.addIndex("RoomAllocations", ["hostelId", "userId", "status"], {
+    await addIndexSafe("RoomAllocations", ["hostelId", "userId", "status"], {
       name: "idx_room_allocations_hostel_user_status",
       comment: "Fast lookup of user allocations in hostel by status"
     });
 
-    await queryInterface.addIndex("VisitorLogs", ["hostelId", "studentId", "checkIn"], {
+    await addIndexSafe("VisitorLogs", ["hostelId", "studentId", "checkIn"], {
       name: "idx_visitor_logs_hostel_student_checkin",
       comment: "Fast lookup of student visitor logs in hostel by date"
     });
