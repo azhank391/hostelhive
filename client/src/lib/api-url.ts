@@ -36,7 +36,7 @@ export function getApiUrl(path: string): string {
  */
 export function normalizeApiPath(path: string): string {
   // If path already has /api, remove it since baseUrl includes /api
-  if (path.startsWith('/api/')) {
+  if (path.startsWith('/')) {
     return path.substring(4); // Remove '/api'
   }
   return path;
