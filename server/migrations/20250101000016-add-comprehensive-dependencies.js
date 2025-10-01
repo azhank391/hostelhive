@@ -17,9 +17,9 @@ module.exports = {
     const crypto = require('crypto');
     const generateUUID = () => crypto.randomUUID();
 
-    // Get all permissions to find their IDs
+    // Get all permissions to find their IDs (do not rely on operation column)
     const permissions = await queryInterface.sequelize.query(
-      'SELECT id, name FROM Permissions WHERE operation IS NOT NULL',
+      'SELECT id, name FROM Permissions',
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
@@ -343,21 +343,45 @@ module.exports = {
     console.log(`📋 Adding ${comprehensiveDependencies.length} comprehensive dependencies...`);
 
     // Add all dependencies
+    // Common alias mapping (legacy -> canonical) to maximize matches
+    const ALIAS = {
+      hostel_stats_read: 'view_hostel_stats',
+      visitor_export: 'export_visitor_data',
+      complaint_stats_read: 'view_complaint_stats',
+      system_stats_read: 'view_system_stats',
+      billing_manage: 'manage_billing',
+      data_export: 'export_room_data', // partial; real export_* handled per domain elsewhere
+      room_allocate: 'room_allocation_create',
+      room_deallocate: 'room_allocation_delete',
+      view_wardens: 'warden_read',
+    };
+
     for (const dep of comprehensiveDependencies) {
-      if (permissionIds[dep.parent] && permissionIds[dep.required]) {
+      const parentName = permissionIds[dep.parent]
+        ? dep.parent
+        : ALIAS[dep.parent] && permissionIds[ALIAS[dep.parent]]
+        ? ALIAS[dep.parent]
+        : null;
+      const requiredName = permissionIds[dep.required]
+        ? dep.required
+        : ALIAS[dep.required] && permissionIds[ALIAS[dep.required]]
+        ? ALIAS[dep.required]
+        : null;
+
+      if (parentName && requiredName) {
         // Check if dependency already exists
         const existingDep = await queryInterface.sequelize.query(
           `SELECT id FROM PermissionDependencies 
-           WHERE parent_permission_id = '${permissionIds[dep.parent]}' 
-           AND required_permission_id = '${permissionIds[dep.required]}'`,
+           WHERE parent_permission_id = '${permissionIds[parentName]}' 
+           AND required_permission_id = '${permissionIds[requiredName]}'`,
           { type: queryInterface.sequelize.QueryTypes.SELECT }
         );
 
         if (existingDep.length === 0) {
           await queryInterface.bulkInsert('PermissionDependencies', [{
             id: generateUUID(),
-            parent_permission_id: permissionIds[dep.parent],
-            required_permission_id: permissionIds[dep.required],
+            parent_permission_id: permissionIds[parentName],
+            required_permission_id: permissionIds[requiredName],
             is_automatic: true,
             created_at: new Date(),
             updated_at: new Date()

@@ -7,19 +7,30 @@ module.exports = {
     try {
       console.log("🔧 Adding hostel_stats_read permission to wardens...");
 
-      // 1. Get the hostel_stats_read permission ID
-      const hostelStatsPermissions = await queryInterface.sequelize.query(
-        `SELECT id FROM Permissions WHERE name = 'hostel_stats_read'`,
-        { transaction, type: Sequelize.QueryTypes.SELECT }
-      );
+      // 1. Get the stats permission ID (support both legacy and current names)
+      let hostelStatsPermissionRow = (
+        await queryInterface.sequelize.query(
+          `SELECT id FROM Permissions WHERE name = 'hostel_stats_read'`,
+          { transaction, type: Sequelize.QueryTypes.SELECT }
+        )
+      )[0];
 
-      if (!hostelStatsPermissions || hostelStatsPermissions.length === 0) {
-        console.log("⚠️ hostel_stats_read permission not found");
+      if (!hostelStatsPermissionRow) {
+        hostelStatsPermissionRow = (
+          await queryInterface.sequelize.query(
+            `SELECT id FROM Permissions WHERE name = 'view_hostel_stats'`,
+            { transaction, type: Sequelize.QueryTypes.SELECT }
+          )
+        )[0];
+      }
+
+      if (!hostelStatsPermissionRow) {
+        console.log("⚠️ hostel_stats_read/view_hostel_stats permission not found");
         await transaction.rollback();
         return;
       }
 
-      const hostelStatsPermission = hostelStatsPermissions[0];
+      const hostelStatsPermission = hostelStatsPermissionRow;
 
       // 2. Get all warden role IDs
       const wardenRoles = await queryInterface.sequelize.query(

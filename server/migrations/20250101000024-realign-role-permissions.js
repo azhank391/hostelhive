@@ -145,19 +145,31 @@ module.exports = {
 
     for (const { role, set } of matrix) {
       if (!roleId[role]) continue;
-      await queryInterface.bulkDelete("RolePermissions", {
-        role_id: roleId[role],
-      });
-      let currentRole = role; // for map closure
-      const rows = set
-        .filter(has)
-        .map((n) => ({
-          id: require("crypto").randomUUID(),
-          role_id: roleId[role],
-          permission_id: permId[n],
-          created_at: new Date(),
-        }));
-      if (rows.length) await queryInterface.bulkInsert("RolePermissions", rows);
+      // Upsert only missing mappings; do not remove existing ones
+      for (const permName of set.filter(has)) {
+        const permission_id = permId[permName];
+        const existing = await queryInterface.sequelize.query(
+          "SELECT id FROM RolePermissions WHERE role_id = ? AND permission_id = ? LIMIT 1",
+          {
+            replacements: [roleId[role], permission_id],
+            type: Sequelize.QueryTypes.SELECT,
+          }
+        );
+        if (!existing.length) {
+          await queryInterface.bulkInsert(
+            "RolePermissions",
+            [
+              {
+                id: require("crypto").randomUUID(),
+                role_id: roleId[role],
+                permission_id,
+                created_at: new Date(),
+              },
+            ],
+            { ignoreDuplicates: true }
+          );
+        }
+      }
     }
   },
 
