@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { getApiUrl } from '@/lib/api-url';
 import { Button } from '../ui/Button';
 // import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
@@ -751,10 +752,8 @@ export const WardenRoomManagement = React.memo(() => {
     setLoadingStudents(true);
     
     try {
-
-      
       // Use the same endpoint as the owner dashboard to get students for this specific room
-      const response = await fetch(`/api/hostels/${room.hostelId}/rooms/${room.id}/students`, {
+      const response = await fetch(getApiUrl(`/api/hostels/${room.hostelId}/rooms/${room.id}/students`), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         }
