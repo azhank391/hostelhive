@@ -16,9 +16,9 @@ module.exports = {
 
     console.log("✅ System roles marked as system roles");
 
-    // 2. Get permission IDs for granular permissions
+    // 2. Get permission IDs (do not depend on operation column presence)
     const permissions = await queryInterface.sequelize.query(
-      "SELECT id, name FROM Permissions WHERE operation IS NOT NULL",
+      "SELECT id, name FROM Permissions",
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
@@ -41,12 +41,8 @@ module.exports = {
       roleMap[r.name] = r.id;
     });
 
-    // 4. Clear existing role permissions for system roles
-    await queryInterface.bulkDelete("RolePermissions", {
-      role_id: roles.map((r) => r.id),
-    });
-
-    console.log("✅ Cleared existing role permissions");
+    // 4. Do not clear existing role permissions globally; we'll upsert missing ones
+    console.log("ℹ️ Skipping blanket delete of existing role permissions");
 
     // 5. Define system role permissions using granular permissions
     const systemRolePermissions = {
@@ -189,7 +185,21 @@ module.exports = {
     }
 
     if (rolePermissions.length > 0) {
-      await queryInterface.bulkInsert("RolePermissions", rolePermissions);
+      // Insert only missing mappings (idempotent)
+      for (const rp of rolePermissions) {
+        const existing = await queryInterface.sequelize.query(
+          "SELECT id FROM RolePermissions WHERE role_id = ? AND permission_id = ? LIMIT 1",
+          {
+            replacements: [rp.role_id, rp.permission_id],
+            type: queryInterface.sequelize.QueryTypes.SELECT,
+          }
+        );
+        if (!existing.length) {
+          await queryInterface.bulkInsert("RolePermissions", [rp], {
+            ignoreDuplicates: true,
+          });
+        }
+      }
       console.log(
         `✅ Assigned ${rolePermissions.length} granular permissions to system roles`
       );

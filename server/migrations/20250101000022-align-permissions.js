@@ -84,37 +84,12 @@ module.exports = {
     }
 
     // 2. Permissions we are deprecating (must exist before deletion)
-    const LEGACY_PERMISSIONS = [
-      "room_allocate",
-      "room_deallocate",
-      "visitor_checkout",
-      "visitor_export",
-      "visitor_stats_read",
-      "student_export",
-      "hostel_stats_read",
-      "complaint_update",
-      "data_export",
-      "report_read",
-      "analytics_read",
-      "billing_read",
-      "warden_create",
-      "warden_delete",
-      "warden_read",
-      "warden_update",
-      "warden_role_assign",
-    ];
-    const legacyIds = await getPermissionsByNames(LEGACY_PERMISSIONS);
-
-    // Remove role-permission associations for legacy permissions
-    if (Object.keys(legacyIds).length) {
-      await queryInterface.bulkDelete("RolePermissions", {
-        permission_id: { [Op.in]: Object.values(legacyIds) },
-      });
-      // Delete the legacy permissions themselves
-      await queryInterface.bulkDelete("Permissions", {
-        id: { [Op.in]: Object.values(legacyIds) },
-      });
-    }
+    // NOTE: Skipping deletion of legacy permissions to maintain backward compatibility
+    // Some of these names are still referenced by routes and utilities.
+    // We retain them and simply realign role assignments below.
+    // If needed later, we can safely prune unused permissions after code is updated.
+    const LEGACY_PERMISSIONS = [];
+    const legacyIds = {};
 
     // 3. Rebuild role assignments
     const roles = await queryInterface.sequelize.query(

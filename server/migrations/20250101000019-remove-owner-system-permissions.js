@@ -8,9 +8,9 @@ module.exports = {
     try {
       // Remove billing_manage and system_stats_read permissions from owner role
       await queryInterface.sequelize.query(`
-        DELETE rp FROM rolepermissions rp
-        JOIN permissions p ON rp.permission_id = p.id
-        JOIN roles r ON rp.role_id = r.id
+        DELETE rp FROM RolePermissions rp
+        JOIN Permissions p ON rp.permission_id = p.id
+        JOIN Roles r ON rp.role_id = r.id
         WHERE r.name = 'owner' 
         AND p.name IN ('billing_manage', 'system_stats_read');
       `);
@@ -29,7 +29,7 @@ module.exports = {
     try {
       // Get owner role ID
       const [ownerRoles] = await queryInterface.sequelize.query(
-        `SELECT id FROM roles WHERE name = 'owner' LIMIT 1;`
+        `SELECT id FROM Roles WHERE name = 'owner' LIMIT 1;`
       );
 
       if (ownerRoles.length === 0) {
@@ -40,7 +40,7 @@ module.exports = {
 
       // Get system permission IDs
       const [systemPermissions] = await queryInterface.sequelize.query(`
-        SELECT id, name FROM permissions 
+        SELECT id, name FROM Permissions 
         WHERE name IN ('billing_manage', 'system_stats_read');
       `);
 
@@ -52,7 +52,9 @@ module.exports = {
           created_at: new Date(),
         }));
 
-        await queryInterface.bulkInsert("rolepermissions", rolePermissions);
+        await queryInterface.bulkInsert("RolePermissions", rolePermissions, {
+          ignoreDuplicates: true,
+        });
         console.log("✅ Restored system permissions to owner role");
       }
     } catch (error) {
