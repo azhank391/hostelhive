@@ -11,7 +11,6 @@ jobs:
       EC2_APP_DIR: /var/www/hostelhive
       SERVER_DIR: server
       CLIENT_DIR: client
-      RUN_MIGRATIONS: "true"
 
     steps:
       - name: Checkout
@@ -52,6 +51,15 @@ jobs:
           [ -n "${{ secrets.EC2_HOST }}" ] || (echo "Missing required secret: EC2_HOST" && exit 1)
           [ -n "${{ secrets.EC2_SSH_KEY }}" ] || (echo "Missing required secret: EC2_SSH_KEY (private key)" && exit 1)
 
+      - name: Validate DB secrets
+        run: |
+          set -e
+          [ -n "${{ secrets.DB_HOST }}" ] || (echo "Missing required secret: DB_HOST" && exit 1)
+          [ -n "${{ secrets.DB_PORT }}" ] || (echo "Missing required secret: DB_PORT" && exit 1)
+          [ -n "${{ secrets.DB_USER }}" ] || (echo "Missing required secret: DB_USER" && exit 1)
+          [ -n "${{ secrets.DB_PASSWORD }}" ] || (echo "Missing required secret: DB_PASSWORD" && exit 1)
+          [ -n "${{ secrets.DB_NAME }}" ] || (echo "Missing required secret: DB_NAME" && exit 1)
+
       - name: Setup SSH key
         run: |
           echo "${{ secrets.EC2_SSH_KEY }}" > hostelhive-ec2-key.pem
@@ -61,20 +69,21 @@ jobs:
         run: |
           ssh -i hostelhive-ec2-key.pem -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "sudo mkdir -p /var/www/hostelhive && sudo chown ${{ secrets.EC2_USER }}:${{ secrets.EC2_USER }} /var/www/hostelhive"
 
-      - name: Verify SSH connection
-        run: |
-          ssh -i hostelhive-ec2-key.pem -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "ls -ld /var/www/hostelhive && echo 'Connected successfully!'"
-
       - name: Upload artifacts to EC2
         run: |
           rsync -e "ssh -i hostelhive-ec2-key.pem -o StrictHostKeyChecking=no" -az --delete \
             deploy_artifacts.tar.gz \
             ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:"$EC2_APP_DIR/"
 
-      - name: Deploy on EC2
+      - name: Deploy on EC2 (migrate + start)
         run: |
-          ssh -i hostelhive-ec2-key.pem -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
-            "EC2_APP_DIR='$EC2_APP_DIR' SERVER_DIR='$SERVER_DIR' CLIENT_DIR='$CLIENT_DIR' RUN_MIGRATIONS='$RUN_MIGRATIONS' bash -s" << 'EOF'
+          ssh -i hostelhive-ec2-key.pem -o StrictHostKeyChecking=no \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            "EC2_APP_DIR='$EC2_APP_DIR' SERVER_DIR='$SERVER_DIR' CLIENT_DIR='$CLIENT_DIR' \
+            DB_HOST='${{ secrets.DB_HOST }}' DB_PORT='${{ secrets.DB_PORT }}' \
+            DB_USER='${{ secrets.DB_USER }}' DB_PASSWORD='${{ secrets.DB_PASSWORD }}' \
+            DB_NAME='${{ secrets.DB_NAME }}' DB_DIALECT='${{ secrets.DB_DIALECT }}' \
+            NODE_ENV='production' bash -s" << 'EOF'
           set -e
 
           echo "Target dir: ${EC2_APP_DIR}"
@@ -114,25 +123,32 @@ jobs:
           cd "${EC2_APP_DIR}/${SERVER_DIR}"
           npm ci --ignore-scripts
 
-          # Always run migrations on deploy
+          # Defaults/fallbacks
+          export DB_DIALECT="${DB_DIALECT:-mysql}"
+          export DB_PORT="${DB_PORT:-3306}"
+          export NODE_ENV="${NODE_ENV:-production}"
+
+          echo "DB migration config (safe): host=${DB_HOST} port=${DB_PORT} db=${DB_NAME} dialect=${DB_DIALECT}"
+
+          # Ensure sequelize-cli is available
           if ! command -v sequelize-cli >/dev/null 2>&1; then
             echo "Installing sequelize-cli globally..."
             sudo npm i -g sequelize-cli
           fi
 
           echo "Running migrations..."
-          NODE_ENV=production sequelize-cli db:migrate --env production
+          sequelize-cli db:migrate --env production
           echo "Migrations status (post-run):"
-          NODE_ENV=production sequelize-cli db:migrate:status --env production || true
+          sequelize-cli db:migrate:status --env production || true
 
           # Start/reload app with PM2
           APP_NAME=hostelhive-server
           if pm2 describe "${APP_NAME}" >/dev/null 2>&1; then
             echo "Reloading ${APP_NAME}"
-            NODE_ENV=production PORT=5000 pm2 reload "${APP_NAME}" --update-env
+            PORT=5000 pm2 reload "${APP_NAME}" --update-env
           else
             echo "Starting ${APP_NAME}"
-            NODE_ENV=production PORT=5000 pm2 start server.js --name "${APP_NAME}" --cwd "${EC2_APP_DIR}/${SERVER_DIR}"
+            PORT=5000 pm2 start server.js --name "${APP_NAME}" --cwd "${EC2_APP_DIR}/${SERVER_DIR}"
           fi
 
           # Health check loop
