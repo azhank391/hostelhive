@@ -24,6 +24,14 @@ async function updateHostelWithSubscription(hostel, subscription) {
   const fromPriceMetadata = item?.price?.metadata?.plan_id;
   const planId = normalizePlanId(fromSubMetadata || fromPriceMetadata || "basic");
 
+  console.log("🔍 Plan ID extraction:", {
+    fromSubMetadata,
+    fromPriceMetadata,
+    normalizedPlanId: planId,
+    subscriptionId: subscription.id,
+    hostelId: hostel.id
+  });
+
   const updateData = {
     stripe_subscription_id: subscription.id,
     subscription_status: subscription.cancel_at_period_end
@@ -52,6 +60,15 @@ async function updateHostelWithSubscription(hostel, subscription) {
 
   console.log("📝 Updating hostel:", hostel.id, JSON.stringify(updateData, null, 2));
   await hostel.update(updateData);
+  
+  // Log successful update with before/after comparison
+  console.log("✅ Hostel updated successfully:", {
+    hostelId: hostel.id,
+    oldPlanId: hostel.getDataValue('plan_id'),
+    newPlanId: updateData.plan_id,
+    subscriptionStatus: updateData.subscription_status,
+    isPaid: updateData.isPaid
+  });
 }
 
 exports.handleStripeWebhook = async (req, res) => {
@@ -75,7 +92,11 @@ exports.handleStripeWebhook = async (req, res) => {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object;
-        console.log("💳 Checkout completed:", session.id);
+        console.log("💳 Checkout completed:", session.id, {
+          customer: session.customer,
+          subscription: session.subscription,
+          paymentStatus: session.payment_status
+        });
 
         const hostel = await Hostel.findOne({
           where: { stripe_customer_id: session.customer },
@@ -86,11 +107,25 @@ exports.handleStripeWebhook = async (req, res) => {
           break;
         }
 
+        console.log("✅ Found hostel:", {
+          hostelId: hostel.id,
+          hostelName: hostel.name,
+          currentPlanId: hostel.plan_id
+        });
+
         if (session.subscription) {
           const subscription = await stripeService.retrieveSubscription(
             session.subscription
           );
+          console.log("📦 Retrieved subscription:", {
+            id: subscription.id,
+            status: subscription.status,
+            metadata: subscription.metadata,
+            priceMetadata: subscription.items?.data?.[0]?.price?.metadata
+          });
           await updateHostelWithSubscription(hostel, subscription);
+        } else {
+          console.warn("⚠️ No subscription in checkout session");
         }
         break;
       }
