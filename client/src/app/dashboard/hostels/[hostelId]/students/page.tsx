@@ -332,7 +332,7 @@ export default function HostelStudentsPage() {
         setIsAllocating(true);
         // Direct API call for room allocation - using correct endpoint
         const response = await fetch(
-          `/api/hostels/${hostelId}/room-allocations`,
+          getApiUrl(`/api/hostels/${hostelId}/room-allocations`),
           {
             method: "POST",
             headers: {
@@ -381,7 +381,7 @@ export default function HostelStudentsPage() {
       try {
         // Direct API call for room deallocation - using correct endpoint
         const response = await fetch(
-          `/api/hostels/${hostelId}/room-allocations/${studentId}`,
+          getApiUrl(`/api/hostels/${hostelId}/room-allocations/${studentId}`),
           {
             method: "DELETE",
             headers: {

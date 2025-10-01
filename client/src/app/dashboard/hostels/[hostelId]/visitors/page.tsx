@@ -517,7 +517,7 @@ export default function VisitorsPage() {
 
       try {
         const response = await fetch(
-          `/api/hostels/${hostelId}/visitors/${visitor.id}/checkout`,
+          getApiUrl(`/api/hostels/${hostelId}/visitors/${visitor.id}/checkout`),
           {
             method: "POST",
             headers: {
