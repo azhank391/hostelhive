@@ -3,12 +3,8 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    // Normalize table name casing if needed
-    const tableName = (await queryInterface
-      .describeTable("hostels")
-      .catch(() => null))
-      ? "hostels"
-      : "Hostels";
+    // Use correct table name: Hostels (capital H)
+    const tableName = "Hostels";
 
     // 1) Add subscription fields if they don't exist (idempotent-ish pattern)
     const desc = await queryInterface.describeTable(tableName);

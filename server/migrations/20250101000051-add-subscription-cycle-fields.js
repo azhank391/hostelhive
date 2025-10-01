@@ -3,7 +3,7 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    const table = "hostels";
+    const table = "Hostels";
     const desc = await queryInterface.describeTable(table);
 
       if (!desc["canceled_at"]) {
@@ -28,7 +28,7 @@ module.exports = {
   },
 
   async down(queryInterface, Sequelize) {
-    const table = "hostels";
+    const table = "Hostels";
     const dropIfExists = async (name) => {
       try { await queryInterface.removeColumn(table, name); } catch {}
     };
