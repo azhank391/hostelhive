@@ -391,7 +391,7 @@ export default function VisitorsPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/hostels/${hostelId}/visitors`, {
+      const response = await fetch(getApiUrl(`/api/hostels/${hostelId}/visitors`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

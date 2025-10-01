@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { getApiUrl } from '@/lib/api-url';
 
 export function usePasswordChange() {
   const { user } = useAuth();
@@ -19,7 +20,7 @@ export function usePasswordChange() {
   const handlePasswordChange = async (newPassword: string) => {
     try {
       // Call API to change password
-      const response = await fetch('/api/auth/change-password', {
+      const response = await fetch(getApiUrl('/api/auth/change-password'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

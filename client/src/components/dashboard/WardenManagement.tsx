@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/modals/Modal'
 import toast from '@/lib/toast'
 import { WardenForm } from '@/components/forms/WardenForm'
+import { getApiUrl } from '@/lib/api-url'
 
 interface Warden {
   id: string;
@@ -112,7 +113,7 @@ export const WardenManagement = React.memo(() => {
       setError(null)
       
       // Direct API call - more reliable
-      const response = await fetch(`/api/hostels/${hostelId}/wardens`, {
+      const response = await fetch(getApiUrl(`/api/hostels/${hostelId}/wardens`), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         }
@@ -166,7 +167,7 @@ export const WardenManagement = React.memo(() => {
       setShowCreateModal(false)
       
       // Make API call - direct fetch
-      const response = await fetch(`/api/hostels/${hostelId}/wardens`, {
+      const response = await fetch(getApiUrl(`/api/hostels/${hostelId}/wardens`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -215,7 +216,7 @@ export const WardenManagement = React.memo(() => {
       setSelectedWarden(null)
       
       // Make API call - direct fetch
-      const response = await fetch(`/api/hostels/${hostelId}/wardens/${selectedWarden.id}`, {
+      const response = await fetch(getApiUrl(`/api/hostels/${hostelId}/wardens/${selectedWarden.id}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -255,7 +256,7 @@ export const WardenManagement = React.memo(() => {
       setWardens(prev => prev.filter(w => w.id !== wardenId))
       
       // Make API call - direct fetch
-      const response = await fetch(`/api/hostels/${hostelId}/wardens/${wardenId}`, {
+      const response = await fetch(getApiUrl(`/api/hostels/${hostelId}/wardens/${wardenId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`
