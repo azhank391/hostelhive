@@ -81,8 +81,14 @@ jobs:
           ls -la "${EC2_APP_DIR}" || true
 
           cd "${EC2_APP_DIR}"
+          echo "Cleaning previous server directory to avoid stale migrations..."
+          rm -rf "${EC2_APP_DIR}/${SERVER_DIR}"
+
           echo "Extracting deploy_artifacts.tar.gz"
           tar -xzf deploy_artifacts.tar.gz
+
+          echo "Present migrations after extract:"
+          ls -1 "${EC2_APP_DIR}/${SERVER_DIR}/migrations" || true
 
           # Ensure Node.js is installed (Amazon Linux / Ubuntu)
           if ! command -v node >/dev/null 2>&1; then
