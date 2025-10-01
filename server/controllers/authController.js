@@ -29,6 +29,8 @@ exports.registerOwner = async (req, res) => {
       return res.status(500).json({ message: "System configuration error" });
     }
 
+    console.log(`🔍 DEBUG: Found owner role - ID: ${ownerRole.id}, Name: ${ownerRole.name}`);
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newOwner = await User.create({
@@ -40,7 +42,7 @@ exports.registerOwner = async (req, res) => {
       hostelId: null, // Will be set when they create a hostel
     });
 
-    console.log(`✅ New owner registered with roleId: ${ownerRole.id}`);
+    console.log(`✅ New owner registered - User ID: ${newOwner.id}, Role ID: ${newOwner.roleId}`);
 
     res.status(201).json({
       message: "Owner registered successfully",
