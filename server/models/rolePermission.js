@@ -49,7 +49,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       sequelize,
       modelName: "RolePermission",
-      tableName: "rolepermissions", // match actual MySQL table name (all lowercase)
+      tableName: "RolePermissions", // Match actual MySQL table name (PascalCase)
       timestamps: true, // Has created_at column
       createdAt: "created_at",
       updatedAt: false, // No updated_at column
