@@ -11,7 +11,7 @@ jobs:
       EC2_APP_DIR: /var/www/hostelhive
       SERVER_DIR: server
       CLIENT_DIR: client
-      RUN_MIGRATIONS: "false"
+      RUN_MIGRATIONS: "true"
 
     steps:
       - name: Checkout
@@ -106,19 +106,18 @@ jobs:
 
           # Install server deps
           cd "${EC2_APP_DIR}/${SERVER_DIR}"
-          npm ci --omit=dev --ignore-scripts
+          npm ci --ignore-scripts
 
-          # Conditionally run migrations
-          if [ "${RUN_MIGRATIONS}" = "true" ]; then
-            echo "RUN_MIGRATIONS=true → running migrations..."
-            if ! command -v sequelize-cli >/dev/null 2>&1; then
-              echo "Installing sequelize-cli globally..."
-              sudo npm i -g sequelize-cli
-            fi
-            NODE_ENV=production sequelize-cli db:migrate --env production
-          else
-            echo "Skipping migrations (RUN_MIGRATIONS is not 'true')."
+          # Always run migrations on deploy
+          if ! command -v sequelize-cli >/dev/null 2>&1; then
+            echo "Installing sequelize-cli globally..."
+            sudo npm i -g sequelize-cli
           fi
+
+          echo "Running migrations..."
+          NODE_ENV=production sequelize-cli db:migrate --env production
+          echo "Migrations status (post-run):"
+          NODE_ENV=production sequelize-cli db:migrate:status --env production || true
 
           # Start/reload app with PM2
           APP_NAME=hostelhive-server
@@ -130,6 +129,23 @@ jobs:
             NODE_ENV=production PORT=5000 pm2 start server.js --name "${APP_NAME}" --cwd "${EC2_APP_DIR}/${SERVER_DIR}"
           fi
 
-          pm2 save
-          pm2 status | sed -n '1,200p'
+          # Health check loop
+          echo "Waiting for /health..."
+          for i in {1..15}; do
+            if curl -sSf http://localhost:5000/health > /dev/null; then
+              echo "Health OK"
+              break
+            fi
+            echo "Health not ready, retry $i/15"; sleep 2
+          done
+          echo "Health response:" && curl -s http://localhost:5000/health || true
+
+          # Optional DB connectivity script
+          if [ -f scripts/test-rds-connection.js ]; then
+            echo "Testing DB connectivity via script..."
+            node scripts/test-rds-connection.js || true
+          fi
+
+          echo "Recent PM2 logs:"
+          pm2 logs hostelhive-server --lines 80 --nostream | sed -n '1,200p' || true
           EOF
