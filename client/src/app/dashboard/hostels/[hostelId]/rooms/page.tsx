@@ -18,6 +18,7 @@ import { Card } from "@/components/ui/Card";
 import type { Room, User } from "@/lib/types";
 import { notification } from "@/lib/toast";
 import { downloadExport } from "@/lib/download";
+import { getApiUrl } from "@/lib/api-url";
 import {
   BedIcon,
   PlusIcon,
@@ -96,7 +97,7 @@ export default function HostelRoomsPage() {
       setError(null);
 
       // Direct API call - more reliable
-      const response = await fetch(`/api/hostels/${hostelId}/rooms`, {
+      const response = await fetch(getApiUrl(`/api/hostels/${hostelId}/rooms`), {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("authToken")}`,
         },
@@ -216,7 +217,7 @@ export default function HostelRoomsPage() {
       setIsCreating(true);
 
       // Direct API call - more reliable
-      const response = await fetch(`/api/hostels/${hostelId}/rooms`, {
+      const response = await fetch(getApiUrl(`/api/hostels/${hostelId}/rooms`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -299,7 +300,7 @@ export default function HostelRoomsPage() {
       setIsUpdating(true);
 
       // Direct API call - more reliable
-      const apiUrl = `/api/hostels/${hostelId}/rooms/${editingRoom.id}`;
+      const apiUrl = getApiUrl(`/api/hostels/${hostelId}/rooms/${editingRoom.id}`);
       console.log("🔍 DEBUG: Making API call to:", apiUrl);
       console.log("🔍 DEBUG: Request body:", updates);
 
@@ -372,7 +373,7 @@ export default function HostelRoomsPage() {
       setIsDeleting(roomId);
 
       // Direct API call - more reliable
-      const response = await fetch(`/api/hostels/${hostelId}/rooms/${roomId}`, {
+      const response = await fetch(getApiUrl(`/api/hostels/${hostelId}/rooms/${roomId}`), {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("authToken")}`,
@@ -434,7 +435,7 @@ export default function HostelRoomsPage() {
     try {
       // Fetch students from the new API endpoint
       const response = await fetch(
-        `/api/hostels/${hostelId}/rooms/${room.id}/students`,
+        getApiUrl(`/api/hostels/${hostelId}/rooms/${room.id}/students`),
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("authToken")}`,

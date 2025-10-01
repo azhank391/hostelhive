@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import type { User, Room } from "@/lib/types";
 import { notification } from "@/lib/toast";
+import { getApiUrl } from "@/lib/api-url";
 import {
   GraduationCapIcon,
   PlusIcon,
@@ -99,7 +100,7 @@ export default function HostelStudentsPage() {
       setError(null);
 
       // Direct API call - more reliable
-      const response = await fetch(`/api/hostels/${hostelId}/students`, {
+      const response = await fetch(getApiUrl(`/api/hostels/${hostelId}/students`), {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("authToken")}`,
         },
@@ -160,7 +161,7 @@ export default function HostelStudentsPage() {
       setIsCreating(true);
 
       // Direct API call for creation
-      const response = await fetch(`/api/hostels/${hostelId}/students`, {
+      const response = await fetch(getApiUrl(`/api/hostels/${hostelId}/students`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -218,7 +219,7 @@ export default function HostelStudentsPage() {
 
       // Direct API call for update
       const response = await fetch(
-        `/api/hostels/${hostelId}/students/${editingStudent.id}`,
+        getApiUrl(`/api/hostels/${hostelId}/students/${editingStudent.id}`),
         {
           method: "PUT",
           headers: {
@@ -287,7 +288,7 @@ export default function HostelStudentsPage() {
 
       // Direct API call for deletion
       const response = await fetch(
-        `/api/hostels/${hostelId}/students/${studentId}`,
+        getApiUrl(`/api/hostels/${hostelId}/students/${studentId}`),
         {
           method: "DELETE",
           headers: {
@@ -414,7 +415,7 @@ export default function HostelStudentsPage() {
       setSelectedStudent(student);
       try {
         // Load available rooms
-        const response = await fetch(`/api/hostels/${hostelId}/rooms`, {
+        const response = await fetch(getApiUrl(`/api/hostels/${hostelId}/rooms`), {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("authToken")}`,
           },
