@@ -210,8 +210,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     const isWarden = user?.role === "warden";
     const isOwner = user?.role === "owner";
     const isSuperadmin = user?.role === "superadmin";
+    
+    // Custom role check: any role that's not one of the system roles
+    // This includes empty string, null, or any custom role name
     const isCustomRole =
-      user?.role &&
+      user?.role !== undefined &&
       !["student", "warden", "owner", "superadmin", "admin"].includes(
         user.role
       );
@@ -226,7 +229,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       };
     }
 
-    // Students, wardens, and custom roles always see the normal dashboard
+    // Students, wardens, and custom roles (including staff with empty role or custom role_id)
+    // always see the normal dashboard with their assigned hostel
     if (isStudent || isWarden || isCustomRole) {
       return {
         type: "normal",

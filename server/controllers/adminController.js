@@ -2158,13 +2158,18 @@ exports.createStaff = async (req, res) => {
     const bcrypt = require("bcrypt");
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Determine the role field value:
+    // - For system roles (owner, student, warden, superadmin), use the role name
+    // - For custom roles, use empty string (staff members use role_id for permissions)
+    const roleValue = role.isSystemRole ? role.name : "";
+
     // Create the staff member
     const staffMember = await User.create({
       name,
       email,
       phone,
       password: hashedPassword, // Use hashed password
-      role: role.name,
+      role: roleValue, // Empty string for custom roles, system role name for system roles
       roleId: roleId, // Use camelCase field name as defined in the model
       hostelId,
       isActive: true,
